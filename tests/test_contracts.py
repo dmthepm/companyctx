@@ -7,7 +7,7 @@ incrementally without rewriting the contract.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -102,10 +102,10 @@ def test_provider_error_is_exception() -> None:
 
 
 def test_research_pack_requires_domain_and_fetched_at() -> None:
-    pack = ResearchPack(domain="example.com", fetched_at=datetime.now(UTC))
+    pack = ResearchPack(domain="example.com", fetched_at=datetime.now(timezone.utc))
     assert pack.domain == "example.com"
 
 
 def test_research_pack_rejects_unknown_field() -> None:
     with pytest.raises(ValueError):
-        ResearchPack(domain="example.com", fetched_at=datetime.now(UTC), bogus=1)  # type: ignore[call-arg]
+        ResearchPack(domain="example.com", fetched_at=datetime.now(timezone.utc), bogus=1)  # type: ignore[call-arg]
