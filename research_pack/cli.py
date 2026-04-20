@@ -7,7 +7,6 @@ The CLI shape itself is part of the public contract — see docs/SPEC.md.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -41,35 +40,56 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
+# Module-level Typer parameter singletons.
+# Hoisted out of function defaults so ruff B008 (no function calls in defaults)
+# stays strict for everything else while keeping Typer's idiomatic pattern.
+_VERSION_OPT = typer.Option(
+    None,
+    "--version",
+    callback=_version_callback,
+    is_eager=True,
+    help="Show version and exit.",
+)
+
+_DOMAIN_ARG = typer.Argument(..., help="The prospect domain, e.g. example.com")
+_OUT_OPT_FILE = typer.Option(None, "--out", help="Write JSON to this path.")
+_OUT_OPT_DIR = typer.Option(..., "--out", help="Output directory.")
+_FORMAT_OPT = typer.Option(True, "--json/--markdown", help="Output format.")
+_NO_CACHE_OPT = typer.Option(False, "--no-cache", help="Bypass the fetch cache.")
+_CONFIG_OPT = typer.Option(None, "--config", help="TOML config path.")
+_MOCK_FETCH_OPT = typer.Option(
+    False, "--mock", help="Load from fixtures/<domain>/ instead of network."
+)
+_MOCK_BATCH_OPT = typer.Option(False, "--mock", help="Load from fixtures/.")
+_VERBOSE_OPT = typer.Option(False, "--verbose", help="Verbose run-log to stderr.")
+_IGNORE_ROBOTS_OPT = typer.Option(
+    False,
+    "--ignore-robots",
+    help="Bypass robots.txt. Explicit CLI-only; not config-file-settable.",
+)
+_CSV_ARG = typer.Argument(..., help="CSV of domains.")
+_JSON_ARG = typer.Argument(..., help="Path to a research-pack JSON.")
+_CACHE_DOMAIN_OPT = typer.Option(None, "--domain", help="Limit to one domain.")
+_CACHE_OLDER_OPT = typer.Option(None, "--older-than", help="Drop entries older than e.g. 7d.")
+
+
 @app.callback()
 def _root(
-    version: Optional[bool] = typer.Option(  # noqa: UP007 — Typer needs Optional
-        None,
-        "--version",
-        callback=_version_callback,
-        is_eager=True,
-        help="Show version and exit.",
-    ),
+    version: bool | None = _VERSION_OPT,  # noqa: ARG001 — eager callback handles it
 ) -> None:
     """research-pack — domain in, JSON out."""
 
 
 @app.command()
 def fetch(
-    domain: str = typer.Argument(..., help="The prospect domain, e.g. example.com"),
-    out: Optional[Path] = typer.Option(None, "--out", help="Write JSON to this path."),
-    json_out: bool = typer.Option(True, "--json/--markdown", help="Output format."),
-    no_cache: bool = typer.Option(False, "--no-cache", help="Bypass the fetch cache."),
-    config: Optional[Path] = typer.Option(None, "--config", help="TOML config path."),
-    mock: bool = typer.Option(
-        False, "--mock", help="Load from fixtures/<domain>/ instead of network."
-    ),
-    verbose: bool = typer.Option(False, "--verbose", help="Verbose run-log to stderr."),
-    ignore_robots: bool = typer.Option(
-        False,
-        "--ignore-robots",
-        help="Bypass robots.txt. Explicit CLI-only; not config-file-settable.",
-    ),
+    domain: str = _DOMAIN_ARG,
+    out: Path | None = _OUT_OPT_FILE,
+    json_out: bool = _FORMAT_OPT,
+    no_cache: bool = _NO_CACHE_OPT,
+    config: Path | None = _CONFIG_OPT,
+    mock: bool = _MOCK_FETCH_OPT,
+    verbose: bool = _VERBOSE_OPT,
+    ignore_robots: bool = _IGNORE_ROBOTS_OPT,
 ) -> None:
     """Run all providers for one domain. (Stub — implemented in M3/M4.)"""
     raise typer.Exit(code=2)
@@ -77,13 +97,13 @@ def fetch(
 
 @app.command()
 def batch(
-    csv: Path = typer.Argument(..., help="CSV of domains."),
-    out: Path = typer.Option(..., "--out", help="Output directory."),
-    json_out: bool = typer.Option(True, "--json/--markdown", help="Output format."),
-    no_cache: bool = typer.Option(False, "--no-cache", help="Bypass the fetch cache."),
-    config: Optional[Path] = typer.Option(None, "--config", help="TOML config path."),
-    mock: bool = typer.Option(False, "--mock", help="Load from fixtures/."),
-    verbose: bool = typer.Option(False, "--verbose", help="Verbose run-log."),
+    csv: Path = _CSV_ARG,
+    out: Path = _OUT_OPT_DIR,
+    json_out: bool = _FORMAT_OPT,
+    no_cache: bool = _NO_CACHE_OPT,
+    config: Path | None = _CONFIG_OPT,
+    mock: bool = _MOCK_BATCH_OPT,
+    verbose: bool = _VERBOSE_OPT,
 ) -> None:
     """Run fetch over a CSV of domains. (Stub — implemented in M4.)"""
     raise typer.Exit(code=2)
@@ -91,7 +111,7 @@ def batch(
 
 @app.command()
 def validate(
-    json_path: Path = typer.Argument(..., help="Path to a research-pack JSON."),
+    json_path: Path = _JSON_ARG,
 ) -> None:
     """Validate a JSON file against the pydantic schema. (Stub — implemented in M2/M4.)"""
     raise typer.Exit(code=2)
@@ -105,10 +125,8 @@ def cache_list() -> None:
 
 @cache_app.command("clear")
 def cache_clear(
-    domain: Optional[str] = typer.Option(None, "--domain", help="Limit to one domain."),
-    older_than: Optional[str] = typer.Option(
-        None, "--older-than", help="Drop entries older than e.g. 7d."
-    ),
+    domain: str | None = _CACHE_DOMAIN_OPT,
+    older_than: str | None = _CACHE_OLDER_OPT,
 ) -> None:
     """Prune the cache. (Stub — implemented in M4.)"""
     raise typer.Exit(code=2)
