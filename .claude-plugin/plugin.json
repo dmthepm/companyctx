@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/plugin.json",
+  "name": "research-pack",
+  "version": "0.1.0",
+  "description": "Deterministic research-pack collector for outreach pipelines. Domain in, JSON out.",
+  "homepage": "https://github.com/dmthepm/research-pack",
+  "license": "MIT",
+  "tags": ["cli", "outreach", "research", "scraping", "deterministic"],
+  "entrypoint": {
+    "type": "cli",
+    "command": "research-pack"
+  },
+  "install": {
+    "pipx": "research-pack",
+    "fromSource": "pip install -e \".[dev,extract,reviews,youtube]\""
+  }
+}
