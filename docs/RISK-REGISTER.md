@@ -627,3 +627,36 @@ trigger FM-10) makes the case strong.
   OSS picks for new heuristics. Those decisions await measurement on
   the fixtures corpus (see `docs/PROVIDERS.md` and the zero-key
   strategy ADR for the naming rule).
+
+## Candidate refinements — needs vertical-diverse replication
+
+This section is non-normative. Entries here are observations from a
+single measurement that do not yet meet the bar for editing the main
+register body (typically: ≥ 5% rate AND an identified mechanism).
+They stay here until a follow-up run on a different vertical either
+confirms or refutes the observation.
+
+### FM-13 — 3% observed, medical/aesthetic only, no mechanism
+
+The 2026-04-21 100-site durability run
+([`fixtures/durability-report-2026-04-21.md`](../fixtures/durability-report-2026-04-21.md))
+measured 3 / 100 = **3%** FM-13 timeouts against @joel-req's medical /
+aesthetic SMB cohort. The register body says "0 observed … do not
+over-invest" based on the D100 log-mining corpus (gutter / roofing /
+IV / waste-management). **Three caveats keep this out of the main
+body:**
+
+1. 3% is below the 5% refinement threshold.
+2. No shared fingerprint (CDN / CMS / hosting) identified from three
+   data points.
+3. The sample is 100% medical / aesthetic; the register was mined from
+   unrelated verticals. A gutter / roofing / waste-management rerun is
+   needed to tell apart a vertical-specific artifact from baseline
+   network weather.
+
+If a vertical-diverse rerun confirms a ≥ 5% rate **and** identifies a
+shared mechanism (e.g. a specific CMS fingerprint or hosting pattern),
+the FM-13 main body should be re-weighted from "do not over-invest" to
+a concrete "invest in N-second retry with backoff on timeout" rule.
+Until then, Attempt-2 escalation remains the higher-leverage place to
+spend engineering.

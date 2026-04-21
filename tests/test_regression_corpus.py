@@ -39,6 +39,14 @@ REGRESSION_SLUGS = (
     "midtown-auto",
     "mapleridge-contractor",
     "oakleaf-bakery",
+    # FM-7 failure-shape regressions promoted from the 2026-04-21 durability
+    # run — see fixtures/durability-report-2026-04-21.md. Both emit status=ok
+    # with thin/empty homepage_text (the "brochureware / maintenance / JS-
+    # redirect" shape per docs/RISK-REGISTER.md §FM-7). Fixtures guard
+    # against an extractor change that silently starts hallucinating
+    # content from an effectively empty page.
+    "fm7-js-redirect-root",
+    "fm7-maintenance-page",
 )
 
 

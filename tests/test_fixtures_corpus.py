@@ -36,6 +36,18 @@ EXPECTED_FILES = (
     "expected.json",
 )
 
+# Failure-shape fixtures carry only the files needed to reproduce the
+# empty/near-empty extraction shape — see fixtures/durability-report-*.md.
+FAILURE_FIXTURE_SLUGS = ("fm7-js-redirect-root", "fm7-maintenance-page")
+FAILURE_FIXTURE_FILES = ("homepage.html", "expected.json")
+
+
+def _synthetic_dirs() -> list[Path]:
+    return sorted(
+        p for p in FIXTURES_DIR.iterdir() if p.is_dir() and p.name not in FAILURE_FIXTURE_SLUGS
+    )
+
+
 # Regexes used to audit fixture bytes for PII. These are stricter than the
 # sanitizer's input regexes — if any of these match committed fixtures, the
 # sanitizer let something through.
@@ -59,14 +71,22 @@ def builder() -> ModuleType:
 
 
 def test_corpus_has_exactly_thirty_prospect_dirs() -> None:
-    dirs = sorted(p for p in FIXTURES_DIR.iterdir() if p.is_dir())
+    dirs = _synthetic_dirs()
     assert len(dirs) == 30, [p.name for p in dirs]
 
 
 def test_each_prospect_has_expected_files() -> None:
-    for site_dir in (p for p in FIXTURES_DIR.iterdir() if p.is_dir()):
+    for site_dir in _synthetic_dirs():
         missing = [f for f in EXPECTED_FILES if not (site_dir / f).exists()]
         assert not missing, f"{site_dir.name} missing {missing}"
+
+
+def test_failure_fixtures_have_minimum_files() -> None:
+    for slug in FAILURE_FIXTURE_SLUGS:
+        site_dir = FIXTURES_DIR / slug
+        assert site_dir.is_dir(), slug
+        missing = [f for f in FAILURE_FIXTURE_FILES if not (site_dir / f).exists()]
+        assert not missing, f"{slug} missing {missing}"
 
 
 def test_seeds_csv_lists_every_site() -> None:
@@ -80,6 +100,13 @@ def test_every_expected_json_parses_and_has_schema_shape() -> None:
         raw = (site_dir / "expected.json").read_text(encoding="utf-8")
         env = Envelope.model_validate_json(raw)
         assert env.data.site.endswith(".example")
+
+
+def test_seeds_csv_excludes_failure_fixtures() -> None:
+    """Failure-shape fixtures are regression artifacts, not batch inputs."""
+    seeds = (FIXTURES_DIR / "seeds.csv").read_text(encoding="utf-8").splitlines()
+    for slug in FAILURE_FIXTURE_SLUGS:
+        assert slug not in seeds, slug
 
 
 def test_no_pii_in_any_fixture_bytes() -> None:
@@ -115,12 +142,12 @@ def _assert_no_diff(cmp: filecmp.dircmp[str]) -> None:
 
 
 def test_generator_matches_committed_corpus(builder: Any, tmp_path: Path) -> None:
-    """The committed fixtures/ must equal a fresh --synthetic run."""
+    """The committed synthetic corpus must equal a fresh --synthetic run."""
     out = tmp_path / "regen"
     rc = builder.main(["--synthetic", "--out", str(out)])
     assert rc == 0
 
-    for site_dir in (p for p in FIXTURES_DIR.iterdir() if p.is_dir()):
+    for site_dir in _synthetic_dirs():
         mirror = out / site_dir.name
         assert mirror.is_dir(), site_dir.name
         for name in EXPECTED_FILES:
