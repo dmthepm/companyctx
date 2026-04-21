@@ -41,29 +41,39 @@ Each failure mode gets:
 - **Agent recovery observed** — what the D100 agent did, and whether it
   was the right thing for `companyctx` to do.
 
-Envelope enums, for reference (see `docs/SPEC.md`):
+Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
 
-- `ProviderRunMetadata.status` ∈ `{ok, degraded, failed, not_configured}`
-- Top-level envelope `status` ∈ `{ok, partial, degraded}`
+- `ProviderRunMetadata.status` ∈ `{ok, degraded, failed, not_configured}`.
+- Top-level envelope `status` ∈ `{ok, partial, degraded}`.
+- `ok` — every required provider succeeded.
+- `partial` — **at least one provider** returned `degraded`, `failed`,
+  or `not_configured`, but `data` is still schema-conformant.
+- `degraded` — **no provider succeeded**.
+- Only fields declared in `docs/SPEC.md` §82–108 are envelope-available
+  today. This register sticks to those. Cases where the honest mapping
+  needs a field that doesn't exist yet are deferred to the
+  [Schema-evolution proposals](#schema-evolution-proposals-non-normative)
+  appendix and are **not** consumable by `#15` without that schema
+  work landing first.
 
 ## Summary
 
-| ID | Mode | Freq (transcripts) | Layer | Envelope shape |
+| ID | Mode | Freq (transcripts) | Layer | Envelope shape (today's schema) |
 |---|---|---|---|---|
-| FM-1 | Homepage 403 / hard block by CDN anti-bot | 2 | Attempt 2 | per-provider `failed` → top `partial` if Attempt 2 rescues, else `degraded` |
-| FM-2 | Yelp 403 on server-rendered fetch | 4 | Attempt 3 (Yelp Fusion) | per-provider `failed` → top `partial` |
-| FM-3 | IG / FB follower-count scrape blocked | 4 | gap (no API without commercial key) | per-provider `degraded` → top `partial` |
-| FM-4 | Google review count unreachable (GBP is JS-rendered) | 3 | Attempt 3 (Google Places) | `not_configured` or `failed` → top `partial` |
-| FM-5 | "Under construction" / redirect to parent brand | 1 | Attempt 1 (needs richer envelope metadata) | per-provider `degraded` + `warning` |
-| FM-6 | Services/about content present but unstructured | 13/13 | extraction heuristic (Attempt 1 output) | per-provider `degraded` when sub-fields empty |
-| FM-7 | One-page template / brochureware site | 2+ | Attempt 1 (honest low-confidence) | `ok` per-provider, top `partial` + `quality.confidence = low` |
-| FM-8 | Upstream vertical tag disagrees with homepage-inferred vertical | 1 | Attempt 1 (envelope warning) | top `ok` + `quality.warnings` |
-| FM-9 | Franchise / multi-location ambiguity | 2 | Attempt 3 (per-location GBP place-id) | per-provider `degraded` → top `partial` |
-| FM-10 | Secondary-source cascade without provenance | 5+ | cross-cutting (schema) | per-field `source_url` required |
-| FM-11 | About-page URL not auto-discovered | 3+ | Attempt 1 (owned heuristic, not OSS) | per-provider `degraded` on `site_about` |
-| FM-12 | Press / awards discovery needs search, not site fetch | 10+ | separate provider (search-API) | `mentions_*: not_configured` until keyed |
-| FM-13 | Site-fetch timeouts / transient failures | 0 observed | Attempt 1 (defensive default only) | `failed` — do not over-invest |
-| FM-14 | Homepage fetched but social handles not found | 3+ | Attempt 1 (footer anchor heuristic) | `social.<platform>.handle: degraded` |
+| FM-1 | Homepage 403 / hard block by CDN anti-bot | 2 | Attempt 2 | Attempt-1 provider `failed`; top-level `partial` if any other provider succeeded, else `degraded` |
+| FM-2 | Yelp 403 on server-rendered fetch | 4 | Attempt 3 (Yelp Fusion) | scraped-Yelp provider `failed` or Fusion `not_configured` → top `partial` |
+| FM-3 | IG / FB follower-count scrape blocked | 4 | gap (no API without commercial key) | counts provider `degraded` → top `partial` |
+| FM-4 | Google review count unreachable (GBP is JS-rendered) | 3 | Attempt 3 (Google Places) | `reviews_google_places` `not_configured` or `failed` → top `partial` |
+| FM-5 | "Under construction" / redirect to parent brand | 1 | Attempt 1 | Attempt-1 provider `degraded`, top `partial`; identity distinction deferred (see schema-evolution §1) |
+| FM-6 | Services/about content present but unstructured | 13/13 | extraction heuristic (Attempt 1) | `signals_site_heuristic` / services extractor `degraded` when `pages.services == []` → top `partial` |
+| FM-7 | One-page template / brochureware site | 2+ | Attempt 1 (honest thin data) | per-provider `ok` on successful fetches; top `ok` (nulls on empty optional fields) or `partial` if a heuristic provider reports `degraded` |
+| FM-8 | Upstream vertical tag disagrees with homepage-inferred vertical | 1 | Attempt 1 | today's envelope has no field for this; see schema-evolution §2 |
+| FM-9 | Franchise / multi-location ambiguity | 2 | Attempt 3 (per-location GBP place-id) | `reviews_google_places` `degraded` → top `partial`; location-vs-aggregate distinction deferred to schema-evolution §3 |
+| FM-10 | Secondary-source cascade without provenance | 5+ | cross-cutting | today's envelope carries per-*provider* provenance only; per-*field* provenance deferred to schema-evolution §4 |
+| FM-11 | About-page URL not auto-discovered | 3+ | Attempt 1 (owned heuristic, not OSS) | `site_about` provider `degraded` → top `partial` |
+| FM-12 | Press / awards discovery needs search, not site fetch | 10+ | separate provider (search-API) | `mentions_*` provider `not_configured` until a search-API key is set → top `partial` (mentions are optional; see §) |
+| FM-13 | Site-fetch timeouts / transient failures | 0 observed | Attempt 1 (defensive default only) | provider `failed` — do not over-invest |
+| FM-14 | Homepage fetched but social handles not found | 3+ | Attempt 1 (footer anchor heuristic) | `social_discovery_site` `degraded` → top `partial` |
 
 ## FM-1 — Homepage returns 403 / hard block on root domain
 
@@ -84,14 +94,21 @@ Envelope enums, for reference (see `docs/SPEC.md`):
   2 (smart-proxy provider with residential egress) is the designed fix.
   Attempt 3 doesn't help: there is no API for "give me this homepage."
 - **Envelope mapping.**
-  - Attempt 1: `ProviderRunMetadata.status = "failed"`,
+  - Attempt-1 provider (e.g. `site_text_trafilatura`):
+    `ProviderRunMetadata.status = "failed"`,
     `error = "CDN anti-bot 403 on homepage"`,
-    `suggestion = "retry via smart-proxy provider with residential egress"`.
-  - If Attempt 2 rescues: top-level `status = "ok"` (or `partial` if
-    other providers degraded).
-  - If Attempt 2 is `not_configured` or also fails: top-level
-    `status = "partial"` with `fields_missing` populated and
-    `suggestion = "configure a smart-proxy provider key"`.
+    `suggestion = "retry via smart-proxy provider with residential
+    egress"`.
+  - If Attempt 2 rescues the homepage and no other provider degrades:
+    top-level `status = "ok"`.
+  - If Attempt 2 is `not_configured` and some other providers succeed
+    (e.g. review / social providers on non-homepage surfaces): top-level
+    `status = "partial"`; homepage-sourced `CompanyContext` fields
+    (`pages.homepage_text`, `pages.about_text`, heuristic sub-fields)
+    remain `None`; `error` and `suggestion` come from the primary
+    degraded provider, typically `"configure a smart-proxy provider
+    key"`.
+  - If no provider succeeded: top-level `status = "degraded"`.
 
 ## FM-2 — Yelp returns 403 on server-rendered fetch
 
@@ -112,9 +129,13 @@ Envelope enums, for reference (see `docs/SPEC.md`):
   - Scraped-Yelp provider: `ProviderRunMetadata.status = "failed"`.
   - `reviews_yelp_fusion` if no key: `status = "not_configured"`.
   - Top-level `status = "partial"`,
-    `fields_missing = ["reviews.yelp.count", "reviews.yelp.rating"]`,
+    `error = "yelp scrape blocked and yelp_fusion not configured"`,
     `suggestion = "configure Yelp Fusion direct-API key to bypass
     scraping"`.
+  - `data.reviews` remains `None` (or populated from another review
+    source if one succeeded) — missing reviews are encoded as `None`
+    per `docs/SPEC.md` §126; downstream consumers read per-provider
+    entries in `provenance` to see *why*.
 
 ## FM-3 — Instagram / Facebook follower-count scrape blocked
 
@@ -168,8 +189,9 @@ Envelope enums, for reference (see `docs/SPEC.md`):
   - `reviews_google_places` with no key: `status = "not_configured"`,
     `suggestion = "enable Google Places API via GOOGLE_PLACES_API_KEY"`.
   - With key but API rejects: `status = "failed"`.
-  - Top-level `status = "partial"` with
-    `fields_missing = ["reviews.google.count", "reviews.google.rating"]`.
+  - Top-level `status = "partial"`; `data.reviews` left `None` (or
+    carrying a non-Google source if one succeeded). The provenance
+    entry is where downstream reads *why* Google wasn't filled.
 
 ## FM-5 — "Under construction" or redirect to parent brand
 
@@ -184,16 +206,24 @@ Envelope enums, for reference (see `docs/SPEC.md`):
   brief. Caveat: the redirect target is a *different* business entity
   (franchise parent), so some imported facts don't describe the
   prospect's specific location.
-- **Waterfall layer.** Attempt 1 — the need is richer envelope
-  metadata, not a new layer.
-- **Envelope mapping.**
-  - Preserve both `requested_url` and `effective_url` in the envelope
-    (or on `pages`).
-  - Attempt-1 `ProviderRunMetadata.status = "degraded"` when
-    `effective_url` differs from `requested_url` across a brand boundary
-    (heuristic: SLD mismatch).
-  - `suggestion = "site redirected to parent domain; extracted data may
-    describe the parent brand, not this prospect"`.
+- **Waterfall layer.** Attempt 1 — the fetch itself doesn't need a new
+  layer; the envelope needs a way to flag brand identity.
+- **Envelope mapping (today's schema).**
+  - Attempt-1 fetcher: `ProviderRunMetadata.status = "degraded"` when
+    the effective URL differs from the requested URL across a
+    second-level-domain boundary. Detection sits in the fetcher; the
+    degraded status is the only signal today's envelope can emit.
+  - Top-level `status = "partial"`,
+    `error = "cross-brand redirect: extracted data may describe the
+    parent brand, not this prospect"`,
+    `suggestion = "pass the parent-brand domain explicitly if the
+    parent is the intended prospect, or skip"`.
+- **Schema gap.** Surfacing the requested-vs-effective URL pair is a
+  schema evolution — see
+  [§1 Identity preservation on redirect](#1-identity-preservation-on-redirect).
+  Until that lands, downstream consumers only see the degraded status
+  and the `error` string; they cannot tell *which* URL the extractor
+  followed.
 
 ## FM-6 — Services / about content present but unstructured
 
@@ -236,14 +266,23 @@ Envelope enums, for reference (see `docs/SPEC.md`):
 - **Waterfall layer.** Attempt 1 succeeds fetch-wise; no later layer
   helps. The fetch worked; the site just has nothing to extract.
 - **Envelope mapping.**
-  - Attempt-1 `ProviderRunMetadata.status = "ok"`.
-  - Top-level `status = "partial"` with `quality.confidence = "low"`
-    and `fields_missing` populated.
-  - `suggestion = "site is brochureware; downstream synthesis should
-    lean on firmographic data"`.
-  - **Do not map to `degraded` or `failed`** — the fetch succeeded. The
-    distinction between "site blocked us" and "site had nothing" is
-    load-bearing for downstream decisions.
+  - Providers that succeed at their extractor job return
+    `ProviderRunMetadata.status = "ok"` — the fetch worked; the site
+    just has nothing to extract. Empty-but-extracted is valid data.
+  - Providers whose job is to *find* a specific sub-field that isn't
+    present (e.g. `social_discovery_site` finds no handles;
+    `signals_site_heuristic` finds no `team_size_claim`) can
+    legitimately return `status = "degraded"` with an `error` explaining
+    that the source content didn't contain the target.
+  - Top-level `status`:
+    - `"ok"` if every provider returned `ok` (empty outputs are valid).
+    - `"partial"` if any heuristic provider reported `degraded` because
+      the heuristic didn't hit — per SPEC §73, `partial` requires at
+      least one provider to be degraded / failed / not_configured.
+  - **Do not map the fetch itself to `degraded` or `failed`.** The
+    distinction between "site blocked us" (FM-1) and "site had nothing"
+    (FM-7) is load-bearing; it lives in the per-provider `status`
+    values, not in a flattened quality score.
 
 ## FM-8 — Upstream vertical tag disagrees with homepage-inferred vertical
 
@@ -257,16 +296,18 @@ Envelope enums, for reference (see `docs/SPEC.md`):
 - **Agent recovery.** Corrected the classification from homepage text
   mid-research. The correction lives in prose, not in a structured
   field.
-- **Waterfall layer.** Attempt 1 resolves.
-- **Envelope mapping.** This is the canonical "companyctx is a router"
-  signal. Emit a heuristic `vertical_detected` field on
-  `signals_site_heuristic` output and surface a mismatch when upstream
-  firmographics disagree:
-  - Top-level `status = "ok"` with
-    `quality.warnings = ["upstream vertical tag disagrees with
-    homepage-inferred vertical"]`.
-  - The envelope never asserts the "true" vertical — that's a synthesis
-    judgment. It reports the observation.
+- **Waterfall layer.** Attempt 1 resolves the observation itself.
+- **Envelope mapping (today's schema).** There is **no field today**
+  that can carry a vertical observation or the mismatch signal.
+  `HeuristicSignals.tech_vs_claim_mismatches` (SPEC §107) is the
+  closest-shaped slot but it's narrowly scoped to *tech vs claim*, not
+  vertical classification. The transcript shows a real failure; the
+  v0.1 envelope can't surface it.
+- **Schema gap.** See
+  [§2 Vertical observation and firmographics-mismatch warning](#2-vertical-observation-and-firmographics-mismatch-warning).
+  Until that lands, `companyctx` has no way to propagate this signal —
+  the synthesis layer has to infer it from `pages.homepage_text`
+  unaided.
 
 ## FM-9 — Franchise / multi-location ambiguity
 
@@ -282,13 +323,17 @@ Envelope enums, for reference (see `docs/SPEC.md`):
 - **Waterfall layer.** Attempt 3 (Google Places) is the real fix, same
   family as FM-4 but with a subtlety: callers must pass the *location-
   specific* GBP place-id, not just the brand name.
-- **Envelope mapping.**
-  - `reviews.google` carries `scope: "location" | "parent_brand" |
-    "aggregate"` (or equivalent) so downstream callers can distinguish.
-  - When only aggregate is available: `ProviderRunMetadata.status =
-    "degraded"`, top-level `partial`.
-  - `suggestion = "parent-brand aggregate captured; location-level
-    numbers require Google Places API on the specific GBP listing"`.
+- **Envelope mapping (today's schema).**
+  - `reviews_google_places` with no per-location place-id:
+    `ProviderRunMetadata.status = "degraded"`,
+    `error = "only parent-brand aggregate reachable; location-level
+    reviews require per-location GBP place-id"`,
+    `suggestion = "pass the specific GBP place-id for this location"`.
+  - Top-level `status = "partial"`.
+- **Schema gap.** `ReviewSignals` (SPEC §91–94) has no way to mark a
+  value as *location-specific* vs *parent-brand aggregate*; callers
+  can't tell them apart. See
+  [§3 Review-scope distinction (location vs parent-brand aggregate)](#3-review-scope-distinction-location-vs-parent-brand-aggregate).
 
 ## FM-10 — Secondary-source cascade without provenance
 
@@ -303,18 +348,23 @@ Envelope enums, for reference (see `docs/SPEC.md`):
   - `backfill-2026-04-18-command-message-d100-command-m-05ed4365.md:3775`
 - **Waterfall layer.** Cross-cutting — this is a schema concern, not a
   single-attempt concern.
-- **Envelope mapping.** Schema guidance:
-  - Each extracted value that can come from multiple surfaces should be
-    a struct carrying `source_url` + originating `provider_slug`, not a
-    bare scalar. The v0.1 envelope already models per-provider
-    provenance via `ProviderRunMetadata`; reviews / mentions / signals
-    that can spill across surfaces should extend this down to the
-    field level over time.
-  - When a field's value was sourced from a fallback surface rather
-    than the prospect's own domain, top-level `status = "partial"` and
-    `suggestion` should name the swap.
-- **Rationale.** companyctx is MIT and permanent-public. "Deterministic
-  router" loses meaning if provenance is implicit.
+- **Envelope mapping (today's schema).** The v0.1 envelope carries
+  provenance at the *provider* level via `provenance: dict[slug,
+  ProviderRunMetadata]` (SPEC §61–64, §110–118). A `ReviewSignals`
+  value carries `source: str` naming the provider slug that produced
+  it (SPEC §94). There is **no per-field provenance** that can
+  describe "this `services` entry came from the homepage but this one
+  came from a third-party aggregator." Today, if a provider fell back
+  across surfaces internally, that fact is flattened.
+- **Schema gap.** See
+  [§4 Per-field provenance](#4-per-field-provenance). Until it lands,
+  downstream consumers can only see *which provider* produced a
+  value, not *which surface within that provider's reach*.
+- **Rationale.** `companyctx` is MIT and permanent-public.
+  "Deterministic router" carries real weight only when provenance is
+  explicit enough for reviewers to audit. The transcript evidence
+  makes a strong case for field-level provenance; the schema change is
+  non-trivial and belongs in its own issue, not this PR.
 
 ## FM-11 — About-page URL not auto-discovered
 
@@ -331,21 +381,41 @@ Envelope enums, for reference (see `docs/SPEC.md`):
   code (not OSS).
 - **Envelope mapping.**
   - When the `/` fetch succeeds but the about-page URL isn't found:
-    per-provider `status = "degraded"` on a `site_about` sub-provider.
-  - `suggestion = "about-page URL not auto-detected — pass
-    --about-url=<path> or enable the footer anchor-text scan"`.
+    the about-page provider (the provider owning `pages.about_text`)
+    returns `ProviderRunMetadata.status = "degraded"` with
+    `error = "about-page URL not discoverable via anchor heuristics"`.
+  - Top-level `status = "partial"`; `data.pages.about_text` left
+    `None` (it's already declared nullable in SPEC §88).
+  - `suggestion = "about-page URL not auto-detected; synthesis can
+    rely on homepage_text alone or pass an explicit about-URL hint"` —
+    a user-facing hint flag is a CLI evolution, not assumed here.
 
 ## FM-12 — Press / awards discovery needs search, not site fetch
 
-- **Signature.** Briefs cite awards ("2024 NWRA national award"), press
-  ("Forbes Homes #1 Best Gutter Guard 2023"), and credentials ("GentleCure
-  SRT", "Inc. 5000 alum") — almost none of these come from the prospect's
-  own site.
-- **Frequency.** Most high-activity transcripts (10+). Roughly 50% of
-  briefs depend on press-discovery content.
+- **Signature.** Briefs cite awards, media mentions, industry
+  rankings, and external accreditation — sourced via web search rather
+  than the prospect's own domain. The D100 skill's own Phase 1
+  instructions explicitly separate this into a dedicated
+  "web search" step for "media mentions, awards, community presence"
+  distinct from the "website fetch" step.
+- **Frequency.** Appears in most high-activity transcripts. The skill
+  instruction itself ("Web search … for reviews (Google rating +
+  count), media mentions, awards, community presence") is echoed
+  verbatim across 5+ batch transcripts, and the briefs that result
+  consistently include award / press content that did not come from
+  the prospect's own domain.
 - **Evidence.**
-  - `backfill-2026-04-17-command-message-d100-command-m-57f83f37.md:2296`
-  - `backfill-2026-04-18-command-message-d100-command-m-9aea3234.md:854`
+  - `backfill-2026-04-16-command-message-d100-command-m-167f63bc.md:1609`
+    — brief summary for one prospect lists multiple press / award /
+    accreditation signals (a national-magazine category ranking, a
+    BBB rating, an industry list mention, and a national rank) all
+    derived from web search, not the vendor's own site.
+  - `backfill-2026-04-18-command-message-d100-command-m-9aea3234.md:794`
+    — agent explicitly records that it "verified … via fresh web
+    research" to fill award content for a brief.
+  - `backfill-2026-04-18-command-message-d100-command-m-9aea3234.md:403`
+    and siblings — the skill reference itself codifies a search-based
+    step for awards / media mentions as distinct from site fetching.
 - **Waterfall layer.** Distinct from the three site-fetch attempts;
   press discovery is its own pipeline (search-API backed). The day-one
   plumbing is `mentions_brave_stub`; real coverage requires a keyed
@@ -421,9 +491,10 @@ captures how the transcript evidence compares.
 
 - **Google-captcha vs. Google-SPA (FM-4).** Prior taxonomy bundled
   these. Evidence shows the dominant Google failure is structural (GBP
-  is JS-rendered + requires an API), not captcha. Envelope must
-  distinguish `captcha_challenge` from `requires_direct_api` — they
-  suggest different recoveries.
+  is JS-rendered + requires an API), not captcha. In today's envelope
+  the distinction lives in the `error` string + `suggestion` on the
+  degraded provider; recoveries (smart-proxy vs API-key configuration)
+  differ, so the suggestion strings must not be collapsed.
 - **Social handle modes (FM-3, FM-14).** Prior taxonomy framed this as
   "handle misattribution." Transcripts show two separate modes:
   (a) handle not discovered at all (FM-14); (b) handle known but count
@@ -438,13 +509,12 @@ captures how the transcript evidence compares.
   instinct was to build retry/backoff first. Corpus evidence argues
   against it. Invest in Attempt-2 escalation, not Attempt-1 retry
   loops.
-- **Upstream-vertical-misclassification (FM-8) is net new.** Suggests
-  the envelope should emit a `vertical_detected` observation;
-  firmographics lie often enough to matter.
+- **Upstream-vertical-misclassification (FM-8) is net new.** The v0.1
+  envelope cannot propagate this signal; see schema-evolution §2.
 - **Provenance-per-field (FM-10) is net new.** Transcripts silently mix
-  homepage, BBB, Birdeye, press-wire, and search-snippet sources. MIT
-  companyctx must carry per-field provenance for the "deterministic
-  router" claim to hold up in review.
+  homepage, BBB, Birdeye, press-wire, and search-snippet sources. The
+  v0.1 envelope carries provenance per-provider but not per-field; see
+  schema-evolution §4.
 - **Under-construction / redirect shape (FM-5) is net new.** Low
   frequency, clean case — captured so fixtures cover it.
 
@@ -455,12 +525,84 @@ captures how the transcript evidence compares.
   calls out the honest deterministic gaps. Read them together.
 - **For `expected.json` authors.** Each fixture should encode which
   failure mode applies (if any) so the expected envelope's `status`,
-  `error`, and `suggestion` fields are grounded, not guessed. A
-  fixture for a Yelp-blocked prospect should ship the partial envelope
-  this register specifies for FM-2, verbatim.
+  `error`, and `suggestion` fields are grounded, not guessed. Use
+  **only** fields declared in `docs/SPEC.md` §82–108. The
+  schema-evolution proposals below are *not* envelope-available yet
+  and cannot be consumed by fixtures until their own issues land.
 - **For provider implementations.** `ProviderRunMetadata.status`
   transitions are load-bearing. The enum is four-valued on purpose;
   FM-3 and FM-14 argue against collapsing `degraded` into `failed`.
+
+## Schema-evolution proposals (non-normative)
+
+Four transcript-grounded modes cannot be honestly represented by the
+v0.1 envelope. Each is captured here so that follow-up issues can
+propose concrete schema changes. **Nothing in this section is usable by
+`#15` or by fixtures until a separate PR ratifies the schema change.**
+
+### §1 Identity preservation on redirect
+
+**Problem.** FM-5 — when a fetch follows a cross-SLD redirect, the
+extracted `CompanyContext` may describe a different legal entity
+(franchise parent) than the one the caller asked about. The envelope
+has no field that preserves the requested-vs-effective URL pair, so
+downstream consumers cannot tell.
+
+**Candidate shape.** Add something like `pages.requested_url` and
+`pages.effective_url` (both `str`) to `SiteSignals`, or a top-level
+`data.identity` struct. Emit a `ProviderRunMetadata` error when the
+SLDs differ.
+
+**Follow-up.** Worth its own issue.
+
+### §2 Vertical observation and firmographics-mismatch warning
+
+**Problem.** FM-8 — the homepage-inferred vertical (e.g. "portable
+sanitation") can disagree with an upstream firmographics tag (e.g.
+Apollo's "real estate"). The envelope has no field that carries an
+inferred vertical or a mismatch flag. `tech_vs_claim_mismatches` in
+`HeuristicSignals` has the right *shape* (a list of observation
+strings) but is domain-restricted to tech / positioning.
+
+**Candidate shape.** Either (a) broaden `tech_vs_claim_mismatches`
+into a more generic `observations: list[str]` under
+`HeuristicSignals`, or (b) add a dedicated
+`HeuristicSignals.vertical_inferred: str | None` — keeping it an
+observation, per the `docs/SPEC.md` §121–124 "raw observations only"
+rule.
+
+**Follow-up.** Worth its own issue.
+
+### §3 Review-scope distinction (location vs parent-brand aggregate)
+
+**Problem.** FM-9 — `ReviewSignals.count` and `.rating` are flat
+numbers. A franchise child site exposes parent-brand aggregates on its
+homepage; the location's own numbers live in a separate GBP place-id.
+Today the envelope cannot distinguish them, so a synthesis consumer
+can confidently write "5.0 rating, 747 reviews" about what is really
+the parent brand.
+
+**Candidate shape.** Add
+`ReviewSignals.scope: "location" | "parent_brand_aggregate"` (or
+equivalent), and treat aggregate-only runs as `partial`.
+
+**Follow-up.** Worth its own issue.
+
+### §4 Per-field provenance
+
+**Problem.** FM-10 — today's envelope carries provenance at the
+*provider* level. Within a single provider call, a fallback across
+surfaces (homepage → BBB → Birdeye → press wire) collapses to one
+`ProviderRunMetadata` entry. The "deterministic router" positioning
+argues for making the per-field surface explicit.
+
+**Candidate shape.** Either wrap values that can come from multiple
+surfaces in a struct `{value, source_url, extracted_at}`, or extend
+`provenance` with per-path keys. Schema change is non-trivial and
+deserves a focused ADR; transcript evidence (FM-1, FM-2, FM-4 all
+trigger FM-10) makes the case strong.
+
+**Follow-up.** Worth its own issue.
 
 ## What this register does not do
 

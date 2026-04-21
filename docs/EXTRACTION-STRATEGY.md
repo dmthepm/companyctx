@@ -46,9 +46,9 @@ gap.
 | **Server-rendered static HTML** — the majority case: WordPress / Squarespace / Wix / Webflow / small-agency custom | `GET /` returns 200, HTML body ≥ 2 KB of meaningful text, no JS required for content | TLS-impersonation fetch → `trafilatura` (primary) / `readability-lxml` (fallback) → `extruct` for JSON-LD / OG / `sameAs` → `BeautifulSoup` footer scan for social anchors | Attempt 1 | **Services-list extraction remains heuristic.** No OSS cleanly produces `services: list[str]` from clean body text (FM-6). **About-page auto-discovery is owned companyctx code** (FM-11), not OSS. Both flag `ProviderRunMetadata.status = "degraded"` on the affected sub-provider so the envelope signals "raw text captured; structured sub-fields empty." |
 | **CDN-anti-bot-fronted** — returns 403 / challenge page on `GET /` | 403 on plain fetch; WAF challenge pages; Cloudflare / DataDome / Akamai / PerimeterX markers in response headers or body | Attempt 1 fails fast; escalate to Attempt 2 (smart-proxy with residential egress) | Attempt 2 | **Without a user-supplied smart-proxy key, this prospect is permanently degraded on homepage-sourced fields** (FM-1). Correct envelope: Attempt 1 → `failed`; Attempt 2 → `not_configured` unless keyed; top-level → `partial` with `suggestion = "configure a smart-proxy provider key"`. |
 | **JS-rendered / SPA surfaces** — Google Business Profile map panel, some franchise-directory inner pages, certain Squarespace-JS variants | `GET /` returns a minimal shell; body < 2 KB meaningful text; visible text on the rendered page is absent from the fetched HTML | Detect low-text-density on the Attempt-1 response → bail early rather than emit half-junk. For *review* fields on JS surfaces with a direct API (Google Places, YouTube Data), prefer Attempt 3. For SPAs without a direct API, emit `degraded` honestly — a headless-browser renderer is **not in the v0.1 scope** per the zero-key ADR | Attempt 3 where a direct API exists; gap otherwise | **Genuine gap for SPA sites without an API.** Transcripts show these are rare in the D100 niches (~5–10% estimate, dominant case is Google Maps panels which *do* have an API); deferring a headless-browser renderer is defensible for v0.1. Revisit if fixtures-corpus measurement shows > 20% of ICP prospects on SPA shapes. |
-| **Review / directory aggregator** — Yelp, Google Business, Houzz, Angi, HomeAdvisor, Birdeye, BBB | Fetch against these domains returns 403 or a thin shell (FM-2, FM-4) | Prefer the **direct API** for Yelp (Yelp Fusion) and Google (Google Places). For the long tail (Birdeye, HomeAdvisor, Angi, BBB), only Attempt 2 helps — none publish a public API. | Attempt 3 for Yelp + Google; Attempt 2 for the long tail | **Long-tail aggregators have no API** — we're permanently at smart-proxy quality there. When Attempt 2 is `not_configured`, envelope emits `status = "partial"` with per-surface `reviews.<platform>.*` fields missing and `suggestion` naming the first aggregator that's configurable. |
-| **Social-platform profile** — Instagram, Facebook, LinkedIn, TikTok, YouTube | Fetching the platform directly either 403s or returns a login-wall shell; follower counts render client-side | **Handle discovery is Attempt 1** (footer anchors + `extruct sameAs`) — companyctx owns that heuristic. **Counts are Attempt 3 for YouTube** (YouTube Data API); **a hard gap for IG / FB / TikTok** without commercial authenticated-graph access (FM-3). | Attempt 1 for handles; Attempt 3 for YouTube counts; gap for IG / FB / TikTok counts | **IG / FB / TikTok follower counts are a permanent `degraded` path.** Document it, don't hide it. Envelope reports: handle confirmed (`ok`), count missing (`degraded` on the per-platform counts provider), top-level `partial`, `suggestion = "IG/FB/TikTok follower counts require authenticated social-graph access"`. |
-| **Brochureware / one-page template / under-construction / parked / Facebook-only** | `GET /` returns 200, HTML parses cleanly, but meaningful text is < 2 KB; no services page; no team page; sometimes a 301 to a parent brand (FM-5); sometimes no domain at all (Facebook-only business) | Attempt 1 handles it; the honest behavior is to **emit a low-confidence envelope** and let synthesis handle it upstream | Attempt 1 | No gap — correct behavior is `ProviderRunMetadata.status = "ok"` per provider, top-level `status = "partial"`, `quality.confidence = "low"`, `fields_missing` populated, `suggestion = "site is brochureware; downstream synthesis should lean on firmographic data"`. Matches the D100 agent pattern that pivots to Apollo firmographics (FM-7). The distinction between "site blocked us" (FM-1) and "site had nothing" (FM-7) is **load-bearing** for downstream decisions; do not collapse them. |
+| **Review / directory aggregator** — Yelp, Google Business, Houzz, Angi, HomeAdvisor, Birdeye, BBB | Fetch against these domains returns 403 or a thin shell (FM-2, FM-4) | Prefer the **direct API** for Yelp (Yelp Fusion) and Google (Google Places). For the long tail (Birdeye, HomeAdvisor, Angi, BBB), only Attempt 2 helps — none publish a public API. | Attempt 3 for Yelp + Google; Attempt 2 for the long tail | **Long-tail aggregators have no API** — we're permanently at smart-proxy quality there. When Attempt 2 is `not_configured`, envelope emits `status = "partial"` with `data.reviews` left `None` (or populated from a surface that did succeed) and `suggestion` naming the first aggregator that's configurable. |
+| **Social-platform profile** — Instagram, Facebook, LinkedIn, TikTok, YouTube | Fetching the platform directly either 403s or returns a login-wall shell; follower counts render client-side | **Handle discovery is Attempt 1** (footer anchors + `extruct sameAs`) — companyctx owns that heuristic. **Counts are Attempt 3 for YouTube** (YouTube Data API); **a hard gap for IG / FB / TikTok** without commercial authenticated-graph access (FM-3). | Attempt 1 for handles; Attempt 3 for YouTube counts; gap for IG / FB / TikTok counts | **IG / FB / TikTok follower counts are a permanent `degraded` path.** Document it, don't hide it. Envelope reports: handle present in `social.handles` (Attempt-1 provider `ok`), count absent from `social.follower_counts` (counts provider `degraded`), top-level `partial`, `suggestion = "IG/FB/TikTok follower counts require authenticated social-graph access"`. |
+| **Brochureware / one-page template / under-construction / parked / Facebook-only** | `GET /` returns 200, HTML parses cleanly, but meaningful text is < 2 KB; no services page; no team page; sometimes a 301 to a parent brand (FM-5); sometimes no domain at all (Facebook-only business) | Attempt 1 handles it; the honest behavior is to **emit the thin data and let synthesis handle it upstream** — optional envelope fields are nullable (SPEC §126) | Attempt 1 | No gap on the fetch itself. Correct envelope is driven entirely by per-provider status: fetchers that succeeded at their extractor job return `ok` (empty outputs are valid); a heuristic provider that expected to find e.g. a services list or `team_size_claim` and couldn't can legitimately return `degraded`, which then maps to top-level `partial` per SPEC §73. The distinction between "site blocked us" (FM-1) and "site had nothing" (FM-7) lives in the per-provider `ProviderRunMetadata.status` values; **do not collapse them**. See RISK-REGISTER FM-7 for the full mapping. |
 
 ## Attempt-by-attempt responsibilities
 
@@ -86,9 +86,13 @@ Known gaps Attempt 1 cannot close deterministically:
   `meet-the-`). When it doesn't find a match, emit `degraded` on the
   about sub-provider, not a silent null.
 - **Effective-vs-requested URL** (FM-5). When a redirect crosses a
-  brand boundary (SLD mismatch), emit `degraded` and preserve both URLs
-  in the envelope. The extractor ran fine; the envelope consumer needs
-  to know the brand identity shifted.
+  brand boundary (SLD mismatch), emit `ProviderRunMetadata.status =
+  "degraded"` and name the mismatch in the `error` string. The v0.1
+  envelope has no field for requested-vs-effective URL; surfacing that
+  pair is a schema evolution (see
+  [RISK-REGISTER §1](RISK-REGISTER.md#1-identity-preservation-on-redirect)).
+  Until that lands, the degraded status + error string is the only
+  signal the envelope can carry.
 
 Heuristic for escalating to Attempt 2: **text density.** If
 `len(extracted_text) < 2000` on a 200 response, or the response status
@@ -142,22 +146,22 @@ counts provider rather than hiding it.
 
 ## Cross-cutting rules
 
-- **Provenance stays on the envelope** (FM-10). Per-field values that
-  can come from multiple surfaces are candidates for a struct carrying
-  `source_url` + `provider_slug`, not bare scalars. v0.1 ships
-  per-provider `ProviderRunMetadata`; field-level provenance extends as
-  data surfaces accumulate. MIT companyctx positions as a deterministic
-  *router*; that claim doesn't hold up without provenance.
-- **Vertical detection is a warning, not a verdict** (FM-8). When the
-  `signals_site_heuristic` provider infers a vertical from the homepage
-  text and an upstream caller passed a different one, emit
-  `quality.warnings = ["upstream vertical tag disagrees with homepage-
-  inferred vertical"]`. The envelope never asserts the "true" vertical
-  — that's a synthesis judgment.
+- **Provenance today is per-provider, not per-field** (FM-10). The
+  v0.1 envelope carries `provenance: dict[slug, ProviderRunMetadata]`
+  (SPEC §61–64); there is no per-field provenance. Field-level
+  provenance is a deferred schema evolution
+  ([RISK-REGISTER §4](RISK-REGISTER.md#4-per-field-provenance));
+  until it lands, each provider is responsible for internal fallback
+  transparency via its `error` string and for not silently mixing
+  primary-domain facts with third-party aggregator facts.
+- **Vertical observation is a deferred schema change** (FM-8). The
+  v0.1 envelope has no field for it; the synthesis layer has to
+  infer. See
+  [RISK-REGISTER §2](RISK-REGISTER.md#2-vertical-observation-and-firmographics-mismatch-warning).
 - **Press / awards is a separate pipeline** (FM-12). The
   site-extraction layer doesn't own it. `mentions_brave_stub` ships as
-  plumbing; coverage requires a keyed search provider. ~50% of D100
-  briefs depend on press-discovery content, so the pipeline can't be
+  plumbing; coverage requires a keyed search provider. Most briefs
+  depend on press-discovery content, so the pipeline can't be
   deferred indefinitely — but it doesn't belong to Attempts 1–3.
 - **No `partial` from half-heuristics.** When a structured sub-field
   can't be extracted cleanly, emit empty + `degraded`, not a noisy
