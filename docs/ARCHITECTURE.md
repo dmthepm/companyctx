@@ -5,7 +5,7 @@ pattern. A frontier LLM (Opus / Sonnet / Gemini / DeepSeek) plays orchestrator
 brain upstream; `companyctx` is one of many CLIs the brain composes via pipes.
 
 ```
-  ┌──────────────────┐    companyctx <domain>      ┌──────────────────┐
+  ┌──────────────────┐     companyctx <site>       ┌──────────────────┐
   │  orchestrator    │ ──────────────────────────→ │   companyctx     │
   │  (frontier LLM)  │                             │  (this tool)     │
   │                  │ ←── schema-locked JSON ──── │                  │
@@ -33,7 +33,7 @@ brain upstream; `companyctx` is one of many CLIs the brain composes via pipes.
 
 ## The Deterministic Waterfall
 
-Every `companyctx <domain>` call attempts providers in a fixed, layered order.
+Every `companyctx <site>` call attempts providers in a fixed, layered order.
 Each layer, if configured, returns the *same* `CompanyContext` shape — a
 downstream agent never branches on which layer succeeded.
 
@@ -86,7 +86,7 @@ The SQLite cache is a byproduct that compounds into a local data asset.
   `ProviderRunMetadata` per provider — not raw HTML snippets.
 - **Where it lives.** `~/.cache/companyctx/` (XDG-respecting via
   `platformdirs`).
-- **Keyed on.** `(normalized_domain, provider_set_hash, provider_slug)` plus
+- **Keyed on.** `(normalized_host, provider_set_hash, provider_slug)` plus
   TTL.
 - **Schema is versioned.** Migrations are first-class; the cache survives
   provider upgrades.
@@ -104,7 +104,7 @@ committed here.
 ```bash
 # Brain upstream composes narrow muscles:
 companyctx acme-bakery.com --json \
-  | jq '.data | {domain, signals, reviews}' \
+  | jq '.data | {site, signals, reviews}' \
   | claude -p "write a 6-section outreach brief from this context"
 ```
 
@@ -128,7 +128,7 @@ upstream decides what the context means.
 - Not an agent framework. Orchestration lives upstream.
 - Not a hosted service. Local pipx CLI.
 - Not a synthesis engine. Our output is the input *for* synthesis.
-- Not a multi-page crawler. One domain in, one structured object out.
+- Not a multi-page crawler. One site in, one structured object out.
 
 ## Further reading
 

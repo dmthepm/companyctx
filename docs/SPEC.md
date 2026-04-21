@@ -15,8 +15,8 @@
 
 ## Purpose
 
-Take a prospect domain, emit a structured, schema-locked JSON payload about
-the **company** at that domain. One downstream synthesis LLM call per prospect
+Take a prospect site, emit a structured, schema-locked JSON payload about
+the **company** at that site. One downstream synthesis LLM call per prospect
 reads the JSON and writes its brief — `companyctx` is the deterministic muscle
 that replaces the "LLM reads HTML to extract facts" step.
 
@@ -29,11 +29,11 @@ Built with Typer. Conforms to clig.dev.
 
 | Command | Behavior |
 |---|---|
-| `companyctx fetch <domain>` | Run all providers for one domain; print or write result. |
-| `companyctx batch <csv>` | Run fetch over CSV of domains, write each result to a file. |
+| `companyctx fetch <site>` | Run all providers for one site; print or write result. |
+| `companyctx batch <csv>` | Run fetch over CSV of sites, write each result to a file. |
 | `companyctx validate <json>` | Validate a JSON payload against the pydantic schema. |
 | `companyctx cache list` | Inspect cache entries. |
-| `companyctx cache clear [--domain X] [--older-than 7d]` | Prune the cache. |
+| `companyctx cache clear [--site X] [--older-than 7d]` | Prune the cache. |
 | `companyctx providers list` | Show available providers + their status + cost hint. |
 
 Global flags on `fetch`:
@@ -43,7 +43,7 @@ Global flags on `fetch`:
 - `--refresh` — ignore cache, re-fetch every provider, write fresh back.
 - `--from-cache` — return only the cached payload, never hit the network;
   exit non-zero on miss. (First-class Vertical-Memory flag.)
-- `--config <toml>`, `--mock` (loads from `fixtures/<domain>/` instead of network).
+- `--config <toml>`, `--mock` (loads from `fixtures/<site>/` instead of network).
 - `--ignore-robots` — explicit CLI-only; **not** settable via TOML or env.
 
 ## Output contract
@@ -81,9 +81,9 @@ Status semantics:
 
 ```
 CompanyContext
-├─ domain: str                         # required
+├─ site: str                           # required — prospect hostname or URL
 ├─ fetched_at: datetime                # required
-├─ site: SiteSignals
+├─ pages: SiteSignals
 │    ├─ homepage_text: str             # cleaned, extractor-agnostic
 │    ├─ about_text: str | None
 │    ├─ services: list[str]
@@ -121,7 +121,7 @@ does cross-reference inference (e.g. "team-size claim vs LinkedIn employee
 count" or "WordPress detected vs custom-engineering positioning"). The
 collector never computes a judgment.
 
-Every field on `CompanyContext` is optional except `domain` and `fetched_at`.
+Every field on `CompanyContext` is optional except `site` and `fetched_at`.
 Missing providers degrade — never raise — and surface their reason via
 `provenance[slug].status`. The top-level envelope's `status` aggregates these
 into a single pipeline-branchable value.
@@ -150,7 +150,7 @@ Provider contract:
 - `slug: ClassVar[str]`
 - `category: ClassVar[Literal["site_text", "site_meta", "reviews", "social_discovery", "social_counts", "signals", "mentions"]]`
 - `cost_hint: ClassVar[Literal["free", "per-call", "per-1k"]]`
-- `def fetch(self, domain: str, *, ctx: FetchContext) -> tuple[SignalsModel | None, ProviderRunMetadata]`
+- `def fetch(self, site: str, *, ctx: FetchContext) -> tuple[SignalsModel | None, ProviderRunMetadata]`
 - Providers **never raise uncaught**. All failure modes map to
   `ProviderRunMetadata.status in {"degraded", "failed", "not_configured"}`.
 
@@ -187,7 +187,7 @@ on which attempt succeeded — they branch on the envelope's `status`.
 SQLite fetch cache under XDG-compliant paths. Opt-in via `--cache` flag or
 TOML; disabled by default in v0.1.
 
-- Key: `(normalized_domain, provider_set_hash, provider_slug)` + TTL per
+- Key: `(normalized_host, provider_set_hash, provider_slug)` + TTL per
   provider.
 - Payload: the full normalized `CompanyContext` payload + `provenance`
   (not raw HTML snippets).
@@ -207,7 +207,7 @@ normal use. A `companyctx query ...` DSL is v0.2 scope, not v0.1.
   - `0` — envelope `status: "ok"`.
   - `0` — envelope `status: "partial"` (still pipeline-safe, suggestion provided).
   - `1` — envelope `status: "degraded"` (stale cache used) when `--strict` is set.
-  - `2` — domain invalid, unreachable, or every provider failed hard.
+  - `2` — site invalid, unreachable, or every provider failed hard.
 - Lightweight by design — deep transcripts belong in the downstream pipeline.
 
 ## Security and safety

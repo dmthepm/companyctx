@@ -67,11 +67,11 @@ class ProviderBase(Protocol):
 
     def fetch(
         self,
-        domain: str,
+        site: str,
         *,
         ctx: FetchContext,
     ) -> tuple[object | None, ProviderRunMetadata]:
-        """Run the provider for one domain.
+        """Run the provider for one site.
 
         Returns a 2-tuple of ``(signals_model_or_None, ProviderRunMetadata)``.
         Must never raise an uncaught exception.

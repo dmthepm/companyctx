@@ -1,6 +1,6 @@
 # Zero-Key Mode
 
-`companyctx <domain>` returning a schema-locked JSON payload with **no API
+`companyctx <site>` returning a schema-locked JSON payload with **no API
 keys, no configuration, no rented infrastructure** is the first thing the
 README shows. It's the adoption wedge.
 
@@ -35,7 +35,7 @@ companyctx acme-bakery.com` experience.
 |---|---|
 | **Small-biz WordPress / Squarespace / Wix / Webflow / small-agency custom** | Full payload on the homepage. This is the sweet spot — the TLS-impersonation fetcher clears the passive checks, and most small-biz stacks don't run aggressive anti-bot. Expected `status: "ok"` on ~85–95% of prospects in this segment.* |
 | **Sites behind Cloudflare Turnstile, DataDome, Akamai, or PerimeterX** | Often blocked on zero-key. Returns `status: "partial"` with `error: "blocked_by_antibot"` and `suggestion: "configure a smart-proxy provider key or skip this prospect"`. The payload will contain whatever *did* succeed (e.g. `extruct` on a cached preview) — not a crash. |
-| **JS-heavy SPAs that need a real browser** | Zero-key fetcher returns the HTML shell only. The schema fields that need rendered content (often `site.about_text`, some JSON-LD) come back null. `status: "partial"`; configure a smart-proxy + headless-browser provider to fill the gap. |
+| **JS-heavy SPAs that need a real browser** | Zero-key fetcher returns the HTML shell only. The schema fields that need rendered content (often `pages.about_text`, some JSON-LD) come back null. `status: "partial"`; configure a smart-proxy + headless-browser provider to fill the gap. |
 | **Aggregator pages (Yelp / Houzz / G2 / Birdeye)** | Zero-key will not get these — ToS + anti-bot posture make them a bad target. The right path is the `reviews_google_places` / `reviews_yelp_fusion` **direct-API** providers (user-keyed) under Attempt 3 of the Deterministic Waterfall. README must not imply otherwise. |
 
 \* The 85–95% number will be measured against the 30-prospect fixtures
@@ -52,9 +52,9 @@ When zero-key can't fully succeed, `companyctx` does not crash, does not
 {
   "status": "partial",
   "data": {
-    "domain": "example.com",
+    "site": "example.com",
     "fetched_at": "2026-04-20T18:42:11Z",
-    "site": null,
+    "pages": null,
     "reviews": null,
     "social": { "handles": {"instagram": "@example"}, "follower_counts": {} },
     "signals": null
@@ -81,7 +81,7 @@ When zero-key can't fully succeed, `companyctx` does not crash, does not
 Downstream pipelines branch on `status`:
 
 ```python
-ctx = fetch_companyctx(domain)
+ctx = fetch_companyctx(site)
 if ctx["status"] == "ok":
     synthesize(ctx["data"])
 elif ctx["status"] == "partial":

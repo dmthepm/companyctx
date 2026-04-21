@@ -18,7 +18,7 @@ production pipeline, both phases must pass.
 - **N:** 10 prospects.
 - **Source:** picked from a recent successful overnight batch on the
   downstream pipeline. Niches should span 2–3 categories to avoid overfitting.
-- **Input:** for each prospect, run `companyctx fetch <domain>` → JSON.
+- **Input:** for each prospect, run `companyctx fetch <site>` → JSON.
   A synthesis call reads the JSON and writes the 6-section brief
   (Differentiator / Audience / Content & Social / Credentials & Proof / Gap /
   5 Script Angles).

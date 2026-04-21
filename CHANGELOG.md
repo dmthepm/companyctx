@@ -38,5 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Renamed `research-pack` → `companyctx`.** GitHub repo and PyPI package.
   See `decisions/2026-04-20-name-change-to-companyctx.md` (in-repo ADR landing
   in the same M1 PR).
+- **Vocabulary swap `domain` → `site` across user-facing surfaces.** CLI
+  positional arg (`companyctx fetch <site>`), schema identifier field
+  (`CompanyContext.site`), cache-clear option (`--site`), fixture layout
+  (`fixtures/<site>/`), and all docs prose. Avoids the collision with
+  "problem domain" / "domain-driven design" / "domain expertise." The
+  existing `site: SiteSignals` sub-model — which held homepage-derived
+  content — moves to `pages: SiteSignals` to free up `site` for the
+  identifier. Internal normalized forms stay as `host` / `origin`.
 
 ### Fixed

@@ -11,9 +11,9 @@ companyctx acme-bakery.com --json
 {
   "status": "ok",
   "data": {
-    "domain": "acme-bakery.com",
+    "site": "acme-bakery.com",
     "fetched_at": "2026-04-20T18:42:11Z",
-    "site":    { "homepage_text": "...", "services": ["cakes", "catering"], "tech_stack": ["WordPress", "Elementor"] },
+    "pages":   { "homepage_text": "...", "services": ["cakes", "catering"], "tech_stack": ["WordPress", "Elementor"] },
     "reviews": { "count": 142, "rating": 4.6, "source": "reviews_google_places" },
     "social":  { "handles": { "instagram": "@acmebakery" }, "follower_counts": {} },
     "signals": { "copyright_year": 2024, "last_blog_post_at": "2026-02-11T00:00:00Z", "team_size_claim": "team of 6" }
@@ -25,7 +25,7 @@ companyctx acme-bakery.com --json
 }
 ```
 
-One domain in. One schema-locked JSON object out. No API keys for the
+One site in. One schema-locked JSON object out. No API keys for the
 zero-key path. Graceful partials on anti-bot blocks. A local SQLite cache
 that compounds into a queryable B2B dataset over time.
 
@@ -82,7 +82,7 @@ On full block with no Attempt-2/3 providers configured:
 ```json
 {
   "status": "partial",
-  "data": { "domain": "example.com", "fetched_at": "...", "site": null, "reviews": null, ... },
+  "data": { "site": "example.com", "fetched_at": "...", "pages": null, "reviews": null, ... },
   "provenance": { "site_text_trafilatura": { "status": "failed", "error": "blocked_by_antibot (HTTP 403)", ... } },
   "error": "blocked_by_antibot",
   "suggestion": "configure a smart-proxy provider key or skip this prospect"
@@ -112,7 +112,7 @@ marketing.
 
 ```bash
 companyctx acme-bakery.com --json \
-  | jq '.data | {domain, signals, reviews}' \
+  | jq '.data | {site, signals, reviews}' \
   | claude -p "write a 6-section outreach brief from this context"
 ```
 
@@ -161,7 +161,7 @@ companyctx fetch example.com --mock --json
   wired for site text). See [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
 - **robots.txt respected by default.** `--ignore-robots` is an explicit
   CLI-only flag; never settable via TOML or env.
-- **Deterministic mocks.** `fixtures/<domain>/` drives `--mock`; re-runs
+- **Deterministic mocks.** `fixtures/<site>/` drives `--mock`; re-runs
   produce byte-identical output modulo `fetched_at`.
 
 ## Providers (committed for v0.1)
@@ -203,7 +203,7 @@ docs/
   VALIDATION.md        # two-phase acceptance protocol
   REFERENCES.md        # upstream OSS deps
 decisions/             # in-repo ADRs (walks-the-walk for OSS readers)
-fixtures/              # per-domain raw HTML + API responses + expected.json
+fixtures/              # per-site raw HTML + API responses + expected.json
 tests/                 # pytest, hypothesis where useful
 ```
 

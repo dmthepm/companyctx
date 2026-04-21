@@ -1,7 +1,7 @@
 """SQLite-backed fetch cache (opt-in).
 
 Milestone 1: scaffolding only. Implementation — connection, schema, TTL,
-key shape `(domain, provider_slug, fetched_at)` — lands in Milestone 4.
+key shape `(site, provider_slug, fetched_at)` — lands in Milestone 4.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ CACHE_DB_FILENAME = "companyctx.sqlite3"
 
 @dataclass(frozen=True)
 class CacheKey:
-    domain: str
+    site: str
     provider_slug: str
 
 
@@ -33,7 +33,7 @@ class FetchCache:
     def list_entries(self) -> list[CacheKey]:
         raise NotImplementedError
 
-    def clear(self, *, domain: str | None = None, older_than_seconds: int | None = None) -> int:
+    def clear(self, *, site: str | None = None, older_than_seconds: int | None = None) -> int:
         raise NotImplementedError
 
 

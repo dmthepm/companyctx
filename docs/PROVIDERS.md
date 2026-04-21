@@ -78,11 +78,11 @@ Full rules in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 1. Drop a module under `companyctx/providers/<slug>.py` with a `Provider`
    class conforming to `ProviderBase` (see `companyctx/providers/base.py`).
 2. Declare `slug`, `category`, `cost_hint`, `version` as `ClassVar`s.
-3. Implement `fetch(domain, *, ctx: FetchContext) -> tuple[Model | None, ProviderRunMetadata]`.
+3. Implement `fetch(site, *, ctx: FetchContext) -> tuple[Model | None, ProviderRunMetadata]`.
    Catch everything at your boundary; never let an exception escape.
 4. Register under `[project.entry-points."companyctx.providers"]` in
    `pyproject.toml`.
-5. Add a unit test under `tests/` using a fixture in `fixtures/<domain>/`.
+5. Add a unit test under `tests/` using a fixture in `fixtures/<site>/`.
    `--mock` runs must be deterministic — re-running produces byte-identical
    output modulo `fetched_at`.
 6. Open a PR. Keep it narrow — one provider per PR is the norm.
@@ -98,7 +98,7 @@ Stubs for the day-one providers land in Milestone 3.
   `SmartProxyProvider` interface if/when wanted.
 - Brave Search / Exa / Tavily mention providers beyond the
   `not_configured` stub.
-- Multi-page / sitemap crawling. One domain in, one structured object out.
+- Multi-page / sitemap crawling. One site in, one structured object out.
 
 See also [`docs/REFERENCES.md`](REFERENCES.md) for the upstream OSS libraries
 each provider wraps.

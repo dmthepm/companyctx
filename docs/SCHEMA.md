@@ -3,7 +3,7 @@
 The Pydantic v2 shape `companyctx` emits. The schema is the product — providers
 are replaceable, the contract is not.
 
-v0.1 ships a minimal placeholder model (`domain` + `fetched_at`) so the
+v0.1 ships a minimal placeholder model (`site` + `fetched_at`) so the
 package imports cleanly. The full schema below is implemented in Milestone 2.
 The structure here is the contract that M2–M5 fill in — adding fields is
 additive and backwards-compatible; removing or renaming fields is a
@@ -41,11 +41,11 @@ class CompanyContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # Required — always present, even on partial runs.
-    domain: str                   # e.g. "acme-bakery.com"
+    site: str                     # e.g. "acme-bakery.com" or "https://acme-bakery.com"
     fetched_at: datetime          # UTC
 
     # Optional — nullable / empty-collection on partial runs.
-    site: SiteSignals | None = None
+    pages: SiteSignals | None = None
     reviews: ReviewSignals | None = None
     social: SocialSignals | None = None
     mentions: list[MediaMention] = []

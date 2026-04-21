@@ -46,7 +46,7 @@ identified conflicts. GPT was neutral on rename but did not oppose.
 
 Rename to `companyctx`. "Company Context" as a primitive — the thing an
 agent brain pipes through to get schema-locked context about a company at
-a given domain.
+a given site.
 
 Concretely:
 

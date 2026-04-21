@@ -43,8 +43,8 @@ def test_settings_defaults() -> None:
 
 
 def test_cache_key_is_hashable_value() -> None:
-    a = CacheKey(domain="example.com", provider_slug="site_text_trafilatura")
-    b = CacheKey(domain="example.com", provider_slug="site_text_trafilatura")
+    a = CacheKey(site="example.com", provider_slug="site_text_trafilatura")
+    b = CacheKey(site="example.com", provider_slug="site_text_trafilatura")
     assert a == b
     assert hash(a) == hash(b)
     assert CACHE_DB_FILENAME.endswith(".sqlite3")
@@ -52,7 +52,7 @@ def test_cache_key_is_hashable_value() -> None:
 
 def test_fetch_cache_methods_are_stubs() -> None:
     cache = FetchCache(db_path=Path("/tmp/should-not-exist.sqlite3"))
-    key = CacheKey(domain="example.com", provider_slug="x")
+    key = CacheKey(site="example.com", provider_slug="x")
     with pytest.raises(NotImplementedError):
         cache.get(key)
     with pytest.raises(NotImplementedError):
@@ -101,11 +101,11 @@ def test_provider_error_is_exception() -> None:
     assert issubclass(ProviderError, Exception)
 
 
-def test_company_context_requires_domain_and_fetched_at() -> None:
-    pack = CompanyContext(domain="example.com", fetched_at=datetime.now(timezone.utc))
-    assert pack.domain == "example.com"
+def test_company_context_requires_site_and_fetched_at() -> None:
+    pack = CompanyContext(site="example.com", fetched_at=datetime.now(timezone.utc))
+    assert pack.site == "example.com"
 
 
 def test_company_context_rejects_unknown_field() -> None:
     with pytest.raises(ValueError):
-        CompanyContext(domain="example.com", fetched_at=datetime.now(timezone.utc), bogus=1)  # type: ignore[call-arg]
+        CompanyContext(site="example.com", fetched_at=datetime.now(timezone.utc), bogus=1)  # type: ignore[call-arg]

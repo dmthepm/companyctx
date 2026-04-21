@@ -16,7 +16,7 @@ class CompanyContext(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    domain: str = Field(..., description="Prospect domain, e.g. example.com")
+    site: str = Field(..., description="Prospect site, e.g. example.com or https://example.com")
     fetched_at: datetime = Field(..., description="UTC timestamp of the run.")
 
 

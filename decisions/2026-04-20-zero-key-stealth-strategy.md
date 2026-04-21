@@ -22,7 +22,7 @@ library choice is measured, not estimated.
 ## Context
 
 `companyctx`'s adoption wedge is `pipx install companyctx && companyctx
-<domain>` returning a schema-locked JSON payload with **no API keys, no
+<site>` returning a schema-locked JSON payload with **no API keys, no
 configuration, no rented infrastructure.** See `docs/ZERO-KEY.md` for the
 user-facing doc and `docs/ARCHITECTURE.md` for the Deterministic Waterfall
 architecture.
@@ -44,7 +44,7 @@ out-engineer Cloudflare. We need a posture that:
 
 ### 1. Deterministic Waterfall (contract)
 
-Every `companyctx <domain>` call attempts providers in a fixed order. Each
+Every `companyctx <site>` call attempts providers in a fixed order. Each
 attempt, if it succeeds, returns the same `CompanyContext` envelope shape.
 
 ```
@@ -102,7 +102,7 @@ framework does **not** raise. It emits:
 ```json
 {
   "status": "partial",
-  "data": { "domain": "…", "fetched_at": "…", "site": null, … },
+  "data": { "site": "…", "fetched_at": "…", "pages": null, … },
   "provenance": { "<slug>": {"status": "failed", "error": "blocked_by_antibot (HTTP 403)", …} },
   "error": "blocked_by_antibot",
   "suggestion": "configure a smart-proxy provider key or skip this prospect"

@@ -1,13 +1,13 @@
 # Fixtures
 
-Per-domain offline inputs that drive `companyctx --mock fetch <domain>`.
-The 10-domain golden suite is curated in Milestone 5.
+Per-site offline inputs that drive `companyctx --mock fetch <site>`.
+The 10-site golden suite is curated in Milestone 5.
 
 ## Layout
 
 ```
 fixtures/
-  <domain>/
+  <site>/
     homepage.html         # raw landing page HTML
     about.html            # /about (when present)
     services.html         # /services or equivalent (when present)
@@ -15,7 +15,7 @@ fixtures/
     yelp.json             # API response for the Yelp Fusion provider
     youtube.json          # API response for the YouTube channels.list provider
     expected.json         # hand-curated golden CompanyContext
-  seeds.csv               # one column "domain", used by `companyctx batch`
+  seeds.csv               # one column "site", used by `companyctx batch`
 ```
 
 Provider files are optional per fixture. If a provider's input file is
@@ -25,17 +25,17 @@ live run.
 
 ## Determinism rule
 
-`companyctx --mock fetch <domain>` must produce byte-identical output
+`companyctx --mock fetch <site>` must produce byte-identical output
 across runs, modulo the `fetched_at` timestamp. Any non-determinism in
 provider output is a bug in that provider, not in the test harness.
 
 ## Adding a fixture
 
-1. Create `fixtures/<domain>/`.
+1. Create `fixtures/<site>/`.
 2. Drop in raw HTML and any API response JSON the providers consume.
 3. Hand-curate `expected.json` — this is the contract, not a re-run of the
    collector.
-4. Add the domain to `fixtures/seeds.csv`.
+4. Add the site to `fixtures/seeds.csv`.
 5. Wire a unit test under `tests/` that loads the fixture and asserts the
    collector reproduces `expected.json`.
 

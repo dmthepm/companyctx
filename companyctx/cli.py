@@ -51,14 +51,16 @@ _VERSION_OPT = typer.Option(
     help="Show version and exit.",
 )
 
-_DOMAIN_ARG = typer.Argument(..., help="The prospect domain, e.g. example.com")
+_SITE_ARG = typer.Argument(
+    ..., help="The prospect site, e.g. example.com or https://example.com"
+)
 _OUT_OPT_FILE = typer.Option(None, "--out", help="Write JSON to this path.")
 _OUT_OPT_DIR = typer.Option(..., "--out", help="Output directory.")
 _FORMAT_OPT = typer.Option(True, "--json/--markdown", help="Output format.")
 _NO_CACHE_OPT = typer.Option(False, "--no-cache", help="Bypass the fetch cache.")
 _CONFIG_OPT = typer.Option(None, "--config", help="TOML config path.")
 _MOCK_FETCH_OPT = typer.Option(
-    False, "--mock", help="Load from fixtures/<domain>/ instead of network."
+    False, "--mock", help="Load from fixtures/<site>/ instead of network."
 )
 _MOCK_BATCH_OPT = typer.Option(False, "--mock", help="Load from fixtures/.")
 _VERBOSE_OPT = typer.Option(False, "--verbose", help="Verbose run-log to stderr.")
@@ -77,9 +79,9 @@ _FROM_CACHE_OPT = typer.Option(
     "--from-cache",
     help="Return only the cached payload; never hit the network. Exit non-zero on miss.",
 )
-_CSV_ARG = typer.Argument(..., help="CSV of domains.")
+_CSV_ARG = typer.Argument(..., help="CSV of sites.")
 _JSON_ARG = typer.Argument(..., help="Path to a companyctx JSON.")
-_CACHE_DOMAIN_OPT = typer.Option(None, "--domain", help="Limit to one domain.")
+_CACHE_SITE_OPT = typer.Option(None, "--site", help="Limit to one site.")
 _CACHE_OLDER_OPT = typer.Option(None, "--older-than", help="Drop entries older than e.g. 7d.")
 
 
@@ -87,12 +89,12 @@ _CACHE_OLDER_OPT = typer.Option(None, "--older-than", help="Drop entries older t
 def _root(
     version: bool | None = _VERSION_OPT,  # noqa: ARG001 — eager callback handles it
 ) -> None:
-    """companyctx — domain in, schema-locked JSON out."""
+    """companyctx — site in, schema-locked JSON out."""
 
 
 @app.command()
 def fetch(
-    domain: str = _DOMAIN_ARG,
+    site: str = _SITE_ARG,
     out: Path | None = _OUT_OPT_FILE,
     json_out: bool = _FORMAT_OPT,
     no_cache: bool = _NO_CACHE_OPT,
@@ -103,7 +105,7 @@ def fetch(
     verbose: bool = _VERBOSE_OPT,
     ignore_robots: bool = _IGNORE_ROBOTS_OPT,
 ) -> None:
-    """Run all providers for one domain. (Stub — implemented in M3/M4.)"""
+    """Run all providers for one site. (Stub — implemented in M3/M4.)"""
     raise typer.Exit(code=2)
 
 
@@ -117,7 +119,7 @@ def batch(
     mock: bool = _MOCK_BATCH_OPT,
     verbose: bool = _VERBOSE_OPT,
 ) -> None:
-    """Run fetch over a CSV of domains. (Stub — implemented in M4.)"""
+    """Run fetch over a CSV of sites. (Stub — implemented in M4.)"""
     raise typer.Exit(code=2)
 
 
@@ -137,7 +139,7 @@ def cache_list() -> None:
 
 @cache_app.command("clear")
 def cache_clear(
-    domain: str | None = _CACHE_DOMAIN_OPT,
+    site: str | None = _CACHE_SITE_OPT,
     older_than: str | None = _CACHE_OLDER_OPT,
 ) -> None:
     """Prune the cache. (Stub — implemented in M4.)"""
