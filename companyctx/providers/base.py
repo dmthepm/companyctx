@@ -12,7 +12,7 @@ Hard rules (enforced by tests in M2/M3):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar, Literal, Protocol
+from typing import ClassVar, Literal, Protocol, runtime_checkable
 
 ProviderStatus = Literal["ok", "degraded", "failed", "not_configured"]
 ProviderCategory = Literal[
@@ -55,6 +55,7 @@ class ProviderRunMetadata:
     provider_version: str
 
 
+@runtime_checkable
 class ProviderBase(Protocol):
     """Structural contract for a provider plugin.
 
