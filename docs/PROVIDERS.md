@@ -31,11 +31,10 @@ Attempt 2 of the Deterministic Waterfall is vendor-agnostic. We ship the
 contract; the user supplies their own smart-proxy / headless-browser vendor.
 
 ```python
-class SmartProxyProvider(Protocol):
-    slug: ClassVar[str]                              # e.g. "proxy_brightdata"
+@runtime_checkable
+class SmartProxyProvider(ProviderBase, Protocol):
+    # slug / cost_hint / version inherited from ProviderBase
     category: ClassVar[Literal["smart_proxy"]]
-    cost_hint: ClassVar[Literal["per-call", "per-1k"]]
-    version: ClassVar[str]
 
     def fetch(
         self, url: str, *, ctx: FetchContext
@@ -48,6 +47,9 @@ class SmartProxyProvider(Protocol):
         ...
 ```
 
+The Protocol inherits from `ProviderBase` so the structural contract is one
+chain — any future addition to `ProviderBase` propagates automatically.
+
 The framework invokes a configured smart-proxy provider when the zero-key
 fetcher returns HTTP 403 / challenge HTML / timeout. The response then flows
 into the same `trafilatura` / `readability-lxml` / `extruct` chain as the
@@ -57,6 +59,12 @@ zero-key path — the schema doesn't know which layer produced the bytes.
 extras in v0.1+ (`companyctx[brightdata]`, `companyctx[zenrows]`, etc.), but
 they're interchangeable — swap the entry-point line in `pyproject.toml` or
 override at runtime.
+
+> **v0.1 status.** Only the `SmartProxyProvider` Protocol
+> (`companyctx/providers/smart_proxy_base.py`) ships today. The first
+> concrete vendor implementation lands after the M2 zero-key provider
+> (issue #15) and the M2 vendor eval spike — no vendor is named here until
+> measurement is in.
 
 ## Provider rules (non-negotiable)
 
