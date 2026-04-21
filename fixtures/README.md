@@ -76,7 +76,7 @@ least one regression case.
 
 ### Failure-shape regressions — the durability two
 
-The 2026-04-21 100-site durability run against Joel's D100 seed list
+The 2026-04-21 100-site durability run against @joel-req's D100 seed list
 (see `durability-report-2026-04-21.md`) surfaced two HTML-capturable
 **FM-7** shapes (thin/empty content after successful fetch, per
 `docs/RISK-REGISTER.md` §FM-7) that sit outside the synthetic-corpus
