@@ -51,15 +51,15 @@ defaults — the very Python fingerprint this spike exists to replace.
 **20 slugs, 8 D100-adjacent B2B niches.** Niche distribution (2–3 slugs each):
 cosmetic dentistry, plastic surgery, bariatric surgery, IVF/fertility,
 orthodontics, business immigration, high-net-worth divorce, private lending.
-Seed domains sampled deterministically (alphabetical first-N) from Joel
-Requena's D100 instantly-sequence CSVs at
+Seed domains sampled deterministically (alphabetical first-N) from
+@joel-req's D100 instantly-sequence CSVs at
 `new-signal-studio/outputs/2026-04-08-d100-*-instantly.csv`.
 
 **Sanitization.** The committed probe set references sites by slug only
 (`bariatric-01`, `cos-dent-02`, …). The slug → real-URL mapping lives in a
 local-only file, `research/.slug-map.local.csv` (gitignored under
 `research/*.local.*`). Raw measurement records (JSONL, 120 rows) likewise
-carry slugs, not URLs. Joel's seed list is private; the research artifact
+carry slugs, not URLs. @joel-req's seed list is private; the research artifact
 must not leak it.
 
 **Site-class coverage.** The probe was not pre-classified by WAF; classes
@@ -278,7 +278,7 @@ This decision drives, in the same PR:
   procedure is fully documented in this file).
 - Run date: 2026-04-21 (see `run_date` on each JSONL row).
 
-Re-running the spike requires only the D100 CSVs (private to Joel) and
+Re-running the spike requires only the D100 CSVs (private to @joel-req) and
 the probe harness; no companyctx-specific infrastructure.
 
 ## Out of scope (deferred to other issues)
