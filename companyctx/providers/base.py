@@ -3,7 +3,7 @@
 Hard rules (enforced by tests in M2/M3):
 
 - Providers **never raise uncaught**. Every failure mode maps to
-  ``ProviderRunMetadata.status in {"degraded", "failed"}``.
+  ``ProviderRunMetadata.status in {"degraded", "failed", "not_configured"}``.
 - Providers declare a ``cost_hint`` so ``companyctx providers list`` can
   surface the cost surface before integrators wire them.
 - Providers do not import each other (lint enforces this in CI).
@@ -14,7 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar, Literal, Protocol, runtime_checkable
 
-ProviderStatus = Literal["ok", "degraded", "failed", "not_configured"]
+from companyctx.schema import ProviderRunMetadata, ProviderStatus
+
 ProviderCategory = Literal[
     "site_text",
     "site_meta",
@@ -43,24 +44,13 @@ class FetchContext:
     user_agent: str
     timeout_s: float
     ignore_robots: bool = False
-
-
-@dataclass(frozen=True)
-class ProviderRunMetadata:
-    """Per-provider provenance row attached to every output envelope."""
-
-    status: ProviderStatus
-    latency_ms: int
-    error: str | None
-    provider_version: str
+    mock: bool = False
+    fixtures_dir: str | None = None
 
 
 @runtime_checkable
 class ProviderBase(Protocol):
-    """Structural contract for a provider plugin.
-
-    Concrete providers in M3 implement this. M1 only locks the shape.
-    """
+    """Structural contract for a provider plugin."""
 
     slug: ClassVar[str]
     category: ClassVar[ProviderCategory]
@@ -73,11 +63,7 @@ class ProviderBase(Protocol):
         *,
         ctx: FetchContext,
     ) -> tuple[object | None, ProviderRunMetadata]:
-        """Run the provider for one site.
-
-        Returns a 2-tuple of ``(signals_model_or_None, ProviderRunMetadata)``.
-        Must never raise an uncaught exception.
-        """
+        """Run the provider for one site. Must never raise."""
         ...
 
 

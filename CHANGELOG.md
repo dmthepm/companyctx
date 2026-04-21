@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **M2 envelope + orchestrator + first working provider (#15).** `companyctx
+  fetch <site> --mock --json` now emits a schema-valid `Envelope` instead of
+  exiting 2. Full `{status, data, provenance, error?, suggestion?}` shape per
+  `docs/SPEC.md`, every model `extra="forbid"`.
+- **Deterministic Waterfall orchestrator** (`companyctx/core.py`). Discovers
+  providers via `importlib.metadata.entry_points("companyctx.providers")`,
+  runs them in deterministic slug order, aggregates per-provider status into
+  top-level `ok | partial | degraded`, attaches actionable `suggestion` on
+  non-ok. Never raises at the boundary — a provider that throws still lands
+  as a `failed` row.
+- **First zero-key provider `site_text_trafilatura`**. Extracts
+  `pages.homepage_text` / `about_text` / `services` / `tech_stack` from the
+  fixture corpus (`--mock` path) and from live HTTP (Attempt 1 of the
+  waterfall). Graceful-partial on 401/403/timeout.
+- `companyctx providers list` walks registered entry points and prints slug /
+  category / cost hint (was exit-2 stub).
+- `companyctx validate <path>` round-trips a JSON file through the envelope
+  (was exit-2 stub).
+- `ProviderRunMetadata.cost_incurred` (int cents, default `0`) so the
+  envelope can surface per-provider spend.
+- `trafilatura` moved from the `[extract]` extra into core dependencies —
+  zero-key text extraction is now the default install path.
+
+### Notes / follow-ups
+
+- TLS-impersonation library choice (issue #15 acceptance checkbox) remains
+  blocked on the 10-site network spike; `decisions/2026-04-20-zero-key-stealth-strategy.md`
+  stays **proposed**. The provider's `_stealth_fetch` currently uses
+  `requests` + a realistic Chrome UA as a placeholder; swap to `curl_cffi`
+  once the spike lands.
+
 ## [0.1.0.dev0] - 2026-04-20
 
 First PyPI publish. Pre-release dev marker. Reserves the `companyctx` name

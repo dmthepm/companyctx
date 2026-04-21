@@ -45,12 +45,12 @@ dependencies = [
   "tenacity>=8.2",
   "beautifulsoup4>=4.12",
   "lxml>=5.0",
+  "trafilatura>=1.12",
   "tomli>=2.0; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
 extract = [
-  "trafilatura>=1.12",
   "readability-lxml>=0.8.1",
   "extruct>=0.18",
 ]
@@ -82,9 +82,9 @@ Repository = "https://github.com/dmthepm/companyctx"
 Issues = "https://github.com/dmthepm/companyctx/issues"
 Changelog = "https://github.com/dmthepm/companyctx/blob/main/CHANGELOG.md"
 
-# Provider plugin discovery. Day-one providers land in Milestone 3.
+# Provider plugin discovery. First provider landed in M2 (issue #15).
 [project.entry-points."companyctx.providers"]
-# site_text_trafilatura  = "companyctx.providers.trafilatura_site:Provider"
+site_text_trafilatura = "companyctx.providers.site_text_trafilatura:Provider"
 # site_text_readability  = "companyctx.providers.readability_site:Provider"
 # site_meta_extruct      = "companyctx.providers.extruct_meta:Provider"
 # reviews_google_places  = "companyctx.providers.google_places:Provider"

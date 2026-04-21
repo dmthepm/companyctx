@@ -1,16 +1,26 @@
 """Typer CLI surface for companyctx.
 
-Milestone 1: command stubs only. Implementations land in M2–M4.
-The CLI shape itself is part of the public contract — see docs/SPEC.md.
+Exposes the public contract described in ``docs/SPEC.md``:
+
+- ``fetch <site>`` — run the Deterministic Waterfall and emit one envelope.
+- ``validate <path>`` — round-trip a JSON envelope through the schema.
+- ``providers list`` — show registered providers with status + cost hint.
+- ``cache list`` / ``cache clear`` — Vertical Memory plumbing (M4).
+- ``batch <csv>`` — batch mode (M4).
 """
 
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
 
 import typer
+from pydantic import ValidationError
 
-from companyctx import __version__
+from companyctx import __version__, core
+from companyctx.providers import discover
+from companyctx.schema import Envelope
 
 app = typer.Typer(
     name="companyctx",
@@ -60,6 +70,11 @@ _CONFIG_OPT = typer.Option(None, "--config", help="TOML config path.")
 _MOCK_FETCH_OPT = typer.Option(
     False, "--mock", help="Load from fixtures/<site>/ instead of network."
 )
+_FIXTURES_DIR_OPT = typer.Option(
+    Path("fixtures"),
+    "--fixtures-dir",
+    help="Directory holding the --mock fixture tree (default: ./fixtures).",
+)
 _MOCK_BATCH_OPT = typer.Option(False, "--mock", help="Load from fixtures/.")
 _VERBOSE_OPT = typer.Option(False, "--verbose", help="Verbose run-log to stderr.")
 _IGNORE_ROBOTS_OPT = typer.Option(
@@ -95,27 +110,63 @@ def fetch(
     site: str = _SITE_ARG,
     out: Path | None = _OUT_OPT_FILE,
     json_out: bool = _FORMAT_OPT,
-    no_cache: bool = _NO_CACHE_OPT,
-    refresh: bool = _REFRESH_OPT,
-    from_cache: bool = _FROM_CACHE_OPT,
-    config: Path | None = _CONFIG_OPT,
+    no_cache: bool = _NO_CACHE_OPT,  # noqa: ARG001 — cache wiring lands in M4
+    refresh: bool = _REFRESH_OPT,  # noqa: ARG001 — cache wiring lands in M4
+    from_cache: bool = _FROM_CACHE_OPT,  # noqa: ARG001 — cache wiring lands in M4
+    config: Path | None = _CONFIG_OPT,  # noqa: ARG001 — TOML loader lands in M4
     mock: bool = _MOCK_FETCH_OPT,
     verbose: bool = _VERBOSE_OPT,
     ignore_robots: bool = _IGNORE_ROBOTS_OPT,
+    fixtures_dir: Path = _FIXTURES_DIR_OPT,
 ) -> None:
-    """Run all providers for one site. (Stub — implemented in M3/M4.)"""
-    raise typer.Exit(code=2)
+    """Run every registered provider for ``site`` and emit one envelope."""
+    if not json_out:
+        # Markdown output belongs in a downstream synthesis layer, not here.
+        typer.secho(
+            "--markdown is not implemented in v0.1; rerun with --json.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    envelope = core.run(
+        site,
+        mock=mock,
+        fixtures_dir=fixtures_dir if mock else None,
+        ignore_robots=ignore_robots,
+    )
+
+    payload = envelope.model_dump(mode="json")
+    text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+
+    if verbose:
+        typer.secho(
+            f"companyctx {__version__} — {site} → status={envelope.status}",
+            fg=typer.colors.CYAN,
+            err=True,
+        )
+        for slug, meta in sorted(envelope.provenance.items()):
+            typer.secho(
+                f"  {slug}: {meta.status} ({meta.latency_ms}ms)",
+                fg=typer.colors.CYAN,
+                err=True,
+            )
+
+    if out is None:
+        sys.stdout.write(text)
+    else:
+        out.write_text(text, encoding="utf-8")
 
 
 @app.command()
 def batch(
-    csv: Path = _CSV_ARG,
-    out: Path = _OUT_OPT_DIR,
-    json_out: bool = _FORMAT_OPT,
-    no_cache: bool = _NO_CACHE_OPT,
-    config: Path | None = _CONFIG_OPT,
-    mock: bool = _MOCK_BATCH_OPT,
-    verbose: bool = _VERBOSE_OPT,
+    csv: Path = _CSV_ARG,  # noqa: ARG001 — M4
+    out: Path = _OUT_OPT_DIR,  # noqa: ARG001 — M4
+    json_out: bool = _FORMAT_OPT,  # noqa: ARG001 — M4
+    no_cache: bool = _NO_CACHE_OPT,  # noqa: ARG001 — M4
+    config: Path | None = _CONFIG_OPT,  # noqa: ARG001 — M4
+    mock: bool = _MOCK_BATCH_OPT,  # noqa: ARG001 — M4
+    verbose: bool = _VERBOSE_OPT,  # noqa: ARG001 — M4
 ) -> None:
     """Run fetch over a CSV of sites. (Stub — implemented in M4.)"""
     raise typer.Exit(code=2)
@@ -125,8 +176,18 @@ def batch(
 def validate(
     json_path: Path = _JSON_ARG,
 ) -> None:
-    """Validate a JSON file against the pydantic schema. (Stub — implemented in M2/M4.)"""
-    raise typer.Exit(code=2)
+    """Validate a JSON file against the pydantic schema."""
+    try:
+        raw = json_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        typer.secho(f"cannot read {json_path}: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
+    try:
+        Envelope.model_validate_json(raw)
+    except ValidationError as exc:
+        typer.secho(f"invalid envelope: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"ok: {json_path}")
 
 
 @cache_app.command("list")
@@ -137,8 +198,8 @@ def cache_list() -> None:
 
 @cache_app.command("clear")
 def cache_clear(
-    site: str | None = _CACHE_SITE_OPT,
-    older_than: str | None = _CACHE_OLDER_OPT,
+    site: str | None = _CACHE_SITE_OPT,  # noqa: ARG001 — M4
+    older_than: str | None = _CACHE_OLDER_OPT,  # noqa: ARG001 — M4
 ) -> None:
     """Prune the cache. (Stub — implemented in M4.)"""
     raise typer.Exit(code=2)
@@ -146,8 +207,20 @@ def cache_clear(
 
 @providers_app.command("list")
 def providers_list() -> None:
-    """Show available providers, status, and cost-hint. (Stub — implemented in M2/M4.)"""
-    raise typer.Exit(code=2)
+    """Show registered providers, their category, and cost hint."""
+    registry = discover()
+    if not registry:
+        typer.echo("(no providers registered)")
+        return
+    rows: list[tuple[str, str, str]] = []
+    for slug in sorted(registry):
+        cls = registry[slug]
+        category = getattr(cls, "category", "?")
+        cost_hint = getattr(cls, "cost_hint", "?")
+        rows.append((slug, str(category), str(cost_hint)))
+    width = max(len(r[0]) for r in rows)
+    for slug, category, cost_hint in rows:
+        typer.echo(f"{slug.ljust(width)}  {category:<18}  {cost_hint}")
 
 
 if __name__ == "__main__":  # pragma: no cover
