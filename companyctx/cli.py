@@ -67,6 +67,16 @@ _IGNORE_ROBOTS_OPT = typer.Option(
     "--ignore-robots",
     help="Bypass robots.txt. Explicit CLI-only; not config-file-settable.",
 )
+_REFRESH_OPT = typer.Option(
+    False,
+    "--refresh",
+    help="Ignore cache and re-fetch all providers; still write fresh results back.",
+)
+_FROM_CACHE_OPT = typer.Option(
+    False,
+    "--from-cache",
+    help="Return only the cached payload; never hit the network. Exit non-zero on miss.",
+)
 _CSV_ARG = typer.Argument(..., help="CSV of domains.")
 _JSON_ARG = typer.Argument(..., help="Path to a companyctx JSON.")
 _CACHE_DOMAIN_OPT = typer.Option(None, "--domain", help="Limit to one domain.")
@@ -86,6 +96,8 @@ def fetch(
     out: Path | None = _OUT_OPT_FILE,
     json_out: bool = _FORMAT_OPT,
     no_cache: bool = _NO_CACHE_OPT,
+    refresh: bool = _REFRESH_OPT,
+    from_cache: bool = _FROM_CACHE_OPT,
     config: Path | None = _CONFIG_OPT,
     mock: bool = _MOCK_FETCH_OPT,
     verbose: bool = _VERBOSE_OPT,

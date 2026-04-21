@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Repo scaffolding (Milestone 1): `pyproject.toml`, package skeleton, CI, docs,
   issue/PR templates, MIT license, contributor covenant.
+- `fetch --refresh` and `fetch --from-cache` CLI stubs (surface only; behavior
+  wired in M4 alongside the real cache). These are first-class Vertical-Memory
+  flags, not afterthought `--no-cache` inversions.
 
 ### Changed
 
