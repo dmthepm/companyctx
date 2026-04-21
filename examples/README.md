@@ -44,7 +44,7 @@ always the same; the orchestration around it is what changes.
 | [`06-competitor-monitor.py`](06-competitor-monitor.py) | Daily JSON diff + change alert | Founders, PMMs |
 | [`07-inbound-webhook-enrichment/`](07-inbound-webhook-enrichment/) | Webhook → domain → CRM payload | RevOps, growth |
 | [`08-support-ticket-context.py`](08-support-ticket-context.py) | Inject customer context into a support-agent prompt | CS, AI-support builders |
-| [`d100-integration.md`](d100-integration.md) | Drop-in replacement for the "LLM reads HTML" step in Joel's D100 pipeline | D100 operators |
+| [`d100-integration.md`](d100-integration.md) | Drop-in replacement for the "LLM reads HTML" step in a D100-class cold-outreach pipeline | D100 operators |
 
 ## The four use cases the gallery covers
 

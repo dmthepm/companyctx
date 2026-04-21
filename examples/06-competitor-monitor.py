@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -147,7 +147,7 @@ def main() -> None:
             print(f"   {line}")
 
     _save_baseline(state_path, current)
-    print(f"💾 baseline refreshed ({datetime.utcnow().isoformat()}Z)")
+    print(f"💾 baseline refreshed ({datetime.now(timezone.utc).isoformat()})")
 
 
 if __name__ == "__main__":
@@ -156,7 +156,8 @@ if __name__ == "__main__":
 
 # --- EXPECTED OUTPUT (first run) ---
 # 🕵️  Monitoring rival-startup.com...
-# 📌 baseline saved to state-rival-startup.com.json. Re-run tomorrow to see the first diff.
+# 📌 baseline saved to .competitor-state-rival-startup.com.json.
+# Re-run tomorrow to see the first diff.
 #
 # --- EXPECTED OUTPUT (subsequent run, after a competitor actually changed) ---
 # 🕵️  Monitoring rival-startup.com...
@@ -164,4 +165,4 @@ if __name__ == "__main__":
 #    🆕 services added: ['AI consulting']
 #    🛠  tech added: ['Next.js', 'Datadog']
 #    📈 review count +18 (now 160)
-# 💾 baseline refreshed (2026-04-22T09:15:02.184Z)
+# 💾 baseline refreshed (2026-04-22T09:15:02.184210+00:00)

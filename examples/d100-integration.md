@@ -1,8 +1,8 @@
-# D100 integration — dropping `companyctx` into Joel's cold-outreach pipeline
+# D100 integration — dropping `companyctx` into a D100-class cold-outreach pipeline
 
 This recipe shows the exact diff needed to replace the "LLM reads raw
-HTML" step in the D100 pipeline (`joel-req/new-signal-studio`) with
-the deterministic `companyctx` envelope.
+HTML" step in a D100-class cold-outreach pipeline with the
+deterministic `companyctx` envelope.
 
 It is the canonical reference for the brains-and-muscles pattern that
 motivates this repo's existence: the frontier model stays as the
@@ -33,8 +33,8 @@ it's actually good.
 
 ## The diff
 
-In Joel's `phase1-research.md` / equivalent pipeline script, replace
-the homepage-read + LLM-extract step with:
+In the pipeline script that performs phase-1 prospect research,
+replace the homepage-read + LLM-extract step with:
 
 ```python
 # ---- before (one-shot HTML + LLM extract) ----

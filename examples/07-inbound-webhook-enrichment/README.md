@@ -2,7 +2,7 @@
 
 ## Problem
 
-An inbound lead submits only an email (`josh@acme-logistics.com`) via
+An inbound lead submits only an email (`josh@acme-logistics.example.test`) via
 a demo-request form. The RevOps team needs the company's services,
 tech stack, review footprint, and rough size on the CRM record
 *before* the first sales reply. Standing options:
