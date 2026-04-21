@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/hero.jpg" alt="companyctx — context-aware, open-source — retro CRT terminal showing the companyctx wordmark and logo" width="820">
+</p>
+
 # companyctx
 
 **Deterministic B2B context router. Zero keys. Schema-locked JSON your agent pipelines can actually trust.**
