@@ -87,8 +87,8 @@ if ctx["status"] == "ok":
 elif ctx["status"] == "partial":
     log.warning("partial: %s — %s", ctx["error"], ctx["suggestion"])
     synthesize_with_caveat(ctx["data"])   # pipeline-safe, not a skip
-else:  # degraded (stale cache used)
-    synthesize(ctx["data"])               # or --refresh and retry
+else:  # degraded (nothing usable succeeded)
+    synthesize(ctx["data"])               # or route to a fallback/skip path
 ```
 
 No try/except around a crash. No `None` return values bubbling through
@@ -98,10 +98,13 @@ nothing. The envelope is always well-formed.
 
 **Option A — configure a smart-proxy provider.** `companyctx` ships a
 `SmartProxyProvider` interface, vendor-agnostic. You supply your own
-residential-proxy / headless-browser credentials (Bright Data, Oxylabs,
-ScrapingBee, ZenRows, Apify — whichever you already have). We route the
-anti-bot-blocked fetches through it. We do not ship a specific vendor; we
-ship the contract.
+residential-proxy / headless-browser credentials from a provider you already
+use. We route the anti-bot-blocked fetches through it. We do not ship a
+specific vendor; we ship the contract.
+
+> **Pending measurement.** Candidate smart-proxy vendors remain in the
+> proposed ADR and stay out of accepted docs until the measurement spike
+> lands.
 
 **Option B — configure direct-API providers.** For review counts / ratings /
 social follower counts, the right path is the platform's own API, not

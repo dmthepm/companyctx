@@ -1,10 +1,10 @@
 {
   "data": {
-    "fetched_at": "2026-04-20T00:00:00+00:00",
-    "mentions": [],
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
     "pages": {
-      "about_text": "Coastal Boutique Fitness has served Seattle, WA since 2018. Today we're a team of 11.",
-      "homepage_text": "Coastal Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2018. We're a team of 11.",
+      "about_text": "Coastal Boutique Fitness has served Seattle, WA since 2018. Today we're a team of 11.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-03-26.",
+      "homepage_text": "Coastal Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2018. We're a team of 11.\nWhat we do\n- Small-group strength\n- Private training\n- Mobility classes\n- Corporate wellness\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nCoastal Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2018. We're a team of 11.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
       "services": [
         "Small-group strength",
         "Private training",
@@ -15,58 +15,15 @@
         "Squarespace"
       ]
     },
-    "reviews": {
-      "count": 222,
-      "rating": 4.8,
-      "source": "reviews_google_places"
-    },
-    "signals": {
-      "copyright_year": 2022,
-      "hiring_page_active": null,
-      "last_blog_post_at": "2026-03-26T00:00:00+00:00",
-      "last_funding_round": null,
-      "linkedin_employee_count": null,
-      "team_size_claim": "team of 11",
-      "tech_vs_claim_mismatches": []
-    },
+    "reviews": null,
+    "signals": null,
     "site": "coastal-fitness.example",
-    "social": {
-      "follower_counts": {
-        "youtube": 1112
-      },
-      "handles": {
-        "instagram": "@coastalfitness",
-        "youtube": "@coastal-fitness"
-      }
-    }
+    "social": null
   },
   "error": null,
   "provenance": {
-    "reviews_google_places": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "reviews_yelp_fusion": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "site_meta_extruct": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
     "site_text_trafilatura": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "social_counts_youtube": {
+      "cost_incurred": 0,
       "error": null,
       "latency_ms": 0,
       "provider_version": "0.1.0",

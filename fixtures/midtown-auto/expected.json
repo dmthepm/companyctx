@@ -1,10 +1,10 @@
 {
   "data": {
-    "fetched_at": "2026-04-20T00:00:00+00:00",
-    "mentions": [],
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
     "pages": {
-      "about_text": "Midtown Auto Repair has served Raleigh, NC since 2020. Today we're a team of 7.",
-      "homepage_text": "Midtown Auto Repair is a auto repair in Raleigh, NC. Founded 2020. We're a team of 7.",
+      "about_text": "Midtown Auto Repair has served Raleigh, NC since 2020. Today we're a team of 7.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-11-18.",
+      "homepage_text": "Midtown Auto Repair is a auto repair in Raleigh, NC. Founded 2020. We're a team of 7.\nWhat we do\n- Oil changes\n- Brake service\n- Transmission repair\n- State inspections\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nMidtown Auto Repair is a auto repair in Raleigh, NC. Founded 2020. We're a team of 7.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
       "services": [
         "Oil changes",
         "Brake service",
@@ -15,58 +15,15 @@
         "Wix"
       ]
     },
-    "reviews": {
-      "count": 194,
-      "rating": 4.7,
-      "source": "reviews_google_places"
-    },
-    "signals": {
-      "copyright_year": 2023,
-      "hiring_page_active": null,
-      "last_blog_post_at": "2026-11-18T00:00:00+00:00",
-      "last_funding_round": null,
-      "linkedin_employee_count": null,
-      "team_size_claim": "team of 7",
-      "tech_vs_claim_mismatches": []
-    },
+    "reviews": null,
+    "signals": null,
     "site": "midtown-auto.example",
-    "social": {
-      "follower_counts": {
-        "youtube": 964
-      },
-      "handles": {
-        "instagram": "@midtownauto",
-        "youtube": "@midtown-auto"
-      }
-    }
+    "social": null
   },
   "error": null,
   "provenance": {
-    "reviews_google_places": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "reviews_yelp_fusion": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "site_meta_extruct": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
     "site_text_trafilatura": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "social_counts_youtube": {
+      "cost_incurred": 0,
       "error": null,
       "latency_ms": 0,
       "provider_version": "0.1.0",

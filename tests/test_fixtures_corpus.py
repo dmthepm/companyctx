@@ -15,8 +15,12 @@ import json
 import re
 import sys
 from pathlib import Path
+from types import ModuleType
+from typing import Any
 
 import pytest
+
+from companyctx.schema import Envelope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES_DIR = REPO_ROOT / "fixtures"
@@ -43,7 +47,7 @@ REAL_PHONE_RE = re.compile(r"(?:\+?1[\s\-.]?)?\(?(?!555\))\d{3}\)?[\s\-.]?\d{3}[
 
 
 @pytest.fixture(scope="module")
-def builder():
+def builder() -> ModuleType:
     """Load scripts/build-fixtures.py as an importable module."""
     spec = importlib.util.spec_from_file_location("build_fixtures", SCRIPT_PATH)
     assert spec is not None
@@ -73,12 +77,9 @@ def test_seeds_csv_lists_every_site() -> None:
 
 def test_every_expected_json_parses_and_has_schema_shape() -> None:
     for site_dir in (p for p in FIXTURES_DIR.iterdir() if p.is_dir()):
-        payload = json.loads((site_dir / "expected.json").read_text())
-        assert payload["status"] in {"ok", "partial", "degraded"}
-        assert "data" in payload
-        assert payload["data"]["site"].endswith(".example")
-        assert "fetched_at" in payload["data"]
-        assert "provenance" in payload
+        raw = (site_dir / "expected.json").read_text(encoding="utf-8")
+        env = Envelope.model_validate_json(raw)
+        assert env.data.site.endswith(".example")
 
 
 def test_no_pii_in_any_fixture_bytes() -> None:
@@ -94,7 +95,7 @@ def test_no_pii_in_any_fixture_bytes() -> None:
     assert not offenders, offenders
 
 
-def test_generator_is_deterministic(builder, tmp_path: Path) -> None:
+def test_generator_is_deterministic(builder: Any, tmp_path: Path) -> None:
     run1 = tmp_path / "run1"
     run2 = tmp_path / "run2"
     rc1 = builder.main(["--synthetic", "--out", str(run1)])
@@ -113,7 +114,7 @@ def _assert_no_diff(cmp: filecmp.dircmp[str]) -> None:
         _assert_no_diff(sub)
 
 
-def test_generator_matches_committed_corpus(builder, tmp_path: Path) -> None:
+def test_generator_matches_committed_corpus(builder: Any, tmp_path: Path) -> None:
     """The committed fixtures/ must equal a fresh --synthetic run."""
     out = tmp_path / "regen"
     rc = builder.main(["--synthetic", "--out", str(out)])
@@ -128,13 +129,13 @@ def test_generator_matches_committed_corpus(builder, tmp_path: Path) -> None:
             assert left == right, f"{site_dir.name}/{name} drifted"
 
 
-def test_sanitizer_masks_emails(builder) -> None:
+def test_sanitizer_masks_emails(builder: Any) -> None:
     out = builder.sanitize_text("ping jane@acme.co if needed")
     assert "jane@acme.co" not in out
     assert builder.PLACEHOLDER_EMAIL in out
 
 
-def test_sanitizer_masks_phones(builder) -> None:
+def test_sanitizer_masks_phones(builder: Any) -> None:
     for raw in (
         "(503) 555-1234",
         "503-555-1234",
@@ -147,7 +148,7 @@ def test_sanitizer_masks_phones(builder) -> None:
         assert builder.PLACEHOLDER_PHONE in out
 
 
-def test_sanitizer_masks_contact_context_names(builder) -> None:
+def test_sanitizer_masks_contact_context_names(builder: Any) -> None:
     cases = (
         "Contact: Jane Smith",
         "Founder — John Doe",
@@ -163,14 +164,14 @@ def test_sanitizer_masks_contact_context_names(builder) -> None:
             assert token not in out or token == builder.PLACEHOLDER_PERSON.split()[-1]
 
 
-def test_sanitizer_preserves_non_person_text(builder) -> None:
+def test_sanitizer_preserves_non_person_text(builder: Any) -> None:
     # Business names that look like "First Last" must NOT be masked when they
     # appear without a person-signalling prefix.
     text = "Acme Bakery makes great bread."
     assert builder.sanitize_text(text) == text
 
 
-def test_brief_mode_extracts_front_matter(builder, tmp_path: Path) -> None:
+def test_brief_mode_extracts_front_matter(builder: Any, tmp_path: Path) -> None:
     briefs = tmp_path / "briefs"
     briefs.mkdir()
     (briefs / "01-example.md").write_text(
@@ -195,10 +196,13 @@ def test_brief_mode_extracts_front_matter(builder, tmp_path: Path) -> None:
     assert site_dir.is_dir()
     expected = json.loads((site_dir / "expected.json").read_text())
     assert expected["data"]["site"] == "real-biz.test"
-    assert expected["data"]["signals"]["team_size_claim"] == "team of 11"
+    # Brief's ``team_claim`` flows through the synthetic HTML into the
+    # orchestrator-generated ``pages.homepage_text`` — which is where the
+    # raw-observations-only M2 envelope surfaces that fact.
+    assert "team of 11" in expected["data"]["pages"]["homepage_text"]
 
 
-def test_brief_mode_fills_missing_fields_from_synthetic(builder, tmp_path: Path) -> None:
+def test_brief_mode_fills_missing_fields_from_synthetic(builder: Any, tmp_path: Path) -> None:
     briefs = tmp_path / "briefs"
     briefs.mkdir()
     (briefs / "01.md").write_text("---\nsite: minimal.test\n---\nbody\n", encoding="utf-8")

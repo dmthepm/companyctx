@@ -46,9 +46,13 @@ import re
 import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 DEFAULT_OUT = REPO_ROOT / "fixtures"
 
 # IANA-reserved TLD for documentation / examples; safe from real collisions.
@@ -460,84 +464,27 @@ def render_youtube(p: Prospect) -> dict[str, object]:
     }
 
 
-def render_expected(p: Prospect) -> dict[str, object]:
-    homepage_text = (
-        f"{p.name} is a {p.niche.label.lower()} in {p.niche.city}, "
-        f"{p.niche.region}. Founded {p.founded}. We're a {p.team_claim}."
+def render_expected(p: Prospect, out_root: Path) -> dict[str, object]:
+    """Build ``expected.json`` by running the orchestrator against the
+    just-written HTML under ``out_root``.
+
+    Keeping the expected envelope in lockstep with ``companyctx.core.run`` means
+    every new provider that joins the waterfall automatically shows up in the
+    committed fixtures — no second source of truth to drift. The pinned
+    ``fetched_at`` is honoured so re-runs stay byte-identical.
+    """
+    # Local import so contributors without the package installed can still read
+    # the generator module (docstring / types) without import-time failures.
+    from companyctx import core  # noqa: PLC0415
+
+    pinned = datetime.fromisoformat(PLACEHOLDER_FETCHED_AT)
+    env = core.run(
+        p.site,
+        mock=True,
+        fixtures_dir=out_root,
+        fetched_at=pinned,
     )
-    about_text = (
-        f"{p.name} has served {p.niche.city}, {p.niche.region} since "
-        f"{p.founded}. Today we're a {p.team_claim}."
-    )
-    return {
-        "status": "ok",
-        "data": {
-            "site": p.site,
-            "fetched_at": PLACEHOLDER_FETCHED_AT,
-            "pages": {
-                "homepage_text": homepage_text,
-                "about_text": about_text,
-                "services": list(p.niche.services),
-                "tech_stack": list(p.stack.tech_stack),
-            },
-            "reviews": {
-                "count": p.review_count,
-                "rating": p.review_rating,
-                "source": "reviews_google_places",
-            },
-            "social": {
-                "handles": {
-                    "instagram": p.ig_handle,
-                    "youtube": p.yt_handle,
-                },
-                "follower_counts": {"youtube": p.yt_subscribers},
-            },
-            "mentions": [],
-            "signals": {
-                "team_size_claim": p.team_claim,
-                "linkedin_employee_count": None,
-                "hiring_page_active": None,
-                "last_funding_round": None,
-                "copyright_year": p.copyright_year,
-                "last_blog_post_at": p.last_blog_at,
-                "tech_vs_claim_mismatches": [],
-            },
-        },
-        "provenance": {
-            "site_text_trafilatura": {
-                "status": "ok",
-                "latency_ms": 0,
-                "error": None,
-                "provider_version": "0.1.0",
-            },
-            "site_meta_extruct": {
-                "status": "ok",
-                "latency_ms": 0,
-                "error": None,
-                "provider_version": "0.1.0",
-            },
-            "reviews_google_places": {
-                "status": "ok",
-                "latency_ms": 0,
-                "error": None,
-                "provider_version": "0.1.0",
-            },
-            "reviews_yelp_fusion": {
-                "status": "ok",
-                "latency_ms": 0,
-                "error": None,
-                "provider_version": "0.1.0",
-            },
-            "social_counts_youtube": {
-                "status": "ok",
-                "latency_ms": 0,
-                "error": None,
-                "provider_version": "0.1.0",
-            },
-        },
-        "error": None,
-        "suggestion": None,
-    }
+    return env.model_dump(mode="json")
 
 
 # ---------------------------------------------------------------------------
@@ -637,7 +584,9 @@ def write_prospect(p: Prospect, out_root: Path) -> None:
     write_json(site_dir / "google_places.json", render_google_places(p))
     write_json(site_dir / "yelp.json", render_yelp(p))
     write_json(site_dir / "youtube.json", render_youtube(p))
-    write_json(site_dir / "expected.json", render_expected(p))
+    # ``expected.json`` is written last so the orchestrator sees the HTML/JSON
+    # fixtures that were just laid down in this run.
+    write_json(site_dir / "expected.json", render_expected(p, out_root))
 
 
 def write_seeds(prospects: Iterable[Prospect], out_root: Path) -> None:

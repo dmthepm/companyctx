@@ -8,6 +8,7 @@ incrementally without rewriting the contract.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 
 import pytest
@@ -70,9 +71,29 @@ def test_http_constants_and_session_stub() -> None:
         build_session()
 
 
-def test_robots_default_path_is_stub() -> None:
-    with pytest.raises(NotImplementedError):
-        is_allowed("https://example.com/", user_agent=DEFAULT_USER_AGENT)
+def test_robots_disallow_is_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
+    robots_txt = b"User-agent: *\nDisallow: /\n"
+
+    class _Response(BytesIO):
+        def __enter__(self) -> _Response:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            self.close()
+
+    monkeypatch.setattr(
+        "companyctx.robots.urlopen",
+        lambda request, timeout=10: _Response(robots_txt),
+    )
+    assert is_allowed("https://example.com/private", user_agent=DEFAULT_USER_AGENT) is False
+
+
+def test_robots_fetch_failure_falls_open(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _boom(request: object, timeout: int = 10) -> object:
+        raise OSError("network down")
+
+    monkeypatch.setattr("companyctx.robots.urlopen", _boom)
+    assert is_allowed("https://example.com/private", user_agent=DEFAULT_USER_AGENT) is True
 
 
 def test_provider_discovery_returns_dict() -> None:

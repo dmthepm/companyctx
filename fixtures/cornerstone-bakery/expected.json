@@ -1,10 +1,10 @@
 {
   "data": {
-    "fetched_at": "2026-04-20T00:00:00+00:00",
-    "mentions": [],
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
     "pages": {
-      "about_text": "Cornerstone Bakery has served Portland, OR since 2019. Today we're a team of 6.",
-      "homepage_text": "Cornerstone Bakery is a bakery in Portland, OR. Founded 2019. We're a team of 6.",
+      "about_text": "Cornerstone Bakery has served Portland, OR since 2019. Today we're a team of 6.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-04-07.",
+      "homepage_text": "Cornerstone Bakery is a bakery in Portland, OR. Founded 2019. We're a team of 6.\nWhat we do\n- Custom cakes\n- Catering\n- Wholesale bread\n- Pastry boxes\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nCornerstone Bakery is a bakery in Portland, OR. Founded 2019. We're a team of 6.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
       "services": [
         "Custom cakes",
         "Catering",
@@ -15,58 +15,15 @@
         "Webflow"
       ]
     },
-    "reviews": {
-      "count": 61,
-      "rating": 4.1,
-      "source": "reviews_google_places"
-    },
-    "signals": {
-      "copyright_year": 2024,
-      "hiring_page_active": null,
-      "last_blog_post_at": "2026-04-07T00:00:00+00:00",
-      "last_funding_round": null,
-      "linkedin_employee_count": null,
-      "team_size_claim": "team of 6",
-      "tech_vs_claim_mismatches": []
-    },
+    "reviews": null,
+    "signals": null,
     "site": "cornerstone-bakery.example",
-    "social": {
-      "follower_counts": {
-        "youtube": 261
-      },
-      "handles": {
-        "instagram": "@cornerstonebakery",
-        "youtube": "@cornerstone-bakery"
-      }
-    }
+    "social": null
   },
   "error": null,
   "provenance": {
-    "reviews_google_places": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "reviews_yelp_fusion": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "site_meta_extruct": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
     "site_text_trafilatura": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "social_counts_youtube": {
+      "cost_incurred": 0,
       "error": null,
       "latency_ms": 0,
       "provider_version": "0.1.0",

@@ -74,8 +74,8 @@ Status semantics:
   timeout), but `data` is still schema-conformant. `error` names the primary
   cause; `suggestion` names the fix (`"configure a smart-proxy provider key"`,
   `"skip this prospect"`, etc.).
-- **`degraded`** — result came from cache past its TTL and was used anyway.
-  `error` states the cache age; the downstream agent decides whether to trust it.
+- **`degraded`** — no provider succeeded. `error` names the primary failure;
+  `suggestion` names the next action.
 
 ## Data model (pydantic v2)
 
@@ -95,8 +95,9 @@ CompanyContext
 ├─ social: SocialSignals
 │    ├─ handles: dict[platform, handle]
 │    ├─ follower_counts: dict[platform, int]
-├─ mentions: list[MediaMention]        # award, press, podcast, etc.
-├─ signals: CrossReferenceSignals      # raw observations only
+├─ mentions: MentionsSignals | None
+│    ├─ items: list[MediaMention]      # award, press, podcast, etc.
+├─ signals: HeuristicSignals           # raw observations only
 │    ├─ team_size_claim: str | None    # e.g. "team of 6"
 │    ├─ linkedin_employee_count: int | None   # company-page signal only
 │    ├─ hiring_page_active: bool | None
@@ -114,6 +115,7 @@ ProviderRunMetadata
 ├─ latency_ms: int
 ├─ error: str | None
 ├─ provider_version: str
+├─ cost_incurred: int                  # US cents, default 0
 ```
 
 The `signals` bucket carries **raw observations only**. The synthesis layer
@@ -204,10 +206,9 @@ normal use. A `companyctx query ...` DSL is v0.2 scope, not v0.1.
 - Structured run-log: one line per provider invocation with latency + status.
 - Stderr in `--verbose`; optional log file.
 - Exit code:
-  - `0` — envelope `status: "ok"`.
-  - `0` — envelope `status: "partial"` (still pipeline-safe, suggestion provided).
-  - `1` — envelope `status: "degraded"` (stale cache used) when `--strict` is set.
-  - `2` — site invalid, unreachable, or every provider failed hard.
+  - `0` — `fetch` emitted an envelope (`status: "ok" | "partial" | "degraded"`).
+  - `1` — `validate` received schema-invalid JSON.
+  - `2` — CLI misuse, unsupported mode, or unreadable input.
 - Lightweight by design — deep transcripts belong in the downstream pipeline.
 
 ## Security and safety

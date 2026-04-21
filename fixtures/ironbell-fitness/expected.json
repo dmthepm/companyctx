@@ -1,72 +1,27 @@
 {
   "data": {
-    "fetched_at": "2026-04-20T00:00:00+00:00",
-    "mentions": [],
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
     "pages": {
-      "about_text": "Ironbell Boutique Fitness has served Seattle, WA since 2013. Today we're a team of 14.",
-      "homepage_text": "Ironbell Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2013. We're a team of 14.",
+      "about_text": "Ironbell Boutique Fitness has served Seattle, WA since 2013. Today we're a team of 14.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-06-05.",
+      "homepage_text": "Ironbell Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2013. We're a team of 14.\nWhat we do\n- Small-group strength\n- Private training\n- Mobility classes\n- Corporate wellness\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nIronbell Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2013. We're a team of 14.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
       "services": [
         "Small-group strength",
         "Private training",
         "Mobility classes",
         "Corporate wellness"
       ],
-      "tech_stack": [
-        "Custom"
-      ]
+      "tech_stack": []
     },
-    "reviews": {
-      "count": 243,
-      "rating": 4.9,
-      "source": "reviews_google_places"
-    },
-    "signals": {
-      "copyright_year": 2022,
-      "hiring_page_active": null,
-      "last_blog_post_at": "2026-06-05T00:00:00+00:00",
-      "last_funding_round": null,
-      "linkedin_employee_count": null,
-      "team_size_claim": "team of 14",
-      "tech_vs_claim_mismatches": []
-    },
+    "reviews": null,
+    "signals": null,
     "site": "ironbell-fitness.example",
-    "social": {
-      "follower_counts": {
-        "youtube": 1223
-      },
-      "handles": {
-        "instagram": "@ironbellfitness",
-        "youtube": "@ironbell-fitness"
-      }
-    }
+    "social": null
   },
   "error": null,
   "provenance": {
-    "reviews_google_places": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "reviews_yelp_fusion": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "site_meta_extruct": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
     "site_text_trafilatura": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "social_counts_youtube": {
+      "cost_incurred": 0,
       "error": null,
       "latency_ms": 0,
       "provider_version": "0.1.0",
