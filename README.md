@@ -3,7 +3,7 @@
 **Deterministic B2B context router. Zero keys. Schema-locked JSON your agent pipelines can actually trust.**
 
 ```bash
-pipx install companyctx          # v0.1 coming soon — see Status below
+pipx install --pip-args="--pre" companyctx   # v0.1.0.dev0 on PyPI — CLI is still stubs (see Status)
 companyctx acme-bakery.com --json
 ```
 
@@ -29,9 +29,13 @@ One site in. One schema-locked JSON object out. No API keys for the
 zero-key path. Graceful partials on anti-bot blocks. A local SQLite cache
 that compounds into a queryable B2B dataset over time.
 
-> **Status:** v0.1 in development. Not yet on PyPI. Schema + CLI surface are
-> committed in [`docs/SPEC.md`](docs/SPEC.md) and [`docs/SCHEMA.md`](docs/SCHEMA.md);
-> architecture in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+> **Status:** `v0.1.0.dev0` is on PyPI as a pre-release — name reserved,
+> OIDC publish pipeline validated. **The CLI itself is still stubs**: every
+> command exits `2`. The first working provider (`site_text_trafilatura`)
+> lands in Milestone 2, alongside a measured stealth-fetcher pick. Schema
+> + CLI surface are committed in [`docs/SPEC.md`](docs/SPEC.md) and
+> [`docs/SCHEMA.md`](docs/SCHEMA.md); architecture in
+> [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## What this is (and isn't)
 
@@ -131,7 +135,18 @@ brief = synthesize(ctx["data"])   # your synthesis call, your prompts, your weig
 `companyctx` never calls an LLM. The brain upstream decides what the
 context means.
 
-## Install (during v0.1 dev)
+## Install
+
+Pre-release (name-reservation dev build — CLI commands are stubs that
+exit `2`; useful for pipeline wiring, not for real context yet):
+
+```bash
+pipx install --pip-args="--pre" companyctx
+companyctx --version   # companyctx 0.1.0.dev0
+companyctx --help
+```
+
+From source (recommended while M2 is in flight):
 
 ```bash
 git clone https://github.com/dmthepm/companyctx.git
@@ -140,7 +155,7 @@ pip install -e ".[dev,extract,reviews,youtube]"
 companyctx --help
 ```
 
-Once v0.1.0 ships:
+Once `v0.1.0` ships (first working provider + real `fetch`):
 
 ```bash
 pipx install companyctx
