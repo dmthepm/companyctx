@@ -71,7 +71,7 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
 | FM-9 | Franchise / multi-location ambiguity | 2 | Attempt 3 (per-location GBP place-id) | `reviews_google_places` `degraded` → top `partial`; location-vs-aggregate distinction deferred to schema-evolution §3 |
 | FM-10 | Secondary-source cascade without provenance | 5+ | cross-cutting | today's envelope carries per-*provider* provenance only; per-*field* provenance deferred to schema-evolution §4 |
 | FM-11 | About-page URL not auto-discovered | 3+ | Attempt 1 (owned heuristic, not OSS) | `site_about` provider `degraded` → top `partial` |
-| FM-12 | Press / awards discovery needs search, not site fetch | 10+ | separate provider (search-API) | `mentions_*` provider `not_configured` until a search-API key is set → top `partial` (mentions are optional; see §) |
+| FM-12 | Press / awards discovery needs search, not site fetch | 10+ | separate provider (search-API) | `mentions_*` provider `not_configured` until a search-API key is set → top `partial` per SPEC §73 |
 | FM-13 | Site-fetch timeouts / transient failures | 0 observed | Attempt 1 (defensive default only) | provider `failed` — do not over-invest |
 | FM-14 | Homepage fetched but social handles not found | 3+ | Attempt 1 (footer anchor heuristic) | `social_discovery_site` `degraded` → top `partial` |
 
@@ -421,11 +421,23 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   plumbing is `mentions_brave_stub`; real coverage requires a keyed
   search provider.
 - **Envelope mapping.**
-  - `providers.mentions_<slug>: ProviderRunMetadata`.
-  - No key configured: `status = "not_configured"`; top-level can still
-    be `ok` because mentions are non-critical.
-  - `suggestion = "press-release discovery is search-API-backed;
-    configure a search provider key to fill mentions"`.
+  - `provenance["mentions_<slug>"]: ProviderRunMetadata` carries the
+    per-provider status for press discovery.
+  - No key configured: `ProviderRunMetadata.status =
+    "not_configured"`. Per SPEC §73, `not_configured` on any provider
+    forces top-level `status = "partial"` — the envelope tells the
+    caller "this run is missing press coverage because no search key
+    is set." The summary row and this body now agree on that.
+  - `error` names the missing capability
+    (`"press/awards discovery requires a configured search provider"`),
+    `suggestion = "configure a search provider API key to fill
+    mentions"`.
+  - `data.mentions` remains `None` (optional per SPEC §98).
+  - **Design note.** This means a clean zero-key install is
+    `partial`-by-default on every run until a search key is set. That
+    is intentional: silent absence of press coverage is the exact
+    failure the D100 transcripts show — the envelope should signal it
+    loudly, not hide it.
 
 ## FM-13 — Site-fetch timeouts / transient failures
 
