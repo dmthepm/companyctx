@@ -7,7 +7,7 @@
 **Deterministic B2B context router. Zero keys. Schema-locked JSON your agent pipelines can actually trust.**
 
 ```bash
-pipx install --pip-args="--pre" companyctx   # v0.1.0.dev0 on PyPI — CLI is still stubs (see Status)
+pipx install companyctx   # v0.1.0 on PyPI — first working release
 companyctx fetch acme-bakery.com --json
 ```
 
@@ -33,13 +33,14 @@ One site in. One schema-locked JSON object out. No API keys for the
 zero-key path. Graceful partials on anti-bot blocks. A local SQLite cache
 that compounds into a queryable B2B dataset over time.
 
-> **Status:** `v0.1.0.dev0` is on PyPI as a pre-release — name reserved,
-> OIDC publish pipeline validated. **The CLI itself is still stubs**: every
-> command exits `2`. The first working provider (`site_text_trafilatura`)
-> lands in Milestone 2, alongside a measured stealth-fetcher pick. Schema
-> + CLI surface are committed in [`docs/SPEC.md`](docs/SPEC.md) and
+> **Status:** `v0.1.0` is live on PyPI. The zero-key provider
+> (`site_text_trafilatura`) is wired end-to-end: `companyctx fetch <site> --json`
+> returns a schema-locked `Envelope` with `pages.homepage_text` / `about_text` /
+> `services`. Measured 97% envelope-`ok` rate on a 100-site real-world sample.
+> Schema + CLI surface in [`docs/SPEC.md`](docs/SPEC.md) and
 > [`docs/SCHEMA.md`](docs/SCHEMA.md); architecture in
-> [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+> [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); release-readiness ADR in
+> [`decisions/2026-04-21-v0.1.0-release-readiness.md`](decisions/2026-04-21-v0.1.0-release-readiness.md).
 
 ## What this is (and isn't)
 
@@ -146,8 +147,8 @@ Pre-release (name-reservation dev build — CLI commands are stubs that
 exit `2`; useful for pipeline wiring, not for real context yet):
 
 ```bash
-pipx install --pip-args="--pre" companyctx
-companyctx --version   # companyctx 0.1.0.dev0
+pipx install companyctx
+companyctx --version   # companyctx 0.1.0
 companyctx --help
 ```
 
@@ -160,7 +161,7 @@ pip install -e ".[dev,extract,reviews,youtube]"
 companyctx --help
 ```
 
-Once `v0.1.0` ships (first working provider + real `fetch`):
+`v0.1.0` is shipped (first working provider + real `fetch`):
 
 ```bash
 pipx install companyctx
