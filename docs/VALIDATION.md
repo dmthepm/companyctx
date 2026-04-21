@@ -1,4 +1,4 @@
-# SNAPSHOT — canonical at `noontide-projects/boston-v1/decisions/2026-04-20-research-pack-validation-protocol.md`; do not maintain here
+# SNAPSHOT — canonical at `noontide-projects/boston-v1/decisions/2026-04-20-companyctx-validation-protocol.md`; do not maintain here
 
 > This file is a frozen snapshot taken at scaffolding time (Milestone 1).
 > Future protocol edits land in the canonical workspace and flow back via a
@@ -6,11 +6,11 @@
 
 ---
 
-# research-pack — validation protocol
+# companyctx — validation protocol
 
 ## Two-phase gate
 
-Before `research-pack` replaces the LLM-reads-HTML step in a downstream
+Before `companyctx` replaces the LLM-reads-HTML step in a downstream
 production pipeline, both phases must pass.
 
 ### Phase A — blind-eval (fast signal)
@@ -18,7 +18,7 @@ production pipeline, both phases must pass.
 - **N:** 10 prospects.
 - **Source:** picked from a recent successful overnight batch on the
   downstream pipeline. Niches should span 2–3 categories to avoid overfitting.
-- **Input:** for each prospect, run `research-pack fetch <domain>` → JSON.
+- **Input:** for each prospect, run `companyctx fetch <domain>` → JSON.
   A synthesis call reads the JSON and writes the 6-section brief
   (Differentiator / Audience / Content & Social / Credentials & Proof / Gap /
   5 Script Angles).
@@ -26,7 +26,7 @@ production pipeline, both phases must pass.
   the same prospect.
 - **Reviewers:** the project owner + the downstream pipeline owner, blind
   (each scores without seeing the other's scores first).
-- **Scoring:** per-prospect, pick one of `(+)` research-pack better,
+- **Scoring:** per-prospect, pick one of `(+)` companyctx better,
   `(=)` same, `(−)` Opus better. Record disagreements explicitly.
 - **Pass:** ≥8/10 prospects have at least one reviewer saying `(+)` or `(=)`,
   AND no prospect has both reviewers saying `(−)`.
@@ -35,7 +35,7 @@ production pipeline, both phases must pass.
 
 ### Phase B — 2-week live A/B on booked calls (real validation)
 
-- **Setup:** half of the campaigns run research-pack briefs, half run the
+- **Setup:** half of the campaigns run companyctx briefs, half run the
   Opus briefs. Same niches, same day, same downstream synthesis model.
 - **Duration:** 2 weeks (matches reply-rate decay curve).
 - **Metric:** booked calls (the revenue signal — not just reply rates).

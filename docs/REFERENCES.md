@@ -1,6 +1,6 @@
 # References
 
-Open-source dependencies and architectural inspirations for `research-pack`.
+Open-source dependencies and architectural inspirations for `companyctx`.
 This is a compact list, not a survey — see the canonical OSS hunt synthesis
 in the upstream design workspace for the reasoning behind each pick.
 

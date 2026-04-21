@@ -1,22 +1,28 @@
-# SNAPSHOT — canonical at `noontide-projects/boston-v1/decisions/2026-04-20-research-pack-spec-location-and-shape.md`; do not maintain here
+# SNAPSHOT — canonical at `noontide-projects/boston-v1/decisions/`; do not maintain here
 
 > This file is a frozen snapshot taken at scaffolding time (Milestone 1).
-> Future spec edits land in the canonical workspace and flow back via a new
-> handoff cycle, not via PRs against this file.
+> The canonical spec is split across:
+>
+> - `2026-04-20-research-pack-spec-location-and-shape.md` (schema + CLI shape)
+> - `2026-04-20-research-pack-scope-and-brand-lock.md` (output contract,
+>   Deterministic Waterfall, Vertical Memory, `status` enum)
+>
+> Future spec edits land upstream and flow back via a new handoff cycle, not
+> via PRs against this file.
 
 ---
 
-# research-pack — v0.1 spec
+# companyctx — v0.1 spec
 
 ## Purpose
 
-Take a prospect domain, emit a structured research-pack JSON. One synthesis
-LLM call per prospect reads the JSON and writes a 6-section brief
-(Differentiator / Audience / Content & Social / Credentials & Proof / Gap /
-5 Script Angles) — matching the downstream consumer's Phase 1 output contract.
+Take a prospect domain, emit a structured, schema-locked JSON payload about
+the **company** at that domain. One downstream synthesis LLM call per prospect
+reads the JSON and writes its brief — `companyctx` is the deterministic muscle
+that replaces the "LLM reads HTML to extract facts" step.
 
 The collector surfaces **observations**. Inference happens in the synthesis
-layer that consumes the JSON.
+layer that consumes the JSON. No people data in v0.1 (company side only).
 
 ## CLI surface
 
@@ -24,21 +30,58 @@ Built with Typer. Conforms to clig.dev.
 
 | Command | Behavior |
 |---|---|
-| `research-pack fetch <domain>` | Run all providers for one domain; print or write result. |
-| `research-pack batch <csv>` | Run fetch over CSV of domains, write each result to a file. |
-| `research-pack validate <json>` | Validate a research-pack JSON against the pydantic schema. |
-| `research-pack cache list` | Inspect cache entries. |
-| `research-pack cache clear [--domain X] [--older-than 7d]` | Prune the cache. |
-| `research-pack providers list` | Show available providers + their status. |
+| `companyctx fetch <domain>` | Run all providers for one domain; print or write result. |
+| `companyctx batch <csv>` | Run fetch over CSV of domains, write each result to a file. |
+| `companyctx validate <json>` | Validate a JSON payload against the pydantic schema. |
+| `companyctx cache list` | Inspect cache entries. |
+| `companyctx cache clear [--domain X] [--older-than 7d]` | Prune the cache. |
+| `companyctx providers list` | Show available providers + their status + cost hint. |
 
-Global flags: `--out <path>`, `--json` / `--markdown`, `--verbose`,
-`--no-cache`, `--config <toml>`, `--mock` (loads from `fixtures/<domain>/`
-instead of network).
+Global flags on `fetch`:
+
+- `--out <path>`, `--json` / `--markdown`, `--verbose`
+- `--no-cache` — bypass the cache read path for this run.
+- `--refresh` — ignore cache, re-fetch every provider, write fresh back.
+- `--from-cache` — return only the cached payload, never hit the network;
+  exit non-zero on miss. (First-class Vertical-Memory flag.)
+- `--config <toml>`, `--mock` (loads from `fixtures/<domain>/` instead of network).
+- `--ignore-robots` — explicit CLI-only; **not** settable via TOML or env.
+
+## Output contract
+
+Every `companyctx fetch` invocation emits one envelope, regardless of whether
+the run succeeded, partially succeeded, or was degraded by cache / anti-bot /
+missing keys. Downstream pipelines branch on `status`, never on try/except
+around a crash.
+
+```
+{
+  "status": "ok" | "partial" | "degraded",
+  "data":   CompanyContext,        // the schema payload (always present, may
+                                   //   have nullable fields on partial)
+  "provenance": {                  // per-field / per-provider attempt lineage
+    <provider_slug>: ProviderRunMetadata,
+    ...
+  },
+  "error":      str | None,        // present when status != "ok"
+  "suggestion": str | None         // actionable next step when status != "ok"
+}
+```
+
+Status semantics:
+
+- **`ok`** — every required provider succeeded and no per-field fallback fired.
+- **`partial`** — one or more providers degraded (missing key, anti-bot block,
+  timeout), but `data` is still schema-conformant. `error` names the primary
+  cause; `suggestion` names the fix (`"configure a smart-proxy provider key"`,
+  `"skip this prospect"`, etc.).
+- **`degraded`** — result came from cache past its TTL and was used anyway.
+  `error` states the cache age; the downstream agent decides whether to trust it.
 
 ## Data model (pydantic v2)
 
 ```
-ResearchPack
+CompanyContext
 ├─ domain: str                         # required
 ├─ fetched_at: datetime                # required
 ├─ site: SiteSignals
@@ -56,17 +99,22 @@ ResearchPack
 ├─ mentions: list[MediaMention]        # award, press, podcast, etc.
 ├─ signals: CrossReferenceSignals      # raw observations only
 │    ├─ team_size_claim: str | None    # e.g. "team of 6"
-│    ├─ linkedin_employee_count: int | None
+│    ├─ linkedin_employee_count: int | None   # company-page signal only
 │    ├─ hiring_page_active: bool | None
 │    ├─ last_funding_round: FundingRound | None
 │    ├─ copyright_year: int | None
 │    ├─ last_blog_post_at: datetime | None
 │    ├─ tech_vs_claim_mismatches: list[str]
-├─ provenance: dict[provider_slug, ProviderRunMetadata]
-     ├─ status: "ok" | "degraded" | "failed"
-     ├─ latency_ms: int
-     ├─ error: str | None
-     ├─ provider_version: str
+```
+
+`ProviderRunMetadata` (in the top-level `provenance` dict, not on the model):
+
+```
+ProviderRunMetadata
+├─ status: "ok" | "degraded" | "failed" | "not_configured"
+├─ latency_ms: int
+├─ error: str | None
+├─ provider_version: str
 ```
 
 The `signals` bucket carries **raw observations only**. The synthesis layer
@@ -74,9 +122,10 @@ does cross-reference inference (e.g. "team-size claim vs LinkedIn employee
 count" or "WordPress detected vs custom-engineering positioning"). The
 collector never computes a judgment.
 
-Every field is optional except `domain` and `fetched_at`. Missing providers
-degrade — never raise — and surface their reason via
-`provenance[slug].status`.
+Every field on `CompanyContext` is optional except `domain` and `fetched_at`.
+Missing providers degrade — never raise — and surface their reason via
+`provenance[slug].status`. The top-level envelope's `status` aggregates these
+into a single pipeline-branchable value.
 
 ## Provider-plugin interface
 
@@ -84,16 +133,16 @@ Each deterministic call class is a pluggable provider, discovered via Python
 entry points:
 
 ```toml
-[project.entry-points."research_pack.providers"]
-site_text_trafilatura  = "research_pack.providers.trafilatura_site:Provider"
-site_text_readability  = "research_pack.providers.readability_site:Provider"
-site_meta_extruct      = "research_pack.providers.extruct_meta:Provider"
-reviews_google_places  = "research_pack.providers.google_places:Provider"
-reviews_yelp_fusion    = "research_pack.providers.yelp_fusion:Provider"
-social_discovery_site  = "research_pack.providers.social_discovery:Provider"
-social_counts_youtube  = "research_pack.providers.youtube_counts:Provider"
-signals_site_heuristic = "research_pack.providers.site_heuristic_signals:Provider"
-mentions_brave_stub    = "research_pack.providers.brave_search_stub:Provider"
+[project.entry-points."companyctx.providers"]
+site_text_trafilatura  = "companyctx.providers.trafilatura_site:Provider"
+site_text_readability  = "companyctx.providers.readability_site:Provider"
+site_meta_extruct      = "companyctx.providers.extruct_meta:Provider"
+reviews_google_places  = "companyctx.providers.google_places:Provider"
+reviews_yelp_fusion    = "companyctx.providers.yelp_fusion:Provider"
+social_discovery_site  = "companyctx.providers.social_discovery:Provider"
+social_counts_youtube  = "companyctx.providers.youtube_counts:Provider"
+signals_site_heuristic = "companyctx.providers.site_heuristic_signals:Provider"
+mentions_brave_stub    = "companyctx.providers.brave_search_stub:Provider"
 ```
 
 Provider contract:
@@ -102,9 +151,18 @@ Provider contract:
 - `slug: ClassVar[str]`
 - `category: ClassVar[Literal["site_text", "site_meta", "reviews", "social_discovery", "social_counts", "signals", "mentions"]]`
 - `cost_hint: ClassVar[Literal["free", "per-call", "per-1k"]]`
-- `def fetch(self, domain: str, *, timeout_s: float, ctx: FetchContext) -> tuple[SignalsModel | None, ProviderRunMetadata]`
+- `def fetch(self, domain: str, *, ctx: FetchContext) -> tuple[SignalsModel | None, ProviderRunMetadata]`
 - Providers **never raise uncaught**. All failure modes map to
-  `ProviderRunMetadata.status in {"degraded", "failed"}`.
+  `ProviderRunMetadata.status in {"degraded", "failed", "not_configured"}`.
+
+Providers sit on the **Deterministic Waterfall** (see `docs/ARCHITECTURE.md`):
+
+1. Zero-key stealth fetch first (default).
+2. Smart-proxy provider (user-configured) on anti-bot block.
+3. Direct-API provider (user-configured) for review/credential fields.
+
+Every attempt maps to the same `CompanyContext` shape. Pipelines never branch
+on which attempt succeeded — they branch on the envelope's `status`.
 
 ### Day-one providers (committed for v0.1)
 
@@ -114,7 +172,7 @@ Provider contract:
   schema.org `Organization` + `LocalBusiness` + `sameAs` social handle
   discovery.
 - **Reviews:** Google Places via `googlemaps`; Yelp Fusion via `yelpapi`.
-  Env-gated; missing key → `status: "degraded"`.
+  Env-gated; missing key → `status: "not_configured"`.
 - **Social discovery:** BeautifulSoup + regex against platform URL shapes
   + extruct `sameAs`.
 - **Social counts:** YouTube via `google-api-python-client` `channels.list`
@@ -125,17 +183,32 @@ Provider contract:
 - **Mentions:** Brave Search stub — plumbing only, returns
   `status: "not_configured"` so `providers list` surfaces a clear TODO.
 
-## Cache
+## Cache (Vertical Memory)
 
-Optional SQLite fetch cache keyed on `(domain, provider_slug, fetched_at)`
-with per-provider TTL. Off by default; opt-in via `--cache` flag or TOML.
+SQLite fetch cache under XDG-compliant paths. Opt-in via `--cache` flag or
+TOML; disabled by default in v0.1.
+
+- Key: `(normalized_domain, provider_set_hash, provider_slug)` + TTL per
+  provider.
+- Payload: the full normalized `CompanyContext` payload + `provenance`
+  (not raw HTML snippets).
+- Schema is versioned alongside the Pydantic model; migrations are
+  first-class.
+- `companyctx --refresh` forces re-fetch; `companyctx --from-cache` is the
+  cache-only mode.
+
+The cache is designed to compound into a queryable local B2B dataset over
+normal use. A `companyctx query ...` DSL is v0.2 scope, not v0.1.
 
 ## Observability
 
 - Structured run-log: one line per provider invocation with latency + status.
 - Stderr in `--verbose`; optional log file.
-- Exit code: `0` if at least one provider succeeded; non-zero only if the
-  domain itself was invalid or all providers failed hard.
+- Exit code:
+  - `0` — envelope `status: "ok"`.
+  - `0` — envelope `status: "partial"` (still pipeline-safe, suggestion provided).
+  - `1` — envelope `status: "degraded"` (stale cache used) when `--strict` is set.
+  - `2` — domain invalid, unreachable, or every provider failed hard.
 - Lightweight by design — deep transcripts belong in the downstream pipeline.
 
 ## Security and safety
@@ -144,12 +217,12 @@ with per-provider TTL. Off by default; opt-in via `--cache` flag or TOML.
   `.env.example` documents required keys per provider. XDG-compliant config
   paths.
 - robots.txt respected by default. `--ignore-robots` exists but must be set
-  explicitly; **not** available via TOML.
+  explicitly on the CLI; **not** available via TOML or env.
 - No writes outside `$PWD`, `--out`, and the cache dir.
 
 ## Distribution
 
 Python 3.10+. `pyproject.toml` + setuptools. MIT license.
-`pipx install research-pack`. Dockerfile for reproducibility.
+`pipx install companyctx`. Dockerfile for reproducibility.
 CI: ruff + mypy strict + pytest with coverage. `.claude-plugin/plugin.json`
 for Claude Code marketplace compatibility.

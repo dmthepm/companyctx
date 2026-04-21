@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fetch --refresh` and `fetch --from-cache` CLI stubs (surface only; behavior
   wired in M4 alongside the real cache). These are first-class Vertical-Memory
   flags, not afterthought `--no-cache` inversions.
+- `docs/SPEC.md` snapshot now specifies the top-level
+  `{status: ok | partial | degraded, data, provenance, error?, suggestion?}`
+  envelope and the Deterministic Waterfall provider attempt order.
 
 ### Changed
 
