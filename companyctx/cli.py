@@ -51,9 +51,7 @@ _VERSION_OPT = typer.Option(
     help="Show version and exit.",
 )
 
-_SITE_ARG = typer.Argument(
-    ..., help="The prospect site, e.g. example.com or https://example.com"
-)
+_SITE_ARG = typer.Argument(..., help="The prospect site, e.g. example.com or https://example.com")
 _OUT_OPT_FILE = typer.Option(None, "--out", help="Write JSON to this path.")
 _OUT_OPT_DIR = typer.Option(..., "--out", help="Output directory.")
 _FORMAT_OPT = typer.Option(True, "--json/--markdown", help="Output format.")
