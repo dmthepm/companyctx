@@ -5,10 +5,12 @@
 Linear COX-13.
 **Release-readiness ADR:**
 [`decisions/2026-04-21-v0.1.0-release-readiness.md`](../decisions/2026-04-21-v0.1.0-release-readiness.md).
-**Raw evidence (slug-only, committed):**
+**Raw evidence (niche-bucketed, no per-site slugs, committed):**
 [`research/2026-04-21-durability-sample-raw.jsonl`](../research/2026-04-21-durability-sample-raw.jsonl)
-— 100 rows, reproducible from `classify()` in
-[`scripts/run-durability-batch.py`](../scripts/run-durability-batch.py).
+— 100 rows carrying niche + envelope stats + classifier output. No
+`slug` or `host` column; per-site pseudonyms were explicitly out of
+scope for this PR. Every `fm_code` is reproducible from `classify()`
+in [`scripts/run-durability-batch.py`](../scripts/run-durability-batch.py).
 **Headline:** **97 / 100** sites returned envelope `status: ok`; of
 those, **76** returned ≥ 1 KB of extracted `homepage_text` and **21**
 returned a thin/empty extract (FM-7). 3 sites returned `status:
@@ -19,12 +21,12 @@ release-gate.
 
 Each row in
 [`research/2026-04-21-durability-sample-raw.jsonl`](../research/2026-04-21-durability-sample-raw.jsonl)
-has `slug`, `niche`, `status`, `fm_code`, `outcome`, `homepage_bytes`,
+has `niche`, `status`, `fm_code`, `outcome`, `homepage_bytes`,
 `latency_ms`, `wall_ms`, `provider_status`, `provider_error`. The
 committed classifier in
 [`scripts/run-durability-batch.py`](../scripts/run-durability-batch.py)
 (`classify()` + `FM7_THIN_BYTES`) is what produced every `fm_code`
-here. Regenerate the aggregate with:
+here. Regenerate the headline aggregates:
 
 ```bash
 python3 -c "
@@ -36,8 +38,11 @@ print('status :', dict(collections.Counter(r['status']  for r in rows)))
 "
 ```
 
-Domain-to-slug mapping is **not** committed — it lives only in
-`.context/durability/` (gitignored) and in Joel's private seed CSVs.
+No `slug` or `host` column is committed — per-site identifiers live
+only in `.context/durability/` (gitignored) and in Joel's private
+seed CSVs. This keeps the committed disclosure surface limited to the
+niche bucket + envelope shape, per the scope narrowing recorded in the
+issue `#22` kickoff comment.
 
 ## Methodology
 
@@ -91,14 +96,17 @@ orthodontics, plastic-surgery, private-lending.
 
 | Envelope outcome | Count | Rate |
 |---|---:|---:|
-| `status: ok`, `homepage_text` ≥ 1 KB | 76 | 76% |
-| `status: ok`, `homepage_text` < 1 KB (FM-7 thin/empty) | 21 | 21% |
-| `status: ok` (any) — **release-gate measure** | **97** | **97%** |
+| `status: ok` (any extract size) — **release-gate measure** | **97** | **97%** |
+| &nbsp;&nbsp;of which `homepage_text` ≥ 1 KB | 76 | 76% |
+| &nbsp;&nbsp;of which `homepage_text` < 1 KB (FM-7 at classifier threshold) | 21 | 21% |
 | `status: partial` | 0 | 0% |
 | `status: degraded` (FM-13 timeout) | 3 | 3% |
 
 The 60% release-gate applies to `status: ok`, which this cohort hits
-at 97%.
+at 97% irrespective of extract size. The 21% FM-7 figure is the
+1024-byte-threshold reading and is **threshold-sensitive** — see
+[§FM-7 — threshold-sensitive](#fm-7--threshold-sensitive-the-rate-depends-on-where-you-draw-the-line)
+for the sensitivity table.
 
 `partial` cannot fire today — the M2 orchestrator ships with a single
 provider, so an envelope is either `ok` or `degraded`. `partial`
@@ -107,7 +115,10 @@ becomes meaningful once Attempt-2 (smart-proxy) or Attempt-3
 
 ### Per-niche breakdown
 
-| Niche | ok + non-thin | FM-7 thin | FM-13 degraded | status=ok rate |
+"Thin" and "non-thin" split at the classifier's 1024-byte threshold;
+the `status: ok` rate (last column) is threshold-independent.
+
+| Niche | ok, ≥ 1 KB | ok, < 1 KB | FM-13 degraded | status=ok rate |
 |---|---:|---:|---:|---:|
 | bariatric-surgery | 8 | 1 | 1 | 90% |
 | business-immigration | 8 | 2 | 0 | 100% |
@@ -129,7 +140,7 @@ brochureware. This matches the register's FM-7 signature description.
 
 | FM | Pattern | Count | Rate |
 |---|---|---:|---:|
-| FM-7 | `status: ok`, thin/empty extract (< 1 KB) | 21 | 21% |
+| FM-7 | `status: ok`, thin extract (classifier threshold: < 1 KB) | 21 | 21% |
 | FM-13 | Network timeout | 3 | 3% |
 | FM-1 | CDN anti-bot 403 | 0 | 0% |
 | FM-5 | Under-construction / cross-brand redirect | 0 | 0% |
@@ -146,9 +157,40 @@ classifier reports 0 FM-6 honestly rather than lumping brochureware
 into it. When `signals_site_heuristic` ships, re-run this measurement
 to get a real FM-6 rate.
 
-### FM-7 — 21 sites, two HTML-fixturable shapes + 19 brochureware
+### FM-7 — threshold-sensitive; the rate depends on where you draw the line
 
-FM-7 dominates the failure tail. Three shapes account for it:
+FM-7 is the register's "thin-or-empty ok" shape. Unlike a block or a
+timeout, it has no mechanical cutoff; the line between "useful
+extract" and "thin extract" is a judgment call. The classifier uses
+`FM7_THIN_BYTES = 1024` in
+[`scripts/run-durability-batch.py`](../scripts/run-durability-batch.py),
+which on this cohort gives 21%. That threshold is pragmatic, not
+mechanistic — the rate moves substantially across a plausible range:
+
+| Threshold (bytes) | FM-7 count | Rate |
+|---:|---:|---:|
+| < 256 | 2 | 2% |
+| < 512 | 6 | 6% |
+| < 768 | 14 | 14% |
+| **< 1024 (classifier)** | **21** | **21%** |
+| < 1280 | 23 | 23% |
+| < 1536 | 27 | 27% |
+| < 2048 | 35 | 35% |
+
+Because a 512-byte window around the chosen threshold shifts the rate
+by ~7 percentage points, the honest headline is: **FM-7 is the
+dominant "imperfect" mode in this cohort; at the 1024-byte threshold
+21% of `status: ok` sites qualify.** The exact number is not
+load-bearing — the shape is. Downstream consumers (synthesis,
+fixture curation) should branch on *their* definition of "thin," not
+on 1024 specifically.
+
+Byte distribution across `status: ok` rows (from the raw JSONL):
+min 0, p10 632, p25 1505, median 2646, p75 5305, max 17025. Half the
+ok cohort sits above 2.6 KB — the extraction path works fine when
+sites have content to surface.
+
+**The 21 FM-7 rows (at the 1024-byte threshold) fall into three shapes:**
 
 - **Shape A — JS-redirect root** (1 site, 0 bytes extracted). One
   `<script>` in `<head>` does `window.location.href="/lander"`; no
@@ -167,25 +209,20 @@ FM-7 dominates the failure tail. Three shapes account for it:
 ### FM-13 — 3 sites, all 10-second network timeouts
 
 Three sites returned `network error: Timeout` from
-`curl_cffi.requests.get`:
+`curl_cffi.requests.get`, one each in three distinct niches
+(bariatric-surgery, ivf-fertility, private-lending). Two rows recorded
+provider latency of ~10 s as expected; one recorded ~20 s.
 
-| slug | niche | provider_latency_ms | wall_ms |
-|---|---|---:|---:|
-| bariatric-08 | bariatric-surgery | 10119 | 10443 |
-| fertility-23 | ivf-fertility | 20052 | 20265 |
-| lending-18 | private-lending | 10111 | 10328 |
-
-**The `fertility-23` row is anomalous.** Provider latency is ~20 s,
-but the configured timeout is 10 s and `_from_network` exits on
-homepage timeout before attempting `/about` — there is no code path
-that stacks two 10-second timeouts on this host. A clean re-probe
-(`curl_cffi.requests.get` to the same URL at 10 s timeout) returns at
-10 s as expected (`curl: (28) Connection timed out after 10002 ms`).
-The ~20 s is therefore a transient effect — likely slow DNS
-resolution happening before libcurl's timer starts, or resolver
-retries — rather than a reproducible provider anomaly. It is **not**
-evidence of `/about` also timing out. Described honestly here rather
-than explained away.
+**The 20-second row is anomalous.** The configured timeout is 10 s and
+`_from_network` exits on homepage timeout before attempting `/about`
+— there is no code path that stacks two 10-second timeouts on a
+single host. A clean re-probe (`curl_cffi.requests.get` to the same
+URL at 10 s timeout) returns at 10 s as expected
+(`curl: (28) Connection timed out after 10002 ms`). The ~20 s is
+therefore a transient effect — likely slow DNS resolution happening
+before libcurl's timer starts, or resolver retries — rather than a
+reproducible provider anomaly. It is **not** evidence of `/about`
+also timing out. Described honestly here rather than explained away.
 
 **Mechanism — not conclusively identified.** Three data points is too
 few to infer a specific shared fingerprint (CDN, hosting, CMS).
