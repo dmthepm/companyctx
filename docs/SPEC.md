@@ -1,11 +1,10 @@
 # SNAPSHOT — canonical at `noontide-projects/boston-v1/decisions/`; do not maintain here
 
 > This file is a frozen snapshot taken at scaffolding time (Milestone 1).
-> The canonical spec is split across:
->
-> - `2026-04-20-research-pack-spec-location-and-shape.md` (schema + CLI shape)
-> - `2026-04-20-research-pack-scope-and-brand-lock.md` (output contract,
->   Deterministic Waterfall, Vertical Memory, `status` enum)
+> The canonical spec lives in the upstream design workspace under the
+> `companyctx` spec-location/shape decision (schema + CLI shape) and the
+> `companyctx` scope-and-brand-lock decision (output contract, Deterministic
+> Waterfall, Vertical Memory, `status` enum).
 >
 > Future spec edits land upstream and flow back via a new handoff cycle, not
 > via PRs against this file.
