@@ -1,4 +1,4 @@
-"""research-pack — deterministic research-pack collector for outreach pipelines."""
+"""companyctx — deterministic B2B context router. Zero keys. Schema-locked JSON."""
 
 from __future__ import annotations
 

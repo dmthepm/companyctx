@@ -1,6 +1,6 @@
 # Fixtures
 
-Per-domain offline inputs that drive `research-pack --mock fetch <domain>`.
+Per-domain offline inputs that drive `companyctx --mock fetch <domain>`.
 The 10-domain golden suite is curated in Milestone 5.
 
 ## Layout
@@ -14,8 +14,8 @@ fixtures/
     google_places.json    # API response for the Places provider
     yelp.json             # API response for the Yelp Fusion provider
     youtube.json          # API response for the YouTube channels.list provider
-    expected.json         # hand-curated golden ResearchPack
-  seeds.csv               # one column "domain", used by `research-pack batch`
+    expected.json         # hand-curated golden CompanyContext
+  seeds.csv               # one column "domain", used by `companyctx batch`
 ```
 
 Provider files are optional per fixture. If a provider's input file is
@@ -25,7 +25,7 @@ live run.
 
 ## Determinism rule
 
-`research-pack --mock fetch <domain>` must produce byte-identical output
+`companyctx --mock fetch <domain>` must produce byte-identical output
 across runs, modulo the `fetched_at` timestamp. Any non-determinism in
 provider output is a bug in that provider, not in the test harness.
 

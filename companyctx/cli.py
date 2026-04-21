@@ -1,4 +1,4 @@
-"""Typer CLI surface for research-pack.
+"""Typer CLI surface for companyctx.
 
 Milestone 1: command stubs only. Implementations land in M2–M4.
 The CLI shape itself is part of the public contract — see docs/SPEC.md.
@@ -10,11 +10,11 @@ from pathlib import Path
 
 import typer
 
-from research_pack import __version__
+from companyctx import __version__
 
 app = typer.Typer(
-    name="research-pack",
-    help="Deterministic research-pack collector for outreach pipelines.",
+    name="companyctx",
+    help="Deterministic B2B context router. Zero keys. Schema-locked JSON.",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -36,7 +36,7 @@ app.add_typer(providers_app, name="providers")
 
 def _version_callback(value: bool) -> None:
     if value:
-        typer.echo(f"research-pack {__version__}")
+        typer.echo(f"companyctx {__version__}")
         raise typer.Exit()
 
 
@@ -68,7 +68,7 @@ _IGNORE_ROBOTS_OPT = typer.Option(
     help="Bypass robots.txt. Explicit CLI-only; not config-file-settable.",
 )
 _CSV_ARG = typer.Argument(..., help="CSV of domains.")
-_JSON_ARG = typer.Argument(..., help="Path to a research-pack JSON.")
+_JSON_ARG = typer.Argument(..., help="Path to a companyctx JSON.")
 _CACHE_DOMAIN_OPT = typer.Option(None, "--domain", help="Limit to one domain.")
 _CACHE_OLDER_OPT = typer.Option(None, "--older-than", help="Drop entries older than e.g. 7d.")
 
@@ -77,7 +77,7 @@ _CACHE_OLDER_OPT = typer.Option(None, "--older-than", help="Drop entries older t
 def _root(
     version: bool | None = _VERSION_OPT,  # noqa: ARG001 — eager callback handles it
 ) -> None:
-    """research-pack — domain in, JSON out."""
+    """companyctx — domain in, schema-locked JSON out."""
 
 
 @app.command()

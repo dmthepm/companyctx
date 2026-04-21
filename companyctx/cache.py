@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-CACHE_DB_FILENAME = "research-pack.sqlite3"
+CACHE_DB_FILENAME = "companyctx.sqlite3"
 
 
 @dataclass(frozen=True)

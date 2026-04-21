@@ -11,7 +11,7 @@ from pathlib import Path
 from platformdirs import user_cache_dir, user_config_dir
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-APP_NAME = "research-pack"
+APP_NAME = "companyctx"
 
 
 def default_config_dir() -> Path:
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="RESEARCH_PACK_",
+        env_prefix="COMPANYCTX_",
         extra="ignore",
     )
 

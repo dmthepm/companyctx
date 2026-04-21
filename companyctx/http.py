@@ -7,7 +7,7 @@ provider authors share one configured client.
 
 from __future__ import annotations
 
-DEFAULT_USER_AGENT = "research-pack/0.1 (+https://github.com/dmthepm/research-pack)"
+DEFAULT_USER_AGENT = "companyctx/0.1 (+https://github.com/dmthepm/companyctx)"
 DEFAULT_TIMEOUT_S: float = 10.0
 
 

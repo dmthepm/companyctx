@@ -13,12 +13,12 @@ labels: ["bug"]
 ## How to reproduce
 
 ```bash
-research-pack <command> <args>
+companyctx <command> <args>
 ```
 
 ## Environment
 
-- `research-pack --version`:
+- `companyctx --version`:
 - Python version:
 - OS:
 - Provider extras installed (`extract`, `reviews`, `youtube`, `all`):

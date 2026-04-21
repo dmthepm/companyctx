@@ -9,27 +9,27 @@ from __future__ import annotations
 
 from typer.testing import CliRunner
 
-import research_pack
-from research_pack.cli import app
+import companyctx
+from companyctx.cli import app
 
 
 def test_version_string_present() -> None:
-    assert isinstance(research_pack.__version__, str)
-    assert research_pack.__version__
+    assert isinstance(companyctx.__version__, str)
+    assert companyctx.__version__
 
 
 def test_cli_help_runs() -> None:
     runner = CliRunner()
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "research-pack" in result.stdout
+    assert "companyctx" in result.stdout
 
 
 def test_cli_version_flag() -> None:
     runner = CliRunner()
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert research_pack.__version__ in result.stdout
+    assert companyctx.__version__ in result.stdout
 
 
 def test_subcommands_registered() -> None:

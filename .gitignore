@@ -53,7 +53,7 @@ coverage.xml
 # Build artifacts / runtime caches
 *.log
 out/
-.research-pack-cache/
+.companyctx-cache/
 
 # Local secrets
 .env.local

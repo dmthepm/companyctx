@@ -4,7 +4,7 @@ Hard rules (enforced by tests in M2/M3):
 
 - Providers **never raise uncaught**. Every failure mode maps to
   ``ProviderRunMetadata.status in {"degraded", "failed"}``.
-- Providers declare a ``cost_hint`` so ``research-pack providers list`` can
+- Providers declare a ``cost_hint`` so ``companyctx providers list`` can
   surface the cost surface before integrators wire them.
 - Providers do not import each other (lint enforces this in CI).
 """
@@ -46,7 +46,7 @@ class FetchContext:
 
 @dataclass(frozen=True)
 class ProviderRunMetadata:
-    """Per-provider provenance row attached to every research-pack."""
+    """Per-provider provenance row attached to every output envelope."""
 
     status: ProviderStatus
     latency_ms: int

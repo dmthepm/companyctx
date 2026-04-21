@@ -1,5 +1,5 @@
 <!--
-  Thanks for contributing to research-pack!
+  Thanks for contributing to companyctx!
 
   Keep PRs ~400 lines of code where possible. One PR per milestone or
   per provider. See CONTRIBUTING.md.
@@ -21,8 +21,8 @@ Closes #
 pip install -e ".[dev,extract,reviews,youtube]"
 ruff check .
 ruff format --check .
-mypy research_pack
-pytest -v --cov=research_pack
+mypy companyctx
+pytest -v --cov=companyctx
 ```
 
 ## Checklist

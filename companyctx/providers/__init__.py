@@ -1,6 +1,6 @@
 """Provider plugin discovery via Python entry points.
 
-Day-one providers register under the ``research_pack.providers`` entry-point
+Day-one providers register under the ``companyctx.providers`` entry-point
 group in pyproject.toml; entries are commented out at M1 and uncommented as
 each provider lands in M3.
 """
@@ -11,9 +11,9 @@ from importlib.metadata import entry_points
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from research_pack.providers.base import ProviderBase
+    from companyctx.providers.base import ProviderBase
 
-ENTRY_POINT_GROUP = "research_pack.providers"
+ENTRY_POINT_GROUP = "companyctx.providers"
 
 
 def discover() -> dict[str, type[ProviderBase]]:
