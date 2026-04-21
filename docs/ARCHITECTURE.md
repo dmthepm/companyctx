@@ -46,7 +46,8 @@ downstream agent never branches on which layer succeeded.
   │   → extruct (JSON-LD / OpenGraph / sameAs)                            │
   │   → BeautifulSoup + regex (social handles, tech fingerprint)          │
   │                                                                       │
-  │   Covers ~85–95% of small-biz homepages. No keys, no cost.            │
+  │   Measured 20/20 on the M1 20-site probe at chrome146. No keys,       │
+  │   no cost. See docs/ZERO-KEY.md for decay and the honest matrix.      │
   └───────────────────────────┬───────────────────────────────────────────┘
                               │  403 / challenge / timeout?
                               ▼

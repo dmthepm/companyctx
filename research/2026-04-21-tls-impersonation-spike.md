@@ -65,8 +65,31 @@ must not leak it.
 **Site-class coverage.** The probe was not pre-classified by WAF; classes
 surfaced empirically from behavior (see "Hostile cluster" below). The
 chrome131 run revealed three Cloudflare-fronted sites (hostile cluster) and
-17 un-fronted small-business sites — satisfying the issue's "mix of
-small-biz + 2+ known-hostile" requirement without pre-staging the mix.
+17 un-fronted small-business sites — satisfying the issue's "2+
+known-hostile" requirement without pre-staging the mix.
+
+**Tech-stack composition (empirical, from the committed raw JSONL).** Per
+the cheap HTML-surface heuristic in the harness (`classify_tech`), the 20
+latest-native curl_cffi rows break down as:
+
+| Marker             | Slugs |
+|--------------------|-------|
+| WordPress          | 16    |
+| &nbsp;&nbsp;…of which Elementor | 7 |
+| Shopify            | 1     |
+| Squarespace        | 1     |
+| no-detectable-CMS  | 3     |
+| Wix / Webflow / SPA-root | 0 |
+
+This is the honest scoping against issue #21's scope item 2, which asked
+for a mix including WordPress, Squarespace/Wix, and SPAs. The D100 seed
+lists we sampled from are dominated by WordPress/Elementor small-biz
+sites; alphabetical deterministic sampling from those CSVs did not
+surface Wix, Webflow, or React/Vue SPA homepages in this 20-site draw.
+**The 20/20 result is therefore evidence for the WordPress-heavy
+small-biz segment the D100 lists actually contain, not for the full
+site-class matrix the issue scope anticipated.** Closing that gap is
+tracked as follow-up work in "Out-of-scope" below.
 
 ## Measurement method
 
@@ -260,6 +283,19 @@ the probe harness; no companyctx-specific infrastructure.
 
 ## Out of scope (deferred to other issues)
 
+- **Site-class mix evidence for Wix / Webflow / SPA homepages.** The D100
+  seed lists we sampled from are WordPress-dominated; the 20-slug draw
+  contained 16 WordPress, 1 Shopify, 1 Squarespace, 3 no-detectable-CMS,
+  and 0 Wix / 0 Webflow / 0 SPA-root. The library-selection rationale
+  (license + API-match + silent-fallback avoidance) is independent of
+  site class, so the chosen library does not change. But the **measured
+  "20/20" number does not yet evidence zero-key coverage on Wix,
+  Webflow, or JS-heavy SPA homepages**. Closing that evidence gap is a
+  targeted follow-up: deliberately seed ~5 Wix / Webflow / SPA slugs
+  (e.g. from a Wix-showcase directory, Webflow's own
+  `made-in-webflow` gallery, and a handful of React-SSR SPA
+  small-business sites) and re-run the probe, folding the result into
+  the 100-site durability report below.
 - 100-site durability report (#22) — widens the N; this spike does the
   library-selection job at a sampling depth matching the acceptance
   checklist of #21.
