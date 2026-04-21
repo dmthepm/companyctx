@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "bakery",
+      "title": "Bakery"
+    }
+  ],
+  "id": "yelp-acme-bakery",
+  "location": {
+    "city": "Portland",
+    "country": "US",
+    "state": "OR"
+  },
+  "name": "Acme Bakery",
+  "rating": 4.0,
+  "review_count": 20,
+  "url": "https://yelp.com/biz/yelp-acme-bakery"
+}

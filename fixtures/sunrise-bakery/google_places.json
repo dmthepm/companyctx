@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Portland, OR 00000, USA",
+    "name": "Sunrise Bakery",
+    "place_id": "ChIJ-synthetic-sunrise-bakery",
+    "rating": 4.1,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 54,
+    "website": "https://sunrise-bakery.example"
+  },
+  "status": "OK"
+}

@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "dental",
+      "title": "Dental Clinic"
+    }
+  ],
+  "id": "yelp-cedarpark-dental",
+  "location": {
+    "city": "Austin",
+    "country": "US",
+    "state": "TX"
+  },
+  "name": "Cedarpark Dental Clinic",
+  "rating": 4.3,
+  "review_count": 58,
+  "url": "https://yelp.com/biz/yelp-cedarpark-dental"
+}

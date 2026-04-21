@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic15",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@bluepeak-agency",
+        "title": "Bluepeak Marketing Agency"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "705"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

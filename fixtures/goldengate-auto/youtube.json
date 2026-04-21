@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic21",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@goldengate-auto",
+        "title": "Goldengate Auto Repair"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "927"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

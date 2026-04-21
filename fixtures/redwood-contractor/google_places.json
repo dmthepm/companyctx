@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Denver, CO 00000, USA",
+    "name": "Redwood Home Contractor",
+    "place_id": "ChIJ-synthetic-redwood-contractor",
+    "rating": 4.3,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 103,
+    "website": "https://redwood-contractor.example"
+  },
+  "status": "OK"
+}

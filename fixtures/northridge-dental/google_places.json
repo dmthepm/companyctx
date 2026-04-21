@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Austin, TX 00000, USA",
+    "name": "Northridge Dental Clinic",
+    "place_id": "ChIJ-synthetic-northridge-dental",
+    "rating": 4.4,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 131,
+    "website": "https://northridge-dental.example"
+  },
+  "status": "OK"
+}

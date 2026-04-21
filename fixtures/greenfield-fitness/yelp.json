@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "fitness",
+      "title": "Boutique Fitness"
+    }
+  ],
+  "id": "yelp-greenfield-fitness",
+  "location": {
+    "city": "Seattle",
+    "country": "US",
+    "state": "WA"
+  },
+  "name": "Greenfield Boutique Fitness",
+  "rating": 4.8,
+  "review_count": 118,
+  "url": "https://yelp.com/biz/yelp-greenfield-fitness"
+}

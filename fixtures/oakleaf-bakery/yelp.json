@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "bakery",
+      "title": "Bakery"
+    }
+  ],
+  "id": "yelp-oakleaf-bakery",
+  "location": {
+    "city": "Portland",
+    "country": "US",
+    "state": "OR"
+  },
+  "name": "Oakleaf Bakery",
+  "rating": 4.1,
+  "review_count": 34,
+  "url": "https://yelp.com/biz/yelp-oakleaf-bakery"
+}

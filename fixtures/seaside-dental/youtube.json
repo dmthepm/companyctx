@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic14",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@seaside-dental",
+        "title": "Seaside Dental Clinic"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "668"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

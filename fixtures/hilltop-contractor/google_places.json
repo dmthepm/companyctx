@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Denver, CO 00000, USA",
+    "name": "Hilltop Home Contractor",
+    "place_id": "ChIJ-synthetic-hilltop-contractor",
+    "rating": 4.2,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 75,
+    "website": "https://hilltop-contractor.example"
+  },
+  "status": "OK"
+}

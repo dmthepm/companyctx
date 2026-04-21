@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic04",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@oakleaf-bakery",
+        "title": "Oakleaf Bakery"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "298"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

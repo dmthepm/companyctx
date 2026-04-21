@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "agency",
+      "title": "Marketing Agency"
+    }
+  ],
+  "id": "yelp-riverstone-agency",
+  "location": {
+    "city": "Brooklyn",
+    "country": "US",
+    "state": "NY"
+  },
+  "name": "Riverstone Marketing Agency",
+  "rating": 4.6,
+  "review_count": 86,
+  "url": "https://yelp.com/biz/yelp-riverstone-agency"
+}

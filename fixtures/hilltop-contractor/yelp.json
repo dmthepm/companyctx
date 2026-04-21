@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "contractor",
+      "title": "Home Contractor"
+    }
+  ],
+  "id": "yelp-hilltop-contractor",
+  "location": {
+    "city": "Denver",
+    "country": "US",
+    "state": "CO"
+  },
+  "name": "Hilltop Home Contractor",
+  "rating": 4.2,
+  "review_count": 37,
+  "url": "https://yelp.com/biz/yelp-hilltop-contractor"
+}

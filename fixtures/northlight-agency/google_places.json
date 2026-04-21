@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Brooklyn, NY 00000, USA",
+    "name": "Northlight Marketing Agency",
+    "place_id": "ChIJ-synthetic-northlight-agency",
+    "rating": 4.5,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 159,
+    "website": "https://northlight-agency.example"
+  },
+  "status": "OK"
+}

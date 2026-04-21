@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "fitness",
+      "title": "Boutique Fitness"
+    }
+  ],
+  "id": "yelp-ironbell-fitness",
+  "location": {
+    "city": "Seattle",
+    "country": "US",
+    "state": "WA"
+  },
+  "name": "Ironbell Boutique Fitness",
+  "rating": 4.9,
+  "review_count": 121,
+  "url": "https://yelp.com/biz/yelp-ironbell-fitness"
+}

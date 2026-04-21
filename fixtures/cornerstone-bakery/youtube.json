@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic03",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@cornerstone-bakery",
+        "title": "Cornerstone Bakery"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "261"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

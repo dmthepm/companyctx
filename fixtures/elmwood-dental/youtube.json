@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic12",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@elmwood-dental",
+        "title": "Elmwood Dental Clinic"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "594"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

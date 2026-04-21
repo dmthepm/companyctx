@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic16",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@canopy-agency",
+        "title": "Canopy Marketing Agency"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "742"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

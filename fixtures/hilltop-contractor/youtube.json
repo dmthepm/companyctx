@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic05",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@hilltop-contractor",
+        "title": "Hilltop Home Contractor"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "335"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

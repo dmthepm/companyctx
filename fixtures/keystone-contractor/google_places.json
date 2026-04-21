@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Denver, CO 00000, USA",
+    "name": "Keystone Home Contractor",
+    "place_id": "ChIJ-synthetic-keystone-contractor",
+    "rating": 4.2,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 89,
+    "website": "https://keystone-contractor.example"
+  },
+  "status": "OK"
+}

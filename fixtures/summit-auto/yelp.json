@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "auto",
+      "title": "Auto Repair"
+    }
+  ],
+  "id": "yelp-summit-auto",
+  "location": {
+    "city": "Raleigh",
+    "country": "US",
+    "state": "NC"
+  },
+  "name": "Summit Auto Repair",
+  "rating": 4.7,
+  "review_count": 104,
+  "url": "https://yelp.com/biz/yelp-summit-auto"
+}

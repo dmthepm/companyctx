@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "auto",
+      "title": "Auto Repair"
+    }
+  ],
+  "id": "yelp-midtown-auto",
+  "location": {
+    "city": "Raleigh",
+    "country": "US",
+    "state": "NC"
+  },
+  "name": "Midtown Auto Repair",
+  "rating": 4.7,
+  "review_count": 97,
+  "url": "https://yelp.com/biz/yelp-midtown-auto"
+}

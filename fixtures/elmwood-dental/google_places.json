@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Austin, TX 00000, USA",
+    "name": "Elmwood Dental Clinic",
+    "place_id": "ChIJ-synthetic-elmwood-dental",
+    "rating": 4.4,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 124,
+    "website": "https://elmwood-dental.example"
+  },
+  "status": "OK"
+}

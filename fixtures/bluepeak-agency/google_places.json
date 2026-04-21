@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Brooklyn, NY 00000, USA",
+    "name": "Bluepeak Marketing Agency",
+    "place_id": "ChIJ-synthetic-bluepeak-agency",
+    "rating": 4.5,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 145,
+    "website": "https://bluepeak-agency.example"
+  },
+  "status": "OK"
+}

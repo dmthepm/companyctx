@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic08",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@mapleridge-contractor",
+        "title": "Mapleridge Home Contractor"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "446"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

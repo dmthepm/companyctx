@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic23",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@rustic-auto",
+        "title": "Rustic Auto Repair"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "1001"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

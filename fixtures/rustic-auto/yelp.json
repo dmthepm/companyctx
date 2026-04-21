@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "auto",
+      "title": "Auto Repair"
+    }
+  ],
+  "id": "yelp-rustic-auto",
+  "location": {
+    "city": "Raleigh",
+    "country": "US",
+    "state": "NC"
+  },
+  "name": "Rustic Auto Repair",
+  "rating": 4.7,
+  "review_count": 100,
+  "url": "https://yelp.com/biz/yelp-rustic-auto"
+}

@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "bakery",
+      "title": "Bakery"
+    }
+  ],
+  "id": "yelp-cornerstone-bakery",
+  "location": {
+    "city": "Portland",
+    "country": "US",
+    "state": "OR"
+  },
+  "name": "Cornerstone Bakery",
+  "rating": 4.1,
+  "review_count": 30,
+  "url": "https://yelp.com/biz/yelp-cornerstone-bakery"
+}

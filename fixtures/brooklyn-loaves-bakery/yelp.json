@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "bakery",
+      "title": "Bakery"
+    }
+  ],
+  "id": "yelp-brooklyn-loaves-bakery",
+  "location": {
+    "city": "Portland",
+    "country": "US",
+    "state": "OR"
+  },
+  "name": "Brooklyn Loaves Bakery",
+  "rating": 4.0,
+  "review_count": 23,
+  "url": "https://yelp.com/biz/yelp-brooklyn-loaves-bakery"
+}

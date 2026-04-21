@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Raleigh, NC 00000, USA",
+    "name": "Goldengate Auto Repair",
+    "place_id": "ChIJ-synthetic-goldengate-auto",
+    "rating": 4.6,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 187,
+    "website": "https://goldengate-auto.example"
+  },
+  "status": "OK"
+}

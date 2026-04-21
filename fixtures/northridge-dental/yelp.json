@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "dental",
+      "title": "Dental Clinic"
+    }
+  ],
+  "id": "yelp-northridge-dental",
+  "location": {
+    "city": "Austin",
+    "country": "US",
+    "state": "TX"
+  },
+  "name": "Northridge Dental Clinic",
+  "rating": 4.4,
+  "review_count": 65,
+  "url": "https://yelp.com/biz/yelp-northridge-dental"
+}

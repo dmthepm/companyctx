@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic19",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@riverstone-agency",
+        "title": "Riverstone Marketing Agency"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "853"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

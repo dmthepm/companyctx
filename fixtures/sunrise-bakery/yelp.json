@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "bakery",
+      "title": "Bakery"
+    }
+  ],
+  "id": "yelp-sunrise-bakery",
+  "location": {
+    "city": "Portland",
+    "country": "US",
+    "state": "OR"
+  },
+  "name": "Sunrise Bakery",
+  "rating": 4.1,
+  "review_count": 27,
+  "url": "https://yelp.com/biz/yelp-sunrise-bakery"
+}

@@ -1,0 +1,78 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00+00:00",
+    "mentions": [],
+    "pages": {
+      "about_text": "Oakleaf Bakery has served Portland, OR since 2022. Today we're a team of 7.",
+      "homepage_text": "Oakleaf Bakery is a bakery in Portland, OR. Founded 2022. We're a team of 7.",
+      "services": [
+        "Custom cakes",
+        "Catering",
+        "Wholesale bread",
+        "Pastry boxes"
+      ],
+      "tech_stack": [
+        "Custom"
+      ]
+    },
+    "reviews": {
+      "count": 68,
+      "rating": 4.1,
+      "source": "reviews_google_places"
+    },
+    "signals": {
+      "copyright_year": 2023,
+      "hiring_page_active": null,
+      "last_blog_post_at": "2026-05-09T00:00:00+00:00",
+      "last_funding_round": null,
+      "linkedin_employee_count": null,
+      "team_size_claim": "team of 7",
+      "tech_vs_claim_mismatches": []
+    },
+    "site": "oakleaf-bakery.example",
+    "social": {
+      "follower_counts": {
+        "youtube": 298
+      },
+      "handles": {
+        "instagram": "@oakleafbakery",
+        "youtube": "@oakleaf-bakery"
+      }
+    }
+  },
+  "error": null,
+  "provenance": {
+    "reviews_google_places": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "reviews_yelp_fusion": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_meta_extruct": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_text_trafilatura": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "social_counts_youtube": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

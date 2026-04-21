@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic13",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@northridge-dental",
+        "title": "Northridge Dental Clinic"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "631"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

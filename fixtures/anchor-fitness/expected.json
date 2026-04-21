@@ -1,0 +1,79 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00+00:00",
+    "mentions": [],
+    "pages": {
+      "about_text": "Anchor Boutique Fitness has served Seattle, WA since 2015. Today we're a team of 10.",
+      "homepage_text": "Anchor Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2015. We're a team of 10.",
+      "services": [
+        "Small-group strength",
+        "Private training",
+        "Mobility classes",
+        "Corporate wellness"
+      ],
+      "tech_stack": [
+        "WordPress",
+        "Elementor"
+      ]
+    },
+    "reviews": {
+      "count": 215,
+      "rating": 4.8,
+      "source": "reviews_google_places"
+    },
+    "signals": {
+      "copyright_year": 2023,
+      "hiring_page_active": null,
+      "last_blog_post_at": "2026-02-24T00:00:00+00:00",
+      "last_funding_round": null,
+      "linkedin_employee_count": null,
+      "team_size_claim": "team of 10",
+      "tech_vs_claim_mismatches": []
+    },
+    "site": "anchor-fitness.example",
+    "social": {
+      "follower_counts": {
+        "youtube": 1075
+      },
+      "handles": {
+        "instagram": "@anchorfitness",
+        "youtube": "@anchor-fitness"
+      }
+    }
+  },
+  "error": null,
+  "provenance": {
+    "reviews_google_places": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "reviews_yelp_fusion": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_meta_extruct": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_text_trafilatura": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "social_counts_youtube": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

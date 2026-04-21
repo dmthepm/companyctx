@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Raleigh, NC 00000, USA",
+    "name": "Apex Auto Repair",
+    "place_id": "ChIJ-synthetic-apex-auto",
+    "rating": 4.6,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 180,
+    "website": "https://apex-auto.example"
+  },
+  "status": "OK"
+}

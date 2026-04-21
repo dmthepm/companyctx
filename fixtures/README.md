@@ -1,20 +1,22 @@
 # Fixtures
 
-Per-site offline inputs that drive `companyctx --mock fetch <site>`.
-The 10-site golden suite is curated in Milestone 5.
+Per-site offline inputs that drive `companyctx fetch <site> --mock`.
+The 30-prospect starter corpus is built deterministically by
+[`scripts/build-fixtures.py`](../scripts/build-fixtures.py); the 10-site
+golden suite is curated out of these in Milestone 5.
 
 ## Layout
 
 ```
 fixtures/
-  <site>/
+  <slug>/
     homepage.html         # raw landing page HTML
     about.html            # /about (when present)
     services.html         # /services or equivalent (when present)
     google_places.json    # API response for the Places provider
     yelp.json             # API response for the Yelp Fusion provider
     youtube.json          # API response for the YouTube channels.list provider
-    expected.json         # hand-curated golden CompanyContext
+    expected.json         # hand-curated golden envelope (status + data + provenance)
   seeds.csv               # one column "site", used by `companyctx batch`
 ```
 
@@ -23,23 +25,88 @@ missing, `--mock` should record `provenance[slug].status: "degraded"` with
 reason `"fixture not provided"` — the same shape as a missing API key in a
 live run.
 
+## Sampling rationale — the D100 30
+
+The starter corpus is 30 prospects because that is the smallest sample that
+exercises the full Milestone-1 spec matrix without overfitting:
+
+- **6 niches × 5 tech stacks = 30.** Niches span food/retail, trades,
+  professional services, creative services, automotive, and wellness.
+  Tech stacks span the five detectable platforms the
+  `signals_site_heuristic` provider has to recognise
+  (WordPress+Elementor, Squarespace, Wix, Webflow, custom HTML).
+- **Each (niche, stack) pair appears exactly once** — which means no
+  detector can pass the suite by hard-coding a single stack, and no
+  content heuristic can pass by hard-coding a single niche.
+- **30 is also the anti-bot fixture count** the zero-key spike in
+  [`decisions/2026-04-20-zero-key-stealth-strategy.md`](../decisions/2026-04-20-zero-key-stealth-strategy.md)
+  needs to produce a credible coverage number.
+
+Scaling past 30 is v0.2 scope — the golden curation in M5 is a subset of
+these, not an expansion.
+
 ## Determinism rule
 
-`companyctx --mock fetch <site>` must produce byte-identical output
-across runs, modulo the `fetched_at` timestamp. Any non-determinism in
-provider output is a bug in that provider, not in the test harness.
+`companyctx --mock fetch <site>` must produce byte-identical output across
+runs, modulo the `fetched_at` timestamp. Any non-determinism in provider
+output is a bug in that provider, not in the test harness. The synthetic
+fixtures themselves pin `fetched_at` to `2026-04-20T00:00:00+00:00` in
+`expected.json` so the committed bytes are stable.
 
-## Adding a fixture
+## Rebuilding the corpus
 
-1. Create `fixtures/<site>/`.
+Anyone can regenerate the full 30-prospect starter corpus without needing
+Joel's private brief dump:
+
+```bash
+python scripts/build-fixtures.py --synthetic
+```
+
+Re-runs are byte-identical; the second run is a no-op diff. If that
+invariant breaks, a non-determinism has crept into the generator — fix it
+before landing.
+
+Joel's workflow (private brief dump → sanitized fixtures) uses the same
+script in its other mode:
+
+```bash
+python scripts/build-fixtures.py --source ~/briefs --out fixtures/
+```
+
+The brief-dump mode pulls prospect metadata from a directory of
+`research-brief.md` files (front-matter keys: `site`, `name`, `niche`,
+`stack`, `founded`, `team_claim`, …), sanitizes emails / phone numbers /
+contact names through the regex pipeline in `scripts/build-fixtures.py`,
+and falls back to the synthetic prospect at the same corpus index for any
+field the brief doesn't carry. Sanitization covers:
+
+- email addresses → `hello@example.test`
+- phone numbers (US formats + `+1`) → `(555) 555-0100`
+- person names in contact-signalling context
+  (`contact: Jane Doe` / `Founder — Jane Doe`) → `the Owner`
+
+Spot-check PII in diffs before pushing. Synthetic mode has no PII to
+leak; brief-dump mode is where sanitization earns its keep.
+
+## Adding one fixture by hand (no brief, no corpus)
+
+1. `mkdir fixtures/<slug>/`.
 2. Drop in raw HTML and any API response JSON the providers consume.
-3. Hand-curate `expected.json` — this is the contract, not a re-run of the
-   collector.
-4. Add the site to `fixtures/seeds.csv`.
-5. Wire a unit test under `tests/` that loads the fixture and asserts the
-   collector reproduces `expected.json`.
+   HTML should be real (your own site, or a public site you have
+   permission to snapshot); API JSON can be redacted.
+3. Hand-curate `expected.json` — this is the contract, not a re-run of
+   the collector.
+4. Append the site to `fixtures/seeds.csv`.
+5. Wire a unit test under `tests/` that loads the fixture and asserts
+   the collector reproduces `expected.json`.
+
+If you hand-add a fixture that the synthetic script would otherwise
+overwrite, pin its slug *outside* the 30 synthetic slugs — e.g. prefix
+with `custom-` or use a real domain.
 
 ## Out of scope
 
 Fixtures are not allowed to embed any API key or secret. If a provider
 requires auth, the fixture supplies the *response*, never the credential.
+Real person names, real phone numbers, and real email addresses never
+land in this directory — sanitize at build time, re-check at PR review.

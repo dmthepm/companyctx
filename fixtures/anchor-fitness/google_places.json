@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Seattle, WA 00000, USA",
+    "name": "Anchor Boutique Fitness",
+    "place_id": "ChIJ-synthetic-anchor-fitness",
+    "rating": 4.8,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 215,
+    "website": "https://anchor-fitness.example"
+  },
+  "status": "OK"
+}

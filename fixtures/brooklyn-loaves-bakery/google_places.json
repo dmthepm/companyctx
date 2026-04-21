@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Portland, OR 00000, USA",
+    "name": "Brooklyn Loaves Bakery",
+    "place_id": "ChIJ-synthetic-brooklyn-loaves-bakery",
+    "rating": 4.0,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 47,
+    "website": "https://brooklyn-loaves-bakery.example"
+  },
+  "status": "OK"
+}

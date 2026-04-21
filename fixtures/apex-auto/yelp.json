@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "auto",
+      "title": "Auto Repair"
+    }
+  ],
+  "id": "yelp-apex-auto",
+  "location": {
+    "city": "Raleigh",
+    "country": "US",
+    "state": "NC"
+  },
+  "name": "Apex Auto Repair",
+  "rating": 4.6,
+  "review_count": 90,
+  "url": "https://yelp.com/biz/yelp-apex-auto"
+}
