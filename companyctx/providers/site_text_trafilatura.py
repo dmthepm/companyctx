@@ -10,6 +10,7 @@ spike is a scope gap for this PR (no network access from the agent sandbox).
 The real-network path here uses ``requests`` with a realistic Chrome
 User-Agent so the graceful-partial contract is exercisable end-to-end. Swap in
 ``curl_cffi`` behind :func:`_stealth_fetch` once the spike is done.
+The placeholder still respects ``robots.txt`` by default.
 
 The ``--mock`` path is what the tests in this PR exercise; it reads
 ``fixtures/<slug>/{homepage,about,services}.html`` and returns deterministic
@@ -18,6 +19,7 @@ output modulo ``fetched_at`` (which is stamped by :mod:`companyctx.core`).
 
 from __future__ import annotations
 
+import re
 import time
 from pathlib import Path
 from typing import ClassVar, Literal
@@ -27,9 +29,11 @@ import requests
 from bs4 import BeautifulSoup
 
 from companyctx.providers.base import FetchContext
+from companyctx.robots import is_allowed
 from companyctx.schema import ProviderRunMetadata, SiteSignals
 
 _VERSION = "0.1.0"
+_SAFE_FIXTURE_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
 
 class Provider:
@@ -102,7 +106,8 @@ def _from_fixture(site: str, fixtures_dir: str | None) -> SiteSignals:
     homepage = root / "homepage.html"
     if not homepage.exists():
         raise _MissingFixtureError(f"fixture not found: {homepage}")
-    homepage_text = _extract_body_text(homepage.read_text(encoding="utf-8"))
+    homepage_html = homepage.read_text(encoding="utf-8")
+    homepage_text = _extract_body_text(homepage_html)
     about = root / "about.html"
     about_text = _extract_body_text(about.read_text(encoding="utf-8")) if about.exists() else None
     services_path = root / "services.html"
@@ -111,7 +116,7 @@ def _from_fixture(site: str, fixtures_dir: str | None) -> SiteSignals:
         if services_path.exists()
         else []
     )
-    tech_stack = _detect_tech_stack(homepage.read_text(encoding="utf-8"))
+    tech_stack = _detect_tech_stack(homepage_html)
     return SiteSignals(
         homepage_text=homepage_text,
         about_text=about_text,
@@ -138,6 +143,8 @@ def _from_network(site: str, ctx: FetchContext) -> SiteSignals:
 
 
 def _stealth_fetch(url: str, ctx: FetchContext) -> str:
+    if not ctx.ignore_robots and not is_allowed(url, user_agent=ctx.user_agent):
+        raise _BlockedError("blocked_by_robots")
     try:
         resp = requests.get(
             url,
@@ -163,8 +170,13 @@ def _try_fetch(url: str, ctx: FetchContext) -> str | None:
 
 def _normalize_base_url(site: str) -> str:
     parsed = urlparse(site if "://" in site else f"https://{site}")
+    scheme = parsed.scheme or "https"
     host = parsed.netloc or parsed.path
-    return f"{parsed.scheme or 'https'}://{host}".rstrip("/")
+    if scheme not in {"http", "https"}:
+        raise _BlockedError(f"unsupported scheme: {scheme}")
+    if not host or host in {".", ".."} or any(sep in host for sep in ("/", "\\")):
+        raise _BlockedError("invalid site")
+    return f"{scheme}://{host}".rstrip("/")
 
 
 def _slug_for(site: str) -> str:
@@ -173,8 +185,10 @@ def _slug_for(site: str) -> str:
     if host.startswith("www."):
         host = host[4:]
     # fixtures/<slug>/ — the sanitized corpus uses stemmed slugs (no TLD).
-    stem, _, _ = host.partition(".")
-    return stem or host
+    slug, _, _ = host.partition(".")
+    if not slug or not _SAFE_FIXTURE_SLUG_RE.fullmatch(slug):
+        raise _MissingFixtureError(f"invalid fixture slug: {slug or host!r}")
+    return slug
 
 
 def _extract_body_text(html: str) -> str:

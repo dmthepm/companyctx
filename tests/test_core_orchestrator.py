@@ -118,6 +118,13 @@ class _MentionsOk:
         )
 
 
+class _FakeResponse:
+    status_code = 200
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+
+
 def test_orchestrator_status_ok_when_all_providers_ok() -> None:
     env = core.run(
         "example.com",
@@ -220,6 +227,20 @@ def test_orchestrator_graceful_partial_on_missing_fixture() -> None:
     assert "fixture" in provider_error
 
 
+def test_mock_mode_rejects_invalid_fixture_slug() -> None:
+    env = core.run(
+        "../secrets",
+        mock=True,
+        fixtures_dir=FIXTURES_DIR,
+        providers=_reg(site_text_trafilatura=TrafilaturaProvider),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "degraded"
+    provider_error = env.provenance["site_text_trafilatura"].error
+    assert provider_error is not None
+    assert "invalid fixture slug" in provider_error
+
+
 def test_mock_mode_populates_pages_homepage_text() -> None:
     env = core.run(
         "acme-bakery.example",
@@ -251,6 +272,53 @@ def test_orchestrator_merges_mentions_wrapper() -> None:
     assert env.status == "ok"
     assert env.data.mentions is not None
     assert env.data.mentions.items[0].kind == "award"
+
+
+def test_provider_respects_robots_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "companyctx.providers.site_text_trafilatura.is_allowed",
+        lambda url, user_agent: False,
+    )
+    env = core.run(
+        "https://example.com",
+        providers=_reg(site_text_trafilatura=TrafilaturaProvider),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "degraded"
+    provider_error = env.provenance["site_text_trafilatura"].error
+    assert provider_error == "blocked_by_robots"
+
+
+def test_ignore_robots_bypasses_robots_check(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "companyctx.providers.site_text_trafilatura.is_allowed",
+        lambda url, user_agent: False,
+    )
+    monkeypatch.setattr(
+        "companyctx.providers.site_text_trafilatura.requests.get",
+        lambda *args, **kwargs: _FakeResponse("<html><body>Hello</body></html>"),
+    )
+    env = core.run(
+        "https://example.com",
+        providers=_reg(site_text_trafilatura=TrafilaturaProvider),
+        ignore_robots=True,
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "ok"
+    assert env.data.pages is not None
+    assert env.data.pages.homepage_text == "Hello"
+
+
+def test_provider_rejects_unsupported_scheme() -> None:
+    env = core.run(
+        "file:///etc/passwd",
+        providers=_reg(site_text_trafilatura=TrafilaturaProvider),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "degraded"
+    provider_error = env.provenance["site_text_trafilatura"].error
+    assert provider_error is not None
+    assert "unsupported scheme" in provider_error
 
 
 def test_cli_mock_output_is_byte_identical_modulo_fetched_at() -> None:
