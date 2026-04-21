@@ -25,13 +25,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   contract, M1 stealth-fetcher spike deliverables.
 - `docs/PROVIDERS.md` — day-one provider table with cost hints,
   `SmartProxyProvider` interface shape, write-your-own-provider guide.
-- In-repo `decisions/` folder with the two load-bearing ADRs:
-  `2026-04-20-name-change-to-companyctx.md` (accepted) and
+- In-repo `decisions/` folder with the three load-bearing ADRs:
+  `2026-04-20-name-change-to-companyctx.md` (accepted),
   `2026-04-20-zero-key-stealth-strategy.md` (proposed — library choice
-  pending an M1 spike). Walks-the-walk artifact for the OSS audience.
+  pending an M1 spike), and `2026-04-20-skill-md-not-mcp.md` (accepted).
+  Walks-the-walk artifact for the OSS audience.
+- `SKILL.md` at the repo root — ~150-token agent-discovery surface
+  (purpose, commands, rules for agents, one bash example). Noontide-wide
+  posture: CLI + `SKILL.md`, not MCP.
 - README rewritten around zero-key hero + IS/ISN'T values +
   Deterministic Waterfall diagram + honest coverage matrix +
-  brains-and-muscles pipe example + single Main Branch breadcrumb.
+  brains-and-muscles pipe example + single Main Branch breadcrumb. ISN'T
+  list now includes the explicit "Not an MCP server — ever, in our
+  roadmap" line.
 
 ### Changed
 

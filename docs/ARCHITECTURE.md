@@ -130,6 +130,15 @@ upstream decides what the context means.
 - Not a synthesis engine. Our output is the input *for* synthesis.
 - Not a multi-page crawler. One site in, one structured object out.
 
+## Agent discovery
+
+Agents find `companyctx` via [`SKILL.md`](../SKILL.md) at the repo root — a
+~150-token surface listing purpose, commands, rules, and one bash
+example. MCP is explicitly off the roadmap; see
+[`decisions/2026-04-20-skill-md-not-mcp.md`](../decisions/2026-04-20-skill-md-not-mcp.md)
+for the reasoning (token economics, Unix fluency, intelligence
+boundary).
+
 ## Further reading
 
 - `docs/SCHEMA.md` — the Pydantic envelope in detail.

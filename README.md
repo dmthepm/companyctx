@@ -60,6 +60,10 @@ that compounds into a queryable B2B dataset over time.
   [coverage matrix](docs/ZERO-KEY.md).
 - **Not a people-data tool.** Companies only. Contact enrichment belongs
   upstream (Apollo, Clearbit, manual).
+- **Not an MCP server — ever, in our roadmap.** MCP's ~50k-token schema
+  dump defeats a muscle built to *save* tokens. Agents find us via
+  [`SKILL.md`](SKILL.md); the CLI + `jq` + stdout are the composition
+  layer. See [`decisions/2026-04-20-skill-md-not-mcp.md`](decisions/2026-04-20-skill-md-not-mcp.md).
 
 ## The Deterministic Waterfall
 
@@ -194,6 +198,7 @@ companyctx/            # package
   providers/
     __init__.py        # plugin loader (importlib.metadata.entry_points)
     base.py            # ProviderBase, ProviderError, ProviderRunMetadata
+SKILL.md               # ~150-token agent-discovery surface (not MCP)
 docs/
   SPEC.md              # frozen v0.1 spec snapshot
   SCHEMA.md            # Pydantic envelope in detail
