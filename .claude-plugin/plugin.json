@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/plugin.json",
+  "name": "companyctx",
+  "version": "0.1.0",
+  "description": "Deterministic B2B context router. Zero keys. Schema-locked JSON for agent pipelines.",
+  "homepage": "https://github.com/dmthepm/companyctx",
+  "license": "MIT",
+  "tags": ["cli", "b2b", "context", "agent", "deterministic"],
+  "entrypoint": {
+    "type": "cli",
+    "command": "companyctx"
+  },
+  "install": {
+    "pipx": "companyctx",
+    "fromSource": "pip install -e \".[dev,extract,reviews,youtube]\""
+  }
+}

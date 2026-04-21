@@ -1,0 +1,152 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "companyctx"
+version = "0.1.0.dev0"
+description = "Deterministic B2B context router. Zero keys. Schema-locked JSON your agent pipelines can actually trust."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Devon Meadows", email = "devon@noontide.co" }
+]
+keywords = [
+  "cli",
+  "b2b",
+  "context",
+  "scraping",
+  "pydantic",
+  "deterministic",
+  "agent",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Utilities",
+]
+dependencies = [
+  "typer>=0.12",
+  "pydantic>=2.6",
+  "pydantic-settings>=2.2",
+  "platformdirs>=4.2",
+  "requests>=2.32",
+  "requests-cache>=1.2",
+  "tenacity>=8.2",
+  "beautifulsoup4>=4.12",
+  "lxml>=5.0",
+  "tomli>=2.0; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+extract = [
+  "trafilatura>=1.12",
+  "readability-lxml>=0.8.1",
+  "extruct>=0.18",
+]
+reviews = [
+  "googlemaps>=4.10",
+  "yelpapi>=2.5",
+]
+youtube = [
+  "google-api-python-client>=2.130",
+]
+all = [
+  "companyctx[extract,reviews,youtube]",
+]
+dev = [
+  "ruff>=0.4",
+  "mypy>=1.10",
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "hypothesis>=6.100",
+  "types-requests",
+]
+
+[project.scripts]
+companyctx = "companyctx.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/dmthepm/companyctx"
+Repository = "https://github.com/dmthepm/companyctx"
+Issues = "https://github.com/dmthepm/companyctx/issues"
+Changelog = "https://github.com/dmthepm/companyctx/blob/main/CHANGELOG.md"
+
+# Provider plugin discovery. Day-one providers land in Milestone 3.
+[project.entry-points."companyctx.providers"]
+# site_text_trafilatura  = "companyctx.providers.trafilatura_site:Provider"
+# site_text_readability  = "companyctx.providers.readability_site:Provider"
+# site_meta_extruct      = "companyctx.providers.extruct_meta:Provider"
+# reviews_google_places  = "companyctx.providers.google_places:Provider"
+# reviews_yelp_fusion    = "companyctx.providers.yelp_fusion:Provider"
+# social_discovery_site  = "companyctx.providers.social_discovery:Provider"
+# social_counts_youtube  = "companyctx.providers.youtube_counts:Provider"
+# signals_site_heuristic = "companyctx.providers.site_heuristic_signals:Provider"
+# mentions_brave_stub    = "companyctx.providers.brave_search_stub:Provider"
+
+[tool.setuptools.packages.find]
+include = ["companyctx*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle
+  "F",    # pyflakes
+  "I",    # isort
+  "B",    # flake8-bugbear
+  "UP",   # pyupgrade
+  "SIM",  # flake8-simplify
+  "TID",  # flake8-tidy-imports
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+  "extruct.*",
+  "googlemaps.*",
+  "yelpapi.*",
+  "readability.*",
+  "trafilatura.*",
+  "requests_cache.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["companyctx"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "if TYPE_CHECKING:",
+]
