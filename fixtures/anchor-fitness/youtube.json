@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic25",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@anchor-fitness",
+        "title": "Anchor Boutique Fitness"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "1075"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

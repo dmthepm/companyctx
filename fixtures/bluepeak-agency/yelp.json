@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "agency",
+      "title": "Marketing Agency"
+    }
+  ],
+  "id": "yelp-bluepeak-agency",
+  "location": {
+    "city": "Brooklyn",
+    "country": "US",
+    "state": "NY"
+  },
+  "name": "Bluepeak Marketing Agency",
+  "rating": 4.5,
+  "review_count": 72,
+  "url": "https://yelp.com/biz/yelp-bluepeak-agency"
+}

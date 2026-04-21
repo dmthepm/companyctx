@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic11",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@cedarpark-dental",
+        "title": "Cedarpark Dental Clinic"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "557"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Brooklyn, NY 00000, USA",
+    "name": "Riverstone Marketing Agency",
+    "place_id": "ChIJ-synthetic-riverstone-agency",
+    "rating": 4.6,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 173,
+    "website": "https://riverstone-agency.example"
+  },
+  "status": "OK"
+}

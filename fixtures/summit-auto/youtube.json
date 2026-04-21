@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic24",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@summit-auto",
+        "title": "Summit Auto Repair"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "1038"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic20",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@apex-auto",
+        "title": "Apex Auto Repair"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "890"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

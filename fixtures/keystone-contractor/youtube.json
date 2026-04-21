@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic07",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@keystone-contractor",
+        "title": "Keystone Home Contractor"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "409"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

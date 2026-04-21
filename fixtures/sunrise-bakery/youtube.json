@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic02",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@sunrise-bakery",
+        "title": "Sunrise Bakery"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "224"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

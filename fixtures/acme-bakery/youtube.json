@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic00",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@acme-bakery",
+        "title": "Acme Bakery"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "150"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

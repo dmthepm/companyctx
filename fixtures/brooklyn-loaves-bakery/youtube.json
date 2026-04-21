@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic01",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@brooklyn-loaves-bakery",
+        "title": "Brooklyn Loaves Bakery"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "187"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

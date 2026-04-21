@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "agency",
+      "title": "Marketing Agency"
+    }
+  ],
+  "id": "yelp-canopy-agency",
+  "location": {
+    "city": "Brooklyn",
+    "country": "US",
+    "state": "NY"
+  },
+  "name": "Canopy Marketing Agency",
+  "rating": 4.5,
+  "review_count": 76,
+  "url": "https://yelp.com/biz/yelp-canopy-agency"
+}

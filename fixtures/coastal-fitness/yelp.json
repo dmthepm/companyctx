@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "fitness",
+      "title": "Boutique Fitness"
+    }
+  ],
+  "id": "yelp-coastal-fitness",
+  "location": {
+    "city": "Seattle",
+    "country": "US",
+    "state": "WA"
+  },
+  "name": "Coastal Boutique Fitness",
+  "rating": 4.8,
+  "review_count": 111,
+  "url": "https://yelp.com/biz/yelp-coastal-fitness"
+}

@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Brooklyn, NY 00000, USA",
+    "name": "Canopy Marketing Agency",
+    "place_id": "ChIJ-synthetic-canopy-agency",
+    "rating": 4.5,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 152,
+    "website": "https://canopy-agency.example"
+  },
+  "status": "OK"
+}

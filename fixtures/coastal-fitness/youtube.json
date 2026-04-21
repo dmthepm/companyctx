@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic26",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@coastal-fitness",
+        "title": "Coastal Boutique Fitness"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "1112"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

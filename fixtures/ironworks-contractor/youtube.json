@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic06",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@ironworks-contractor",
+        "title": "Ironworks Home Contractor"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "372"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

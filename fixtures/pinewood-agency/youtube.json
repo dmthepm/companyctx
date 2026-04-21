@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic18",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@pinewood-agency",
+        "title": "Pinewood Marketing Agency"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "816"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

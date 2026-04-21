@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic17",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@northlight-agency",
+        "title": "Northlight Marketing Agency"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "779"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

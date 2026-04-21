@@ -1,0 +1,78 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00+00:00",
+    "mentions": [],
+    "pages": {
+      "about_text": "Cedarpark Dental Clinic has served Austin, TX since 2015. Today we're a team of 14.",
+      "homepage_text": "Cedarpark Dental Clinic is a dental clinic in Austin, TX. Founded 2015. We're a team of 14.",
+      "services": [
+        "General dentistry",
+        "Invisalign",
+        "Teeth whitening",
+        "Pediatric dentistry"
+      ],
+      "tech_stack": [
+        "Squarespace"
+      ]
+    },
+    "reviews": {
+      "count": 117,
+      "rating": 4.3,
+      "source": "reviews_google_places"
+    },
+    "signals": {
+      "copyright_year": 2022,
+      "hiring_page_active": null,
+      "last_blog_post_at": "2026-12-23T00:00:00+00:00",
+      "last_funding_round": null,
+      "linkedin_employee_count": null,
+      "team_size_claim": "team of 14",
+      "tech_vs_claim_mismatches": []
+    },
+    "site": "cedarpark-dental.example",
+    "social": {
+      "follower_counts": {
+        "youtube": 557
+      },
+      "handles": {
+        "instagram": "@cedarparkdental",
+        "youtube": "@cedarpark-dental"
+      }
+    }
+  },
+  "error": null,
+  "provenance": {
+    "reviews_google_places": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "reviews_yelp_fusion": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_meta_extruct": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_text_trafilatura": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "social_counts_youtube": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

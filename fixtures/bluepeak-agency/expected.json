@@ -1,0 +1,79 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00+00:00",
+    "mentions": [],
+    "pages": {
+      "about_text": "Bluepeak Marketing Agency has served Brooklyn, NY since 2013. Today we're a team of 18.",
+      "homepage_text": "Bluepeak Marketing Agency is a marketing agency in Brooklyn, NY. Founded 2013. We're a team of 18.",
+      "services": [
+        "Brand strategy",
+        "Web design",
+        "Paid social",
+        "Content production"
+      ],
+      "tech_stack": [
+        "WordPress",
+        "Elementor"
+      ]
+    },
+    "reviews": {
+      "count": 145,
+      "rating": 4.5,
+      "source": "reviews_google_places"
+    },
+    "signals": {
+      "copyright_year": 2024,
+      "hiring_page_active": null,
+      "last_blog_post_at": "2026-04-04T00:00:00+00:00",
+      "last_funding_round": null,
+      "linkedin_employee_count": null,
+      "team_size_claim": "team of 18",
+      "tech_vs_claim_mismatches": []
+    },
+    "site": "bluepeak-agency.example",
+    "social": {
+      "follower_counts": {
+        "youtube": 705
+      },
+      "handles": {
+        "instagram": "@bluepeakagency",
+        "youtube": "@bluepeak-agency"
+      }
+    }
+  },
+  "error": null,
+  "provenance": {
+    "reviews_google_places": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "reviews_yelp_fusion": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_meta_extruct": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_text_trafilatura": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "social_counts_youtube": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

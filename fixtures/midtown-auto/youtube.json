@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic22",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@midtown-auto",
+        "title": "Midtown Auto Repair"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "964"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

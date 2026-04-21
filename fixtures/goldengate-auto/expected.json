@@ -1,0 +1,78 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00+00:00",
+    "mentions": [],
+    "pages": {
+      "about_text": "Goldengate Auto Repair has served Raleigh, NC since 2017. Today we're a team of 6.",
+      "homepage_text": "Goldengate Auto Repair is a auto repair in Raleigh, NC. Founded 2017. We're a team of 6.",
+      "services": [
+        "Oil changes",
+        "Brake service",
+        "Transmission repair",
+        "State inspections"
+      ],
+      "tech_stack": [
+        "Squarespace"
+      ]
+    },
+    "reviews": {
+      "count": 187,
+      "rating": 4.6,
+      "source": "reviews_google_places"
+    },
+    "signals": {
+      "copyright_year": 2024,
+      "hiring_page_active": null,
+      "last_blog_post_at": "2026-10-16T00:00:00+00:00",
+      "last_funding_round": null,
+      "linkedin_employee_count": null,
+      "team_size_claim": "team of 6",
+      "tech_vs_claim_mismatches": []
+    },
+    "site": "goldengate-auto.example",
+    "social": {
+      "follower_counts": {
+        "youtube": 927
+      },
+      "handles": {
+        "instagram": "@goldengateauto",
+        "youtube": "@goldengate-auto"
+      }
+    }
+  },
+  "error": null,
+  "provenance": {
+    "reviews_google_places": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "reviews_yelp_fusion": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_meta_extruct": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_text_trafilatura": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "social_counts_youtube": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic29",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@ironbell-fitness",
+        "title": "Ironbell Boutique Fitness"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "1223"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

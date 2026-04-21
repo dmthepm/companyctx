@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic09",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@redwood-contractor",
+        "title": "Redwood Home Contractor"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "483"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

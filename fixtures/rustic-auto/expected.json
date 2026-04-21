@@ -1,0 +1,78 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00+00:00",
+    "mentions": [],
+    "pages": {
+      "about_text": "Rustic Auto Repair has served Raleigh, NC since 2023. Today we're a team of 8.",
+      "homepage_text": "Rustic Auto Repair is a auto repair in Raleigh, NC. Founded 2023. We're a team of 8.",
+      "services": [
+        "Oil changes",
+        "Brake service",
+        "Transmission repair",
+        "State inspections"
+      ],
+      "tech_stack": [
+        "Webflow"
+      ]
+    },
+    "reviews": {
+      "count": 201,
+      "rating": 4.7,
+      "source": "reviews_google_places"
+    },
+    "signals": {
+      "copyright_year": 2022,
+      "hiring_page_active": null,
+      "last_blog_post_at": "2026-12-20T00:00:00+00:00",
+      "last_funding_round": null,
+      "linkedin_employee_count": null,
+      "team_size_claim": "team of 8",
+      "tech_vs_claim_mismatches": []
+    },
+    "site": "rustic-auto.example",
+    "social": {
+      "follower_counts": {
+        "youtube": 1001
+      },
+      "handles": {
+        "instagram": "@rusticauto",
+        "youtube": "@rustic-auto"
+      }
+    }
+  },
+  "error": null,
+  "provenance": {
+    "reviews_google_places": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "reviews_yelp_fusion": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_meta_extruct": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_text_trafilatura": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "social_counts_youtube": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "fitness",
+      "title": "Boutique Fitness"
+    }
+  ],
+  "id": "yelp-forge-fitness",
+  "location": {
+    "city": "Seattle",
+    "country": "US",
+    "state": "WA"
+  },
+  "name": "Forge Boutique Fitness",
+  "rating": 4.8,
+  "review_count": 114,
+  "url": "https://yelp.com/biz/yelp-forge-fitness"
+}

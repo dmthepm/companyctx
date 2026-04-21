@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic27",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@forge-fitness",
+        "title": "Forge Boutique Fitness"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "1149"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

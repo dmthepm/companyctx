@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Denver, CO 00000, USA",
+    "name": "Ironworks Home Contractor",
+    "place_id": "ChIJ-synthetic-ironworks-contractor",
+    "rating": 4.2,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 82,
+    "website": "https://ironworks-contractor.example"
+  },
+  "status": "OK"
+}

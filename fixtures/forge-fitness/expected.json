@@ -1,0 +1,78 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00+00:00",
+    "mentions": [],
+    "pages": {
+      "about_text": "Forge Boutique Fitness has served Seattle, WA since 2021. Today we're a team of 12.",
+      "homepage_text": "Forge Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2021. We're a team of 12.",
+      "services": [
+        "Small-group strength",
+        "Private training",
+        "Mobility classes",
+        "Corporate wellness"
+      ],
+      "tech_stack": [
+        "Wix"
+      ]
+    },
+    "reviews": {
+      "count": 229,
+      "rating": 4.8,
+      "source": "reviews_google_places"
+    },
+    "signals": {
+      "copyright_year": 2024,
+      "hiring_page_active": null,
+      "last_blog_post_at": "2026-04-01T00:00:00+00:00",
+      "last_funding_round": null,
+      "linkedin_employee_count": null,
+      "team_size_claim": "team of 12",
+      "tech_vs_claim_mismatches": []
+    },
+    "site": "forge-fitness.example",
+    "social": {
+      "follower_counts": {
+        "youtube": 1149
+      },
+      "handles": {
+        "instagram": "@forgefitness",
+        "youtube": "@forge-fitness"
+      }
+    }
+  },
+  "error": null,
+  "provenance": {
+    "reviews_google_places": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "reviews_yelp_fusion": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_meta_extruct": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_text_trafilatura": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "social_counts_youtube": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

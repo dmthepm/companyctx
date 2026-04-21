@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic28",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@greenfield-fitness",
+        "title": "Greenfield Boutique Fitness"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "1186"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "UCsynthetic10",
+      "kind": "youtube#channel",
+      "snippet": {
+        "customUrl": "@brightsmile-dental",
+        "title": "Brightsmile Dental Clinic"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": false,
+        "subscriberCount": "520"
+      }
+    }
+  ],
+  "kind": "youtube#channelListResponse"
+}

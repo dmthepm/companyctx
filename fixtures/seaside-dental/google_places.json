@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Austin, TX 00000, USA",
+    "name": "Seaside Dental Clinic",
+    "place_id": "ChIJ-synthetic-seaside-dental",
+    "rating": 4.4,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 138,
+    "website": "https://seaside-dental.example"
+  },
+  "status": "OK"
+}

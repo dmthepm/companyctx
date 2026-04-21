@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "agency",
+      "title": "Marketing Agency"
+    }
+  ],
+  "id": "yelp-northlight-agency",
+  "location": {
+    "city": "Brooklyn",
+    "country": "US",
+    "state": "NY"
+  },
+  "name": "Northlight Marketing Agency",
+  "rating": 4.5,
+  "review_count": 79,
+  "url": "https://yelp.com/biz/yelp-northlight-agency"
+}

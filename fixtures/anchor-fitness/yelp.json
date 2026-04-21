@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "fitness",
+      "title": "Boutique Fitness"
+    }
+  ],
+  "id": "yelp-anchor-fitness",
+  "location": {
+    "city": "Seattle",
+    "country": "US",
+    "state": "WA"
+  },
+  "name": "Anchor Boutique Fitness",
+  "rating": 4.8,
+  "review_count": 107,
+  "url": "https://yelp.com/biz/yelp-anchor-fitness"
+}

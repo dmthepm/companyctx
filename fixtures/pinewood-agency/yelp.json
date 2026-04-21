@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "agency",
+      "title": "Marketing Agency"
+    }
+  ],
+  "id": "yelp-pinewood-agency",
+  "location": {
+    "city": "Brooklyn",
+    "country": "US",
+    "state": "NY"
+  },
+  "name": "Pinewood Marketing Agency",
+  "rating": 4.5,
+  "review_count": 83,
+  "url": "https://yelp.com/biz/yelp-pinewood-agency"
+}

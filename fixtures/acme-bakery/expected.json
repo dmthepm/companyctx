@@ -1,0 +1,79 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00+00:00",
+    "mentions": [],
+    "pages": {
+      "about_text": "Acme Bakery has served Portland, OR since 2010. Today we're a team of 3.",
+      "homepage_text": "Acme Bakery is a bakery in Portland, OR. Founded 2010. We're a team of 3.",
+      "services": [
+        "Custom cakes",
+        "Catering",
+        "Wholesale bread",
+        "Pastry boxes"
+      ],
+      "tech_stack": [
+        "WordPress",
+        "Elementor"
+      ]
+    },
+    "reviews": {
+      "count": 40,
+      "rating": 4.0,
+      "source": "reviews_google_places"
+    },
+    "signals": {
+      "copyright_year": 2024,
+      "hiring_page_active": null,
+      "last_blog_post_at": "2026-01-01T00:00:00+00:00",
+      "last_funding_round": null,
+      "linkedin_employee_count": null,
+      "team_size_claim": "team of 3",
+      "tech_vs_claim_mismatches": []
+    },
+    "site": "acme-bakery.example",
+    "social": {
+      "follower_counts": {
+        "youtube": 150
+      },
+      "handles": {
+        "instagram": "@acmebakery",
+        "youtube": "@acme-bakery"
+      }
+    }
+  },
+  "error": null,
+  "provenance": {
+    "reviews_google_places": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "reviews_yelp_fusion": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_meta_extruct": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "site_text_trafilatura": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    },
+    "social_counts_youtube": {
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

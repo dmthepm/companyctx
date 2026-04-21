@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Seattle, WA 00000, USA",
+    "name": "Ironbell Boutique Fitness",
+    "place_id": "ChIJ-synthetic-ironbell-fitness",
+    "rating": 4.9,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 243,
+    "website": "https://ironbell-fitness.example"
+  },
+  "status": "OK"
+}

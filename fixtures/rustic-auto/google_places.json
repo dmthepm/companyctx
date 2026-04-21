@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, Raleigh, NC 00000, USA",
+    "name": "Rustic Auto Repair",
+    "place_id": "ChIJ-synthetic-rustic-auto",
+    "rating": 4.7,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 201,
+    "website": "https://rustic-auto.example"
+  },
+  "status": "OK"
+}

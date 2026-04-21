@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "auto",
+      "title": "Auto Repair"
+    }
+  ],
+  "id": "yelp-goldengate-auto",
+  "location": {
+    "city": "Raleigh",
+    "country": "US",
+    "state": "NC"
+  },
+  "name": "Goldengate Auto Repair",
+  "rating": 4.6,
+  "review_count": 93,
+  "url": "https://yelp.com/biz/yelp-goldengate-auto"
+}

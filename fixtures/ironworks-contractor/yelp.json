@@ -1,0 +1,18 @@
+{
+  "categories": [
+    {
+      "alias": "contractor",
+      "title": "Home Contractor"
+    }
+  ],
+  "id": "yelp-ironworks-contractor",
+  "location": {
+    "city": "Denver",
+    "country": "US",
+    "state": "CO"
+  },
+  "name": "Ironworks Home Contractor",
+  "rating": 4.2,
+  "review_count": 41,
+  "url": "https://yelp.com/biz/yelp-ironworks-contractor"
+}
