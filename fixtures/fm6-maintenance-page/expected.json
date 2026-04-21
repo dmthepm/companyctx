@@ -1,0 +1,28 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
+    "pages": {
+      "about_text": null,
+      "homepage_text": "We'll be back soon.",
+      "services": [],
+      "tech_stack": []
+    },
+    "reviews": null,
+    "signals": null,
+    "site": "fm6-maintenance-page.example",
+    "social": null
+  },
+  "error": null,
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

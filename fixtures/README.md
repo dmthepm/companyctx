@@ -72,8 +72,29 @@ one explicit "no stack markers" case, across three distinct niches:
 
 Five is the smallest set that touches every stack branch *and* the
 empty-`tech_stack` branch, so a regression in any of them breaks at
-least one regression case. Scaling the regression suite past five is v0.2
-scope.
+least one regression case.
+
+### Failure-shape regressions — the durability two
+
+The 2026-04-21 100-site durability run against Joel's D100 seed list
+(see `durability-report-2026-04-21.md`) surfaced two HTML-capturable
+FM-6 shapes that sit outside the synthetic-corpus taxonomy:
+
+| Slug                       | Failure mode             | What it guards against                                                 |
+| -------------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| `fm6-js-redirect-root`     | JS redirect to subpath   | Extractor hallucinating content from an empty `<head>`-only response.  |
+| `fm6-maintenance-page`     | "Temporarily unavailable"| Extractor inventing text when the body carries only a maintenance notice. |
+
+Both envelope outputs are `status: ok` with empty-or-near-empty
+`homepage_text` — the correct shape when a fetch succeeds but the
+response has no extractable content. These fixtures carry only
+`homepage.html` + `expected.json` (no about/services/provider JSON), so
+they bypass the 30-synthetic-dirs invariant; the test suite filters
+them via `FAILURE_FIXTURE_SLUGS` in `tests/test_fixtures_corpus.py` and
+includes them in the byte-diff regression suite via
+`tests/test_regression_corpus.py`.
+
+Scaling the regression suite past these seven is v0.2 scope.
 
 ## Determinism rule
 
