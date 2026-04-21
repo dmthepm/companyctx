@@ -1,10 +1,10 @@
 {
   "data": {
-    "fetched_at": "2026-04-20T00:00:00+00:00",
+    "fetched_at": "2026-04-20T00:00:00Z",
     "mentions": [],
     "pages": {
-      "about_text": "Brightsmile Dental Clinic has served Austin, TX since 2012. Today we're a team of 13.",
-      "homepage_text": "Brightsmile Dental Clinic is a dental clinic in Austin, TX. Founded 2012. We're a team of 13.",
+      "about_text": "Brightsmile Dental Clinic has served Austin, TX since 2012. Today we're a team of 13.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-11-21.",
+      "homepage_text": "Brightsmile Dental Clinic is a dental clinic in Austin, TX. Founded 2012. We're a team of 13.\nWhat we do\n- General dentistry\n- Invisalign\n- Teeth whitening\n- Pediatric dentistry\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nBrightsmile Dental Clinic is a dental clinic in Austin, TX. Founded 2012. We're a team of 13.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
       "services": [
         "General dentistry",
         "Invisalign",
@@ -16,58 +16,15 @@
         "Elementor"
       ]
     },
-    "reviews": {
-      "count": 110,
-      "rating": 4.3,
-      "source": "reviews_google_places"
-    },
-    "signals": {
-      "copyright_year": 2023,
-      "hiring_page_active": null,
-      "last_blog_post_at": "2026-11-21T00:00:00+00:00",
-      "last_funding_round": null,
-      "linkedin_employee_count": null,
-      "team_size_claim": "team of 13",
-      "tech_vs_claim_mismatches": []
-    },
+    "reviews": null,
+    "signals": null,
     "site": "brightsmile-dental.example",
-    "social": {
-      "follower_counts": {
-        "youtube": 520
-      },
-      "handles": {
-        "instagram": "@brightsmiledental",
-        "youtube": "@brightsmile-dental"
-      }
-    }
+    "social": null
   },
   "error": null,
   "provenance": {
-    "reviews_google_places": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "reviews_yelp_fusion": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "site_meta_extruct": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
     "site_text_trafilatura": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "social_counts_youtube": {
+      "cost_incurred": 0,
       "error": null,
       "latency_ms": 0,
       "provider_version": "0.1.0",

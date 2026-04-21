@@ -31,6 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   envelope can surface per-provider spend.
 - `trafilatura` moved from the `[extract]` extra into core dependencies —
   zero-key text extraction is now the default install path.
+- **Golden-corpus validation** (`tests/test_golden_corpus.py`). Five fixtures
+  — `acme-bakery`, `coastal-fitness`, `midtown-auto`,
+  `mapleridge-contractor`, `oakleaf-bakery` — are pinned as a byte-diff
+  regression suite. Together they touch every detectable tech-stack branch
+  plus the empty-`tech_stack` (no-markers) case across three niches. The
+  rationale + stack/niche coverage table lives in `fixtures/README.md`.
+- **`scripts/build-fixtures.py` now generates `expected.json` by running the
+  orchestrator** against the just-written HTML, so the committed fixtures
+  stay in lockstep with `companyctx.core.run` — no second source of truth
+  to drift. All 30 `expected.json` files regenerated to the M2 shape
+  (raw observations in `pages`; non-`pages` slots null until their
+  providers land).
 
 ### Notes / follow-ups
 

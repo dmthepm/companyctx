@@ -195,7 +195,10 @@ def test_brief_mode_extracts_front_matter(builder, tmp_path: Path) -> None:
     assert site_dir.is_dir()
     expected = json.loads((site_dir / "expected.json").read_text())
     assert expected["data"]["site"] == "real-biz.test"
-    assert expected["data"]["signals"]["team_size_claim"] == "team of 11"
+    # Brief's ``team_claim`` flows through the synthetic HTML into the
+    # orchestrator-generated ``pages.homepage_text`` — which is where the
+    # raw-observations-only M2 envelope surfaces that fact.
+    assert "team of 11" in expected["data"]["pages"]["homepage_text"]
 
 
 def test_brief_mode_fills_missing_fields_from_synthetic(builder, tmp_path: Path) -> None:

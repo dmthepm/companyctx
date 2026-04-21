@@ -1,10 +1,10 @@
 {
   "data": {
-    "fetched_at": "2026-04-20T00:00:00+00:00",
+    "fetched_at": "2026-04-20T00:00:00Z",
     "mentions": [],
     "pages": {
-      "about_text": "Hilltop Home Contractor has served Denver, CO since 2011. Today we're a team of 8.",
-      "homepage_text": "Hilltop Home Contractor is a home contractor in Denver, CO. Founded 2011. We're a team of 8.",
+      "about_text": "Hilltop Home Contractor has served Denver, CO since 2011. Today we're a team of 8.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-06-11.",
+      "homepage_text": "Hilltop Home Contractor is a home contractor in Denver, CO. Founded 2011. We're a team of 8.\nWhat we do\n- Kitchen remodels\n- Bathroom remodels\n- Additions\n- Deck & patio\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nHilltop Home Contractor is a home contractor in Denver, CO. Founded 2011. We're a team of 8.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
       "services": [
         "Kitchen remodels",
         "Bathroom remodels",
@@ -16,58 +16,15 @@
         "Elementor"
       ]
     },
-    "reviews": {
-      "count": 75,
-      "rating": 4.2,
-      "source": "reviews_google_places"
-    },
-    "signals": {
-      "copyright_year": 2022,
-      "hiring_page_active": null,
-      "last_blog_post_at": "2026-06-11T00:00:00+00:00",
-      "last_funding_round": null,
-      "linkedin_employee_count": null,
-      "team_size_claim": "team of 8",
-      "tech_vs_claim_mismatches": []
-    },
+    "reviews": null,
+    "signals": null,
     "site": "hilltop-contractor.example",
-    "social": {
-      "follower_counts": {
-        "youtube": 335
-      },
-      "handles": {
-        "instagram": "@hilltopcontractor",
-        "youtube": "@hilltop-contractor"
-      }
-    }
+    "social": null
   },
   "error": null,
   "provenance": {
-    "reviews_google_places": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "reviews_yelp_fusion": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "site_meta_extruct": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
     "site_text_trafilatura": {
-      "error": null,
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "ok"
-    },
-    "social_counts_youtube": {
+      "cost_incurred": 0,
       "error": null,
       "latency_ms": 0,
       "provider_version": "0.1.0",
