@@ -27,7 +27,7 @@ Backing that, the day-one zero-key providers:
 | `signals_site_heuristic`  | Copyright year, last blog post date, team-size claim, tech-stack fingerprint |
 
 No key required for any of these. They are the `pipx install companyctx &&
-companyctx acme-bakery.com` experience.
+companyctx fetch acme-bakery.com` experience.
 
 ## The honest coverage matrix
 

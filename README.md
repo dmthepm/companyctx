@@ -4,7 +4,7 @@
 
 ```bash
 pipx install --pip-args="--pre" companyctx   # v0.1.0.dev0 on PyPI — CLI is still stubs (see Status)
-companyctx acme-bakery.com --json
+companyctx fetch acme-bakery.com --json
 ```
 
 ```json
@@ -119,14 +119,14 @@ marketing.
 ## Brains-and-muscles pipe
 
 ```bash
-companyctx acme-bakery.com --json \
+companyctx fetch acme-bakery.com --json \
   | jq '.data | {site, signals, reviews}' \
   | claude -p "write a 6-section outreach brief from this context"
 ```
 
 ```python
 import json, subprocess
-ctx = json.loads(subprocess.check_output(["companyctx", "acme-bakery.com", "--json"]))
+ctx = json.loads(subprocess.check_output(["companyctx", "fetch", "acme-bakery.com", "--json"]))
 if ctx["status"] == "partial":
     print(f"heads up: {ctx['error']} — {ctx['suggestion']}")
 brief = synthesize(ctx["data"])   # your synthesis call, your prompts, your weights
