@@ -54,6 +54,7 @@ coverage.xml
 *.log
 out/
 .companyctx-cache/
+.competitor-state-*.json
 
 # Local secrets
 .env.local
