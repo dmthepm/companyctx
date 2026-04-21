@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   contract, M1 stealth-fetcher spike deliverables.
 - `docs/PROVIDERS.md` — day-one provider table with cost hints,
   `SmartProxyProvider` interface shape, write-your-own-provider guide.
+- In-repo `decisions/` folder with the two load-bearing ADRs:
+  `2026-04-20-name-change-to-companyctx.md` (accepted) and
+  `2026-04-20-zero-key-stealth-strategy.md` (proposed — library choice
+  pending an M1 spike). Walks-the-walk artifact for the OSS audience.
 
 ### Changed
 
