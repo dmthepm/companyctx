@@ -106,15 +106,16 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full picture and
 
 | Site class | Zero-key outcome |
 |---|---|
-| Small-biz WordPress / Squarespace / Wix / Webflow / agency custom | Full payload. Expected `status: "ok"` on the majority of prospects in this segment.* |
-| Cloudflare Turnstile / DataDome / Akamai / PerimeterX | Often blocked. Returns `status: "partial"` with actionable `suggestion`. |
+| Small-biz WordPress / Squarespace / Wix / Webflow / agency custom | Full payload. Measured **20/20 `status: "ok"`** on a 20-site probe across eight ICP niches at the latest Chrome fingerprint.* |
+| Cloudflare Turnstile / DataDome / Akamai / PerimeterX | Clear at a fresh fingerprint; flips to `blocked_by_antibot (HTTP 403)` as the pinned fingerprint ages. Returns `status: "partial"` with actionable `suggestion`. |
 | JS-heavy SPAs needing a real browser | HTML shell only. Render-dependent fields come back null. Configure a smart-proxy provider to fill the gap. |
 | Aggregator pages (Yelp / Houzz / G2 / Birdeye) | Not the target — use the direct-API providers (`reviews_google_places`, `reviews_yelp_fusion`) instead. |
 
-\* Exact coverage number lands in
-[`docs/ZERO-KEY.md`](docs/ZERO-KEY.md) after the M1 stealth-fetcher spike
-against the 30-prospect fixtures corpus. Numbers come from measurement, not
-marketing.
+\* Stealth fetcher: `curl_cffi` pinned to `impersonate="chrome146"`. Spike
+method, raw JSONL, and stale-fingerprint decay analysis in
+[`docs/ZERO-KEY.md`](docs/ZERO-KEY.md) +
+[`research/2026-04-21-tls-impersonation-spike.md`](research/2026-04-21-tls-impersonation-spike.md).
+Numbers come from measurement, not marketing.
 
 ## Brains-and-muscles pipe
 

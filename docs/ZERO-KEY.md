@@ -10,11 +10,14 @@ trust faster than an install bug.
 
 ## What zero-key covers
 
-**The stealth fetcher.** A TLS + HTTP/2 fingerprint impersonation HTTP client
-(browser-identity class — the specific library lands in
+**The stealth fetcher.** `curl_cffi` pinned to `impersonate="chrome146"` —
+Python bindings over libcurl-impersonate, MIT-licensed. It mimics a current
+Chrome's TLS ClientHello (JA3/JA4), HTTP/2 SETTINGS frame, and header order,
+clearing the passive fingerprint check most basic anti-bot layers start
+with. The pick is documented in
 [`decisions/2026-04-20-zero-key-stealth-strategy.md`](../decisions/2026-04-20-zero-key-stealth-strategy.md)
-after the M1 spike). It clears the passive TLS/HTTP-signature check most
-basic anti-bot layers start with.
+and the measurement is in
+[`research/2026-04-21-tls-impersonation-spike.md`](../research/2026-04-21-tls-impersonation-spike.md).
 
 Backing that, the day-one zero-key providers:
 
@@ -31,17 +34,24 @@ companyctx fetch acme-bakery.com` experience.
 
 ## The honest coverage matrix
 
-| Site class | Zero-key expected outcome |
+| Site class | Zero-key measured outcome |
 |---|---|
-| **Small-biz WordPress / Squarespace / Wix / Webflow / small-agency custom** | Full payload on the homepage. This is the sweet spot — the TLS-impersonation fetcher clears the passive checks, and most small-biz stacks don't run aggressive anti-bot. Expected `status: "ok"` on ~85–95% of prospects in this segment.* |
-| **Sites behind Cloudflare Turnstile, DataDome, Akamai, or PerimeterX** | Often blocked on zero-key. Returns `status: "partial"` with `error: "blocked_by_antibot"` and `suggestion: "configure a smart-proxy provider key or skip this prospect"`. The payload will contain whatever *did* succeed (e.g. `extruct` on a cached preview) — not a crash. |
-| **JS-heavy SPAs that need a real browser** | Zero-key fetcher returns the HTML shell only. The schema fields that need rendered content (often `pages.about_text`, some JSON-LD) come back null. `status: "partial"`; configure a smart-proxy + headless-browser provider to fill the gap. |
+| **Small-biz WordPress / Squarespace / Wix / Webflow / small-agency custom** | Full payload on the homepage. The TLS-impersonation fetcher clears the passive checks, and most small-biz stacks don't run aggressive anti-bot. The M1 spike measured **20/20 `status: "ok"`** on a 20-site probe across eight ICP niches (bariatric, biz-immigration, cosmetic-dentistry, fertility, HNW-divorce, real-estate-lending, orthopedics, plastic-surgery) at the latest native Chrome fingerprint.\* |
+| **Sites behind Cloudflare Turnstile, DataDome, Akamai, or PerimeterX** | Often blocked on zero-key when the pinned fingerprint is stale. Returns `status: "partial"` with `error: "blocked_by_antibot"` and `suggestion: "configure a smart-proxy provider key or skip this prospect"`. The payload contains whatever *did* succeed (e.g. `extruct` on a cached preview) — not a crash. |
+| **JS-heavy SPAs that need a real browser** | Zero-key fetcher returns the HTML shell only. Schema fields that need rendered content (often `pages.about_text`, some JSON-LD) come back null. `status: "partial"`; configure a smart-proxy + headless-browser provider to fill the gap. |
 | **Aggregator pages (Yelp / Houzz / G2 / Birdeye)** | Zero-key will not get these — ToS + anti-bot posture make them a bad target. The right path is the `reviews_google_places` / `reviews_yelp_fusion` **direct-API** providers (user-keyed) under Attempt 3 of the Deterministic Waterfall. README must not imply otherwise. |
 
-\* The 85–95% number will be measured against the 30-prospect fixtures
-corpus during the M1 stealth-fetcher spike, not estimated. If measurement
-comes in lower, this doc updates and the README headline numbers update with
-it. Honesty before hype.
+\* Measurement method, raw per-request JSONL, and hostile-cluster analysis
+are in
+[`research/2026-04-21-tls-impersonation-spike.md`](../research/2026-04-21-tls-impersonation-spike.md)
+(slug-only; the URL→slug mapping is gitignored per the sanitization
+contract). **Decay mode.** The real failure mode is fingerprint freshness,
+not library identity. A 6-month-stale `chrome131` pin flipped three
+Cloudflare-fronted slugs from 200→403 in the same probe run. Mitigation:
+we bump the `impersonate=` target with each `curl_cffi` release, and the
+`SmartProxyProvider` interface stays the long-term escape hatch when
+fingerprint impersonation eventually hits a ceiling. The full 30-prospect
+fixtures measurement remains deliberate future work.
 
 ## The graceful-partial contract
 
@@ -131,17 +141,26 @@ move on, don't bend the tool.
   Some homepages just don't have a team-size claim, a copyright footer,
   or recent blog posts — those stay null without it being a failure.
 
-## M1 spike deliverables
+## M1 spike — completed
 
-Before any README claims a specific zero-key success rate, the stealth
-fetcher gets measured:
+The TLS-impersonation library spike ran on 2026-04-21 against a 20-site
+probe drawn from eight ICP niches. Outcome:
 
-- Run the candidate TLS-impersonation library against the 30-prospect
-  fixtures corpus.
-- Record `status: "ok"` vs `status: "partial"` distribution.
-- Publish the measured number in this doc + the README hero block.
-- The specific library choice + the evaluation lives in
-  [`decisions/2026-04-20-zero-key-stealth-strategy.md`](../decisions/2026-04-20-zero-key-stealth-strategy.md).
+- Library pick: **`curl_cffi` at `impersonate="chrome146"`**.
+- At the latest native Chrome fingerprint: **20/20** `status: "ok"`.
+- At a 6-month-stale `chrome131` fingerprint: 3 slugs flipped to
+  `blocked_by_antibot (HTTP 403)` — the fingerprint-freshness decay
+  signal.
+- `rnet` was disqualified by GPL-3.0 license; `primp` lost on silent
+  fallback to a random fingerprint when an impersonation name was
+  misspelled (a determinism hazard). See the research doc for the
+  full matrix.
 
-If measurement disappoints, the honesty stance is to update the coverage
-matrix and rewrite the README hero — not to stretch the number.
+Full method, raw JSONL evidence, and rationale:
+[`research/2026-04-21-tls-impersonation-spike.md`](../research/2026-04-21-tls-impersonation-spike.md).
+ADR promotion:
+[`decisions/2026-04-20-zero-key-stealth-strategy.md`](../decisions/2026-04-20-zero-key-stealth-strategy.md)
+is now `status: accepted`.
+
+The 30-prospect fixtures corpus measurement remains future work; the
+20-site spike is the number the README hero cites today.

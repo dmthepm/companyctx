@@ -4,13 +4,13 @@ Attempt 1 of the Deterministic Waterfall. Given a site (or a fixture slug),
 fetch the homepage / about / services pages and populate ``SiteSignals`` with
 raw observations only — no inference.
 
-**Stealth-lib status.** Issue #15's acceptance requires the TLS-impersonation
-library choice be measured against the 30-prospect corpus before landing. That
-spike is a scope gap for this PR (no network access from the agent sandbox).
-The real-network path here uses ``requests`` with a realistic Chrome
-User-Agent so the graceful-partial contract is exercisable end-to-end. Swap in
-``curl_cffi`` behind :func:`_stealth_fetch` once the spike is done.
-The placeholder still respects ``robots.txt`` by default.
+**Stealth-lib pick.** The real-network path uses ``curl_cffi`` pinned to
+``impersonate="chrome146"``. The pick is measured in
+``research/2026-04-21-tls-impersonation-spike.md`` and accepted in
+``decisions/2026-04-20-zero-key-stealth-strategy.md``. The API shape is
+drop-in compatible with the stdlib-style ``requests.get`` the provider
+already expected, so the swap is contained to this module. ``robots.txt``
+is still respected by default.
 
 The ``--mock`` path is what the tests in this PR exercise; it reads
 ``fixtures/<slug>/{homepage,about,services}.html`` and returns deterministic
@@ -25,14 +25,20 @@ from pathlib import Path
 from typing import ClassVar, Literal
 from urllib.parse import urlparse
 
-import requests
 from bs4 import BeautifulSoup
+from curl_cffi import requests
 
 from companyctx.providers.base import FetchContext
 from companyctx.robots import is_allowed
 from companyctx.schema import ProviderRunMetadata, SiteSignals
 
 _VERSION = "0.1.0"
+# curl_cffi types ``impersonate`` as a ``Literal`` of supported browser names.
+# Keeping this as a Literal (rather than plain ``str``) threads through mypy
+# strict without loosening the call-site signature. Bump with each curl_cffi
+# release — fingerprint freshness is the real decay mode; see
+# research/2026-04-21-tls-impersonation-spike.md.
+_IMPERSONATE: Literal["chrome146"] = "chrome146"
 _SAFE_FIXTURE_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
 
@@ -145,14 +151,18 @@ def _from_network(site: str, ctx: FetchContext) -> SiteSignals:
 def _stealth_fetch(url: str, ctx: FetchContext) -> str:
     if not ctx.ignore_robots and not is_allowed(url, user_agent=ctx.user_agent):
         raise _BlockedError("blocked_by_robots")
+    # curl_cffi's ``impersonate`` sets the TLS ClientHello + HTTP/2 SETTINGS
+    # frame + header order. Passing a custom User-Agent here would desynchronise
+    # the presented UA from the impersonated fingerprint (cheap anti-bot tell),
+    # so we deliberately don't override it.
     try:
         resp = requests.get(
             url,
-            headers={"User-Agent": ctx.user_agent, "Accept": "text/html,*/*;q=0.8"},
+            impersonate=_IMPERSONATE,
             timeout=ctx.timeout_s,
             allow_redirects=True,
         )
-    except requests.RequestException as exc:
+    except requests.RequestsError as exc:
         raise _BlockedError(f"network error: {exc.__class__.__name__}") from exc
     if resp.status_code in (401, 403):
         raise _BlockedError(f"blocked_by_antibot (HTTP {resp.status_code})")
