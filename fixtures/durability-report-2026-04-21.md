@@ -75,9 +75,10 @@ issue `#22` kickoff comment.
   `FM7_THIN_BYTES` threshold is 1024 — extracted `homepage_text` below
   1 KB is flagged as FM-7 per the register's "thin-but-extracted"
   definition.
-- **Privacy.** Per-site hosts and envelopes live only in
-  `.context/durability/` (gitignored). The committed raw JSONL carries
-  slugs, not hosts. Joel's raw prospect list never touches this repo.
+- **Privacy.** Per-site hosts, slugs, and per-run envelopes live only
+  in `.context/durability/` (gitignored). The committed raw JSONL
+  carries niche + envelope stats only — no per-site identifier of any
+  kind. Joel's raw prospect list never touches this repo.
 - **Vertical skew — acknowledged.** The sample is **100%
   medical/aesthetic SMBs**. RISK-REGISTER was mined from gutter /
   roofing / IV-therapy transcripts. FM codes are site-shape-driven
@@ -256,9 +257,11 @@ refinements — needs vertical-diverse replication").
 The register's FM-7 description ("One-page / brochureware /
 relationship-driven B2B site … Providers that succeed at their
 extractor job return `ok` — the fetch worked; the site just has
-nothing to extract") is **confirmed at 21%** in this cohort. No
-register edit needed — the register already captures the shape; it
-just hadn't attached a frequency to it.
+nothing to extract") is **dominant in this cohort; 21% of
+`status: ok` rows fall below the 1024-byte classifier threshold**
+(14% at 768 B, 27% at 1536 B — see the sensitivity table above). No
+register edit needed — the register already captures the shape; this
+run adds an observed frequency that is, necessarily, threshold-indexed.
 
 ## Committed-fixture promotions
 
@@ -305,7 +308,7 @@ byte-diff.
 - [x] FM histogram produced and tied to the register — every observed
       mode maps to a register row with matching semantics.
 - [x] Failure details described — all three FM-13 sites enumerated by
-      slug + latency; no per-host naming.
+      niche + observed latency; no per-host or per-slug naming.
 - [x] ≥ 2 HTML-capturable fixtures committed (`fm7-js-redirect-root`,
       `fm7-maintenance-page`).
 - [x] No PII committed; fixtures contain only generic HTML.
