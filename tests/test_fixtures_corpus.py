@@ -39,9 +39,7 @@ REAL_EMAIL_RE = re.compile(
     r"(?i)[A-Za-z0-9._%+-]+@(?!example\.test\b|example\.com\b|schema\.org\b)"
     r"[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
 )
-REAL_PHONE_RE = re.compile(
-    r"(?:\+?1[\s\-.]?)?\(?(?!555\))\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}"
-)
+REAL_PHONE_RE = re.compile(r"(?:\+?1[\s\-.]?)?\(?(?!555\))\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}")
 
 
 @pytest.fixture(scope="module")
@@ -200,14 +198,10 @@ def test_brief_mode_extracts_front_matter(builder, tmp_path: Path) -> None:
     assert expected["data"]["signals"]["team_size_claim"] == "team of 11"
 
 
-def test_brief_mode_fills_missing_fields_from_synthetic(
-    builder, tmp_path: Path
-) -> None:
+def test_brief_mode_fills_missing_fields_from_synthetic(builder, tmp_path: Path) -> None:
     briefs = tmp_path / "briefs"
     briefs.mkdir()
-    (briefs / "01.md").write_text(
-        "---\nsite: minimal.test\n---\nbody\n", encoding="utf-8"
-    )
+    (briefs / "01.md").write_text("---\nsite: minimal.test\n---\nbody\n", encoding="utf-8")
     out = tmp_path / "out"
     rc = builder.main(["--source", str(briefs), "--out", str(out)])
     assert rc == 0

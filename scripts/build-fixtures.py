@@ -69,9 +69,7 @@ CORPUS_TARGET_SIZE = 30
 # ---------------------------------------------------------------------------
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-PHONE_RE = re.compile(
-    r"(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}"
-)
+PHONE_RE = re.compile(r"(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}")
 # Masks person names that appear in a person-signalling context
 # ("contact: Jane Doe", "— Founder Jane Doe"). Deliberately narrow to avoid
 # nuking business names that happen to read like "First Last".
@@ -315,9 +313,7 @@ def _pinned_blog_date(idx: int) -> str:
 
 
 def render_homepage(p: Prospect) -> str:
-    services_li = "\n".join(
-        f'      <li>{svc}</li>' for svc in p.niche.services
-    )
+    services_li = "\n".join(f"      <li>{svc}</li>" for svc in p.niche.services)
     sameas = json.dumps(
         [
             f"https://instagram.com/{p.ig_handle.lstrip('@')}",
@@ -391,8 +387,7 @@ def render_about(p: Prospect) -> str:
 
 def render_services(p: Prospect) -> str:
     items = "\n".join(
-        f"  <li><strong>{svc}.</strong> {_service_blurb(svc, p)}</li>"
-        for svc in p.niche.services
+        f"  <li><strong>{svc}.</strong> {_service_blurb(svc, p)}</li>" for svc in p.niche.services
     )
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -422,9 +417,7 @@ def render_google_places(p: Prospect) -> dict[str, object]:
             "name": p.name,
             "user_ratings_total": p.review_count,
             "rating": p.review_rating,
-            "formatted_address": (
-                f"100 Main St, {p.niche.city}, {p.niche.region} 00000, USA"
-            ),
+            "formatted_address": (f"100 Main St, {p.niche.city}, {p.niche.region} 00000, USA"),
             "website": f"https://{p.site}",
             "types": ["establishment", "point_of_interest"],
         },
@@ -556,9 +549,7 @@ FRONT_MATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 SECTION_RE = re.compile(r"(?m)^##\s+(?P<title>.+?)\s*$")
 
 
-def extract_prospect_from_brief(
-    brief_path: Path, synthetic_fallback: Prospect
-) -> Prospect:
+def extract_prospect_from_brief(brief_path: Path, synthetic_fallback: Prospect) -> Prospect:
     """Extract a Prospect from a research-brief.md file.
 
     The brief is expected to carry YAML-ish front-matter; missing keys fall
@@ -598,25 +589,16 @@ def extract_prospect_from_brief(
         stack=stack,
         founded=int(front.get("founded") or synthetic_fallback.founded),
         team_claim=front.get("team_claim") or synthetic_fallback.team_claim,
-        copyright_year=int(
-            front.get("copyright_year") or synthetic_fallback.copyright_year
-        ),
+        copyright_year=int(front.get("copyright_year") or synthetic_fallback.copyright_year),
         last_blog_at=front.get("last_blog_at") or synthetic_fallback.last_blog_at,
-        google_place_id=front.get("google_place_id")
-        or synthetic_fallback.google_place_id,
-        yelp_business_id=front.get("yelp_business_id")
-        or synthetic_fallback.yelp_business_id,
-        youtube_channel_id=front.get("youtube_channel_id")
-        or synthetic_fallback.youtube_channel_id,
+        google_place_id=front.get("google_place_id") or synthetic_fallback.google_place_id,
+        yelp_business_id=front.get("yelp_business_id") or synthetic_fallback.yelp_business_id,
+        youtube_channel_id=front.get("youtube_channel_id") or synthetic_fallback.youtube_channel_id,
         review_count=int(front.get("review_count") or synthetic_fallback.review_count),
-        review_rating=float(
-            front.get("review_rating") or synthetic_fallback.review_rating
-        ),
+        review_rating=float(front.get("review_rating") or synthetic_fallback.review_rating),
         ig_handle=front.get("ig_handle") or synthetic_fallback.ig_handle,
         yt_handle=front.get("yt_handle") or synthetic_fallback.yt_handle,
-        yt_subscribers=int(
-            front.get("yt_subscribers") or synthetic_fallback.yt_subscribers
-        ),
+        yt_subscribers=int(front.get("yt_subscribers") or synthetic_fallback.yt_subscribers),
     )
 
 
@@ -643,23 +625,15 @@ def load_prospects_from_briefs(source: Path) -> list[Prospect]:
 
 
 def write_json(path: Path, payload: object) -> None:
-    path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def write_prospect(p: Prospect, out_root: Path) -> None:
     site_dir = out_root / p.slug
     site_dir.mkdir(parents=True, exist_ok=True)
-    (site_dir / "homepage.html").write_text(
-        sanitize_text(render_homepage(p)), encoding="utf-8"
-    )
-    (site_dir / "about.html").write_text(
-        sanitize_text(render_about(p)), encoding="utf-8"
-    )
-    (site_dir / "services.html").write_text(
-        sanitize_text(render_services(p)), encoding="utf-8"
-    )
+    (site_dir / "homepage.html").write_text(sanitize_text(render_homepage(p)), encoding="utf-8")
+    (site_dir / "about.html").write_text(sanitize_text(render_about(p)), encoding="utf-8")
+    (site_dir / "services.html").write_text(sanitize_text(render_services(p)), encoding="utf-8")
     write_json(site_dir / "google_places.json", render_google_places(p))
     write_json(site_dir / "yelp.json", render_yelp(p))
     write_json(site_dir / "youtube.json", render_youtube(p))
