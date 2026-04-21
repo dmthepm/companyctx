@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 EnvelopeStatus = Literal["ok", "partial", "degraded"]
 ProviderStatus = Literal["ok", "degraded", "failed", "not_configured"]
@@ -113,7 +113,7 @@ class CompanyContext(BaseModel):
     reviews: ReviewsSignals | None = None
     social: SocialSignals | None = None
     signals: HeuristicSignals | None = None
-    mentions: list[MediaMention] = Field(default_factory=list)
+    mentions: MentionsSignals | None = None
 
 
 class Envelope(BaseModel):
@@ -126,6 +126,18 @@ class Envelope(BaseModel):
     provenance: dict[str, ProviderRunMetadata] = Field(default_factory=dict)
     error: str | None = None
     suggestion: str | None = None
+
+    @model_validator(mode="after")
+    def validate_status_fields(self) -> Envelope:
+        """Keep the top-level narrative honest and machine-checkable."""
+        if self.status == "ok":
+            if self.error is not None or self.suggestion is not None:
+                raise ValueError('status="ok" must not include error or suggestion')
+            return self
+
+        if self.error is None or self.suggestion is None:
+            raise ValueError('status!="ok" requires both error and suggestion')
+        return self
 
 
 __all__ = [

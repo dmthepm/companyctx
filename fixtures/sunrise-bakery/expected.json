@@ -1,7 +1,7 @@
 {
   "data": {
     "fetched_at": "2026-04-20T00:00:00Z",
-    "mentions": [],
+    "mentions": null,
     "pages": {
       "about_text": "Sunrise Bakery has served Portland, OR since 2016. Today we're a team of 5.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-03-05.",
       "homepage_text": "Sunrise Bakery is a bakery in Portland, OR. Founded 2016. We're a team of 5.\nWhat we do\n- Custom cakes\n- Catering\n- Wholesale bread\n- Pastry boxes\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nSunrise Bakery is a bakery in Portland, OR. Founded 2016. We're a team of 5.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",

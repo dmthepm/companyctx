@@ -1,7 +1,7 @@
 {
   "data": {
     "fetched_at": "2026-04-20T00:00:00Z",
-    "mentions": [],
+    "mentions": null,
     "pages": {
       "about_text": "Rustic Auto Repair has served Raleigh, NC since 2023. Today we're a team of 8.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-12-20.",
       "homepage_text": "Rustic Auto Repair is a auto repair in Raleigh, NC. Founded 2023. We're a team of 8.\nWhat we do\n- Oil changes\n- Brake service\n- Transmission repair\n- State inspections\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nRustic Auto Repair is a auto repair in Raleigh, NC. Founded 2023. We're a team of 8.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",

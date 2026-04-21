@@ -11,12 +11,12 @@ only Attempt 1 (zero-key stealth); Attempts 2 & 3 are lined up for follow-ups.
 
 from __future__ import annotations
 
-import inspect
 import time
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 
+from companyctx import __version__
 from companyctx.providers import discover
 from companyctx.providers.base import FetchContext, ProviderBase
 from companyctx.schema import (
@@ -25,6 +25,7 @@ from companyctx.schema import (
     EnvelopeStatus,
     HeuristicSignals,
     MediaMention,
+    MentionsSignals,
     ProviderRunMetadata,
     ReviewsSignals,
     SiteSignals,
@@ -36,6 +37,10 @@ DEFAULT_USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"
 )
 DEFAULT_TIMEOUT_S = 10.0
+CORE_PROVIDER_VERSION = __version__
+DISCOVERY_PROVIDER_SLUG = "_provider_discovery"
+ORCHESTRATOR_PROVIDER_SLUG = "_orchestrator"
+GENERIC_SUGGESTION = "configure a smart-proxy provider key or skip this prospect"
 
 
 def run(
@@ -64,38 +69,56 @@ def run(
         fixtures_dir=str(fixtures_dir) if fixtures_dir is not None else None,
     )
 
-    registry = providers if providers is not None else discover()
-
     when = fetched_at if fetched_at is not None else datetime.now(timezone.utc)
+    try:
+        registry = providers if providers is not None else discover()
+    except Exception as exc:  # noqa: BLE001 - deliberate boundary
+        return _fallback_envelope(
+            site=site,
+            when=when,
+            provenance={
+                DISCOVERY_PROVIDER_SLUG: _failed_metadata(
+                    error=f"provider discovery failed: {exc.__class__.__name__}: {exc}",
+                    provider_version=CORE_PROVIDER_VERSION,
+                )
+            },
+        )
 
     results: list[tuple[str, object | None, ProviderRunMetadata]] = []
-    # Deterministic order — slug alphabetical so two --mock runs produce
-    # byte-identical output.
-    for slug in sorted(registry):
-        cls = registry[slug]
-        signals, meta = _invoke(cls, site=site, ctx=ctx)
-        results.append((slug, signals, meta))
+    try:
+        # Deterministic order — slug alphabetical so two --mock runs produce
+        # byte-identical output.
+        for slug in sorted(registry):
+            cls = registry[slug]
+            signals, meta = _invoke(slug, cls, site=site, ctx=ctx)
+            results.append((slug, signals, meta))
 
-    data = CompanyContext(
-        site=site,
-        fetched_at=when,
-        **_merge_signals(results),
-    )
-
-    provenance = {slug: meta for slug, _, meta in results}
-    status = _aggregate_status(provenance.values())
-    error, suggestion = _envelope_narrative(status, provenance)
-
-    return Envelope(
-        status=status,
-        data=data,
-        provenance=provenance,
-        error=error,
-        suggestion=suggestion,
-    )
+        provenance = {slug: meta for slug, _, meta in results}
+        data = CompanyContext(
+            site=site,
+            fetched_at=when,
+            **_merge_signals(results),
+        )
+        status = _aggregate_status(provenance.values())
+        error, suggestion = _envelope_narrative(status, provenance)
+        return Envelope(
+            status=status,
+            data=data,
+            provenance=provenance,
+            error=error,
+            suggestion=suggestion,
+        )
+    except Exception as exc:  # noqa: BLE001 - deliberate boundary
+        provenance = {slug: meta for slug, _, meta in results}
+        provenance[ORCHESTRATOR_PROVIDER_SLUG] = _failed_metadata(
+            error=f"orchestrator failed: {exc.__class__.__name__}: {exc}",
+            provider_version=CORE_PROVIDER_VERSION,
+        )
+        return _fallback_envelope(site=site, when=when, provenance=provenance)
 
 
 def _invoke(
+    slug: str,
     cls: type[ProviderBase],
     *,
     site: str,
@@ -110,16 +133,21 @@ def _invoke(
     start = time.monotonic()
     try:
         provider = cls()
-        return provider.fetch(site, ctx=ctx)
+        result = provider.fetch(site, ctx=ctx)
     except Exception as exc:  # noqa: BLE001 — deliberate boundary
-        elapsed = int((time.monotonic() - start) * 1000)
         return None, ProviderRunMetadata(
             status="failed",
-            latency_ms=elapsed,
+            latency_ms=_elapsed_ms(start),
             error=f"provider raised: {exc.__class__.__name__}: {exc}",
             provider_version=version,
             cost_incurred=0,
         )
+    return _normalize_provider_result(
+        slug=slug,
+        result=result,
+        provider_version=version,
+        latency_ms=_elapsed_ms(start),
+    )
 
 
 _SIGNAL_ASSIGN: dict[type, str] = {
@@ -127,6 +155,7 @@ _SIGNAL_ASSIGN: dict[type, str] = {
     ReviewsSignals: "reviews",
     SocialSignals: "social",
     HeuristicSignals: "signals",
+    MentionsSignals: "mentions",
 }
 
 
@@ -144,7 +173,7 @@ def _merge_signals(
         "reviews": None,
         "social": None,
         "signals": None,
-        "mentions": [],
+        "mentions": None,
     }
     for _slug, signals, _meta in results:
         if signals is None:
@@ -153,9 +182,9 @@ def _merge_signals(
         if slot is not None:
             merged[slot] = signals
             continue
-        # A mentions provider can hand back a plain list of MediaMention.
+        # Back-compat: a mentions provider may still hand back a plain list.
         if isinstance(signals, list) and all(isinstance(m, MediaMention) for m in signals):
-            merged["mentions"] = signals
+            merged["mentions"] = MentionsSignals(items=signals)
     return merged
 
 
@@ -192,21 +221,107 @@ def _envelope_narrative(
     if status == "partial":
         return (
             failure_reason or "one or more providers failed",
-            "configure a smart-proxy provider key or skip this prospect",
+            GENERIC_SUGGESTION,
         )
     # degraded
     return (
         failure_reason or "no providers succeeded",
-        "configure a smart-proxy provider key or skip this prospect",
+        GENERIC_SUGGESTION,
     )
 
 
-def _supports_ctx_kw(cls: type[ProviderBase]) -> bool:  # pragma: no cover - helper
+def _normalize_provider_result(
+    *,
+    slug: str,
+    result: object,
+    provider_version: str,
+    latency_ms: int,
+) -> tuple[object | None, ProviderRunMetadata]:
+    if not isinstance(result, tuple) or len(result) != 2:
+        return None, _failed_metadata(
+            error=f"{slug} returned invalid result tuple: expected (signals, metadata)",
+            provider_version=provider_version,
+            latency_ms=latency_ms,
+        )
+    signals: object | None = result[0]
+    raw_meta: object = result[1]
+
     try:
-        sig = inspect.signature(cls.fetch)
-    except (TypeError, ValueError):
-        return True
-    return "ctx" in sig.parameters
+        meta = (
+            raw_meta
+            if isinstance(raw_meta, ProviderRunMetadata)
+            else ProviderRunMetadata.model_validate(raw_meta)
+        )
+    except Exception as exc:  # noqa: BLE001 - deliberate boundary
+        return None, _failed_metadata(
+            error=f"{slug} returned invalid metadata: {exc.__class__.__name__}: {exc}",
+            provider_version=provider_version,
+            latency_ms=latency_ms,
+        )
+
+    try:
+        normalized_signals = _normalize_signals(signals)
+    except Exception as exc:  # noqa: BLE001 - deliberate boundary
+        return None, _failed_metadata(
+            error=f"{slug} returned invalid payload: {exc}",
+            provider_version=meta.provider_version,
+            latency_ms=meta.latency_ms,
+        )
+
+    return normalized_signals, meta
+
+
+def _normalize_signals(signals: object | None) -> object | None:
+    if signals is None:
+        return None
+    if isinstance(
+        signals,
+        (SiteSignals, ReviewsSignals, SocialSignals, HeuristicSignals, MentionsSignals),
+    ):
+        return signals
+    if isinstance(signals, list) and all(isinstance(item, MediaMention) for item in signals):
+        return MentionsSignals(items=signals)
+    raise TypeError(f"unsupported payload type: {type(signals).__name__}")
+
+
+def _fallback_envelope(
+    *,
+    site: str,
+    when: datetime,
+    provenance: Mapping[str, ProviderRunMetadata],
+) -> Envelope:
+    status = _aggregate_status(provenance.values())
+    error, suggestion = _envelope_narrative(status, provenance)
+    if error is None:
+        error = "no providers succeeded"
+    if suggestion is None:
+        suggestion = GENERIC_SUGGESTION
+    return Envelope(
+        status=status,
+        data=CompanyContext(site=site, fetched_at=when),
+        provenance=dict(provenance),
+        error=error,
+        suggestion=suggestion,
+    )
+
+
+def _failed_metadata(
+    *,
+    error: str,
+    provider_version: str,
+    latency_ms: int = 0,
+) -> ProviderRunMetadata:
+    return ProviderRunMetadata(
+        status="failed",
+        latency_ms=latency_ms,
+        error=error,
+        provider_version=provider_version,
+        cost_incurred=0,
+    )
+
+
+def _elapsed_ms(start: float) -> int:
+    return int((time.monotonic() - start) * 1000)
 
 
 __all__ = ["DEFAULT_TIMEOUT_S", "DEFAULT_USER_AGENT", "run"]

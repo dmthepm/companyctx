@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import ClassVar, Literal, cast
 
+import pytest
 from typer.testing import CliRunner
 
 from companyctx import core
@@ -15,12 +17,15 @@ from companyctx.providers.base import FetchContext, ProviderBase
 from companyctx.providers.site_text_trafilatura import Provider as TrafilaturaProvider
 from companyctx.schema import (
     Envelope,
+    MediaMention,
+    MentionsSignals,
     ProviderRunMetadata,
     SiteSignals,
 )
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 FIXED_WHEN = datetime(2026, 4, 20, tzinfo=timezone.utc)
+FETCHED_AT_RE = re.compile(rb'"fetched_at":\s*"[^"]+"')
 
 
 def _reg(**mapping: type) -> dict[str, type[ProviderBase]]:
@@ -77,6 +82,40 @@ class _Explodes:
         self, site: str, *, ctx: FetchContext
     ) -> tuple[SiteSignals | None, ProviderRunMetadata]:
         raise RuntimeError("provider internals misbehaved")
+
+
+class _BadMetadata:
+    slug: ClassVar[str] = "bad_metadata"
+    category: ClassVar[Literal["site_text"]] = "site_text"
+    cost_hint: ClassVar[Literal["free"]] = "free"
+    version: ClassVar[str] = "0.1.0"
+
+    def fetch(self, site: str, *, ctx: FetchContext) -> tuple[SiteSignals | None, object]:
+        return SiteSignals(homepage_text=f"hello {site}"), {"status": "ok"}
+
+
+class _MentionsOk:
+    slug: ClassVar[str] = "mentions_ok"
+    category: ClassVar[Literal["mentions"]] = "mentions"
+    cost_hint: ClassVar[Literal["free"]] = "free"
+    version: ClassVar[str] = "0.1.0"
+
+    def fetch(
+        self, site: str, *, ctx: FetchContext
+    ) -> tuple[MentionsSignals | None, ProviderRunMetadata]:
+        return (
+            MentionsSignals(
+                items=[
+                    MediaMention(
+                        title=f"{site} won an award",
+                        url="https://example.com/award",
+                        source="Example News",
+                        kind="award",
+                    )
+                ]
+            ),
+            ProviderRunMetadata(status="ok", latency_ms=0, provider_version=self.version),
+        )
 
 
 def test_orchestrator_status_ok_when_all_providers_ok() -> None:
@@ -136,6 +175,34 @@ def test_orchestrator_never_raises_when_provider_explodes() -> None:
     assert "RuntimeError" in row.error
 
 
+def test_orchestrator_never_raises_when_discovery_explodes(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _boom() -> dict[str, type[ProviderBase]]:
+        raise RuntimeError("discover blew up")
+
+    monkeypatch.setattr(core, "discover", _boom)
+    env = core.run("example.com", mock=True, fixtures_dir=FIXTURES_DIR, fetched_at=FIXED_WHEN)
+    assert env.status == "degraded"
+    row = env.provenance["_provider_discovery"]
+    assert row.status == "failed"
+    assert row.error is not None
+    assert "discover blew up" in row.error
+
+
+def test_orchestrator_never_raises_when_provider_metadata_is_malformed() -> None:
+    env = core.run(
+        "example.com",
+        mock=True,
+        fixtures_dir=FIXTURES_DIR,
+        providers=_reg(bad_metadata=_BadMetadata),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "degraded"
+    row = env.provenance["bad_metadata"]
+    assert row.status == "failed"
+    assert row.error is not None
+    assert "invalid metadata" in row.error
+
+
 def test_orchestrator_graceful_partial_on_missing_fixture() -> None:
     """A slug with no fixture dir → provider returns failed; envelope stays well-formed."""
     env = core.run(
@@ -173,24 +240,52 @@ def test_mock_mode_populates_pages_homepage_text() -> None:
     assert "WordPress" in env.data.pages.tech_stack
 
 
-def test_mock_mode_is_deterministic_modulo_fetched_at() -> None:
-    providers = _reg(site_text_trafilatura=TrafilaturaProvider)
-    env1 = core.run(
+def test_orchestrator_merges_mentions_wrapper() -> None:
+    env = core.run(
         "acme-bakery.example",
         mock=True,
         fixtures_dir=FIXTURES_DIR,
-        providers=providers,
+        providers=_reg(mentions_ok=_MentionsOk, site_text_trafilatura=TrafilaturaProvider),
         fetched_at=FIXED_WHEN,
-    ).model_dump(mode="json")
-    env2 = core.run(
-        "acme-bakery.example",
-        mock=True,
-        fixtures_dir=FIXTURES_DIR,
-        providers=providers,
-        fetched_at=FIXED_WHEN,
-    ).model_dump(mode="json")
-    # fetched_at is pinned in both runs; with that fixed, JSON should match.
-    assert env1 == env2
+    )
+    assert env.status == "ok"
+    assert env.data.mentions is not None
+    assert env.data.mentions.items[0].kind == "award"
+
+
+def test_cli_mock_output_is_byte_identical_modulo_fetched_at() -> None:
+    runner = CliRunner()
+    result1 = runner.invoke(
+        app,
+        [
+            "fetch",
+            "acme-bakery.example",
+            "--mock",
+            "--json",
+            "--fixtures-dir",
+            str(FIXTURES_DIR),
+        ],
+    )
+    result2 = runner.invoke(
+        app,
+        [
+            "fetch",
+            "acme-bakery.example",
+            "--mock",
+            "--json",
+            "--fixtures-dir",
+            str(FIXTURES_DIR),
+        ],
+    )
+    assert result1.exit_code == 0, result1.stdout
+    assert result2.exit_code == 0, result2.stdout
+    assert _scrub_fetched_at(result1.stdout.encode("utf-8")) == _scrub_fetched_at(
+        result2.stdout.encode("utf-8")
+    )
+
+
+def _scrub_fetched_at(raw: bytes) -> bytes:
+    return FETCHED_AT_RE.sub(b'"fetched_at": "<scrubbed>"', raw)
 
 
 def test_cli_fetch_emits_schema_valid_envelope() -> None:
@@ -215,8 +310,34 @@ def test_cli_fetch_emits_schema_valid_envelope() -> None:
     assert env.data.pages.homepage_text
 
 
-def test_cli_fetch_graceful_partial_exits_zero() -> None:
-    """Missing fixture → envelope still emitted, exit 0 (downstream branches on status)."""
+def test_cli_fetch_partial_exits_zero(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        core,
+        "discover",
+        lambda: _reg(always_ok=_AlwaysOk, always_fail=_AlwaysFail),
+    )
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "fetch",
+            "example.com",
+            "--mock",
+            "--json",
+            "--fixtures-dir",
+            str(FIXTURES_DIR),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    payload = json.loads(result.stdout)
+    env = Envelope.model_validate(payload)
+    assert env.status == "partial"
+    assert env.error is not None
+    assert env.suggestion is not None
+
+
+def test_cli_fetch_degraded_exits_zero_on_missing_fixture() -> None:
+    """Missing fixture → degraded envelope still emitted, exit 0."""
     runner = CliRunner()
     result = runner.invoke(
         app,
@@ -232,7 +353,7 @@ def test_cli_fetch_graceful_partial_exits_zero() -> None:
     assert result.exit_code == 0, result.stdout
     payload = json.loads(result.stdout)
     env = Envelope.model_validate(payload)
-    assert env.status in ("partial", "degraded")
+    assert env.status == "degraded"
     assert env.error is not None
     assert env.suggestion is not None
 

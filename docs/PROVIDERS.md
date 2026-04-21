@@ -55,10 +55,9 @@ fetcher returns HTTP 403 / challenge HTML / timeout. The response then flows
 into the same `trafilatura` / `readability-lxml` / `extruct` chain as the
 zero-key path — the schema doesn't know which layer produced the bytes.
 
-**We don't ship a specific vendor.** Reference adapters will land as optional
-extras in v0.1+ (`companyctx[brightdata]`, `companyctx[zenrows]`, etc.), but
-they're interchangeable — swap the entry-point line in `pyproject.toml` or
-override at runtime.
+**We don't ship a specific vendor.** Reference adapters may land as optional
+extras after the measurement spike, but they're interchangeable — swap the
+entry-point line in `pyproject.toml` or override at runtime.
 
 > **v0.1 status.** Only the `SmartProxyProvider` Protocol
 > (`companyctx/providers/smart_proxy_base.py`) ships today. The first
@@ -102,7 +101,7 @@ Stubs for the day-one providers land in Milestone 3.
 - LinkedIn / Crunchbase enrichment. Out of scope — that's people-data or
   duplicates Apollo/Clearbit territory.
 - IG / FB / TikTok follower-count scrapers. ToS risk; stays nullable.
-- Full Apify actor runners beyond a stub pattern. Can be added under the
+- Full hosted-actor runners beyond a stub pattern. Can be added under the
   `SmartProxyProvider` interface if/when wanted.
 - Brave Search / Exa / Tavily mention providers beyond the
   `not_configured` stub.

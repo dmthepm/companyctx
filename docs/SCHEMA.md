@@ -3,11 +3,8 @@
 The Pydantic v2 shape `companyctx` emits. The schema is the product — providers
 are replaceable, the contract is not.
 
-v0.1 ships a minimal placeholder model (`site` + `fetched_at`) so the
-package imports cleanly. The full schema below is implemented in Milestone 2.
-The structure here is the contract that M2–M5 fill in — adding fields is
-additive and backwards-compatible; removing or renaming fields is a
-schema-version bump.
+Milestone 2 implements the full envelope below. Adding a new optional field is
+backwards-compatible; removing or renaming a field is a schema-version bump.
 
 ## The envelope
 
@@ -28,11 +25,11 @@ Status semantics:
 |-------------|------|
 | `ok`        | Every required provider succeeded; no per-field fallback fired. |
 | `partial`   | One or more providers degraded (anti-bot, missing key, timeout). `data` is still schema-conformant; `error` + `suggestion` name the cause and fix. |
-| `degraded`  | Result came from cache past its TTL and was used anyway. `error` states the cache age. |
+| `degraded`  | No provider succeeded. `error` names the primary failure and `suggestion` gives the next action. |
 
-`error` and `suggestion` are present only when `status != "ok"`. `suggestion`
-is *actionable*: `"configure a smart-proxy provider key"`, `"skip this
-prospect"`, `"run with --refresh"`.
+`error` and `suggestion` are required when `status != "ok"` and absent when
+`status == "ok"`. `suggestion` is *actionable*: `"configure a smart-proxy
+provider key"`, `"skip this prospect"`.
 
 ## `CompanyContext`
 
@@ -46,10 +43,10 @@ class CompanyContext(BaseModel):
 
     # Optional — nullable / empty-collection on partial runs.
     pages: SiteSignals | None = None
-    reviews: ReviewSignals | None = None
+    reviews: ReviewsSignals | None = None
     social: SocialSignals | None = None
-    mentions: list[MediaMention] = []
-    signals: CrossReferenceSignals | None = None
+    mentions: MentionsSignals | None = None
+    signals: HeuristicSignals | None = None
 ```
 
 Nothing else goes at the top level in v0.1. People-data fields (contact,
@@ -68,10 +65,10 @@ class SiteSignals(BaseModel):
     tech_stack: list[str] = []        # detected, not claimed
 ```
 
-### `ReviewSignals`
+### `ReviewsSignals`
 
 ```python
-class ReviewSignals(BaseModel):
+class ReviewsSignals(BaseModel):
     count: int
     rating: float | None = None
     source: str                       # provider slug, e.g. "reviews_google_places"
@@ -96,10 +93,10 @@ class MediaMention(BaseModel):
     date: datetime | None = None
 ```
 
-### `CrossReferenceSignals`
+### `HeuristicSignals`
 
 ```python
-class CrossReferenceSignals(BaseModel):
+class HeuristicSignals(BaseModel):
     """Raw observations only — the collector never computes a judgment."""
 
     team_size_claim: str | None = None        # regex-captured, e.g. "team of 6"
@@ -111,6 +108,13 @@ class CrossReferenceSignals(BaseModel):
     tech_vs_claim_mismatches: list[str] = []
 ```
 
+### `MentionsSignals`
+
+```python
+class MentionsSignals(BaseModel):
+    items: list[MediaMention] = []
+```
+
 ### `ProviderRunMetadata`
 
 ```python
@@ -119,6 +123,7 @@ class ProviderRunMetadata(BaseModel):
     latency_ms: int
     error: str | None = None
     provider_version: str
+    cost_incurred: int = 0
 ```
 
 ## Invariants

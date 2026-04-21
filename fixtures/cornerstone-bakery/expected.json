@@ -1,7 +1,7 @@
 {
   "data": {
     "fetched_at": "2026-04-20T00:00:00Z",
-    "mentions": [],
+    "mentions": null,
     "pages": {
       "about_text": "Cornerstone Bakery has served Portland, OR since 2019. Today we're a team of 6.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-04-07.",
       "homepage_text": "Cornerstone Bakery is a bakery in Portland, OR. Founded 2019. We're a team of 6.\nWhat we do\n- Custom cakes\n- Catering\n- Wholesale bread\n- Pastry boxes\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nCornerstone Bakery is a bakery in Portland, OR. Founded 2019. We're a team of 6.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",

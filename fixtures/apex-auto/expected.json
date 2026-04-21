@@ -1,7 +1,7 @@
 {
   "data": {
     "fetched_at": "2026-04-20T00:00:00Z",
-    "mentions": [],
+    "mentions": null,
     "pages": {
       "about_text": "Apex Auto Repair has served Raleigh, NC since 2014. Today we're a team of 5.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-09-14.",
       "homepage_text": "Apex Auto Repair is a auto repair in Raleigh, NC. Founded 2014. We're a team of 5.\nWhat we do\n- Oil changes\n- Brake service\n- Transmission repair\n- State inspections\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nApex Auto Repair is a auto repair in Raleigh, NC. Founded 2014. We're a team of 5.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",

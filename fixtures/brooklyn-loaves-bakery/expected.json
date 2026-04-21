@@ -1,7 +1,7 @@
 {
   "data": {
     "fetched_at": "2026-04-20T00:00:00Z",
-    "mentions": [],
+    "mentions": null,
     "pages": {
       "about_text": "Brooklyn Loaves Bakery has served Portland, OR since 2013. Today we're a team of 4.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-02-03.",
       "homepage_text": "Brooklyn Loaves Bakery is a bakery in Portland, OR. Founded 2013. We're a team of 4.\nWhat we do\n- Custom cakes\n- Catering\n- Wholesale bread\n- Pastry boxes\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nBrooklyn Loaves Bakery is a bakery in Portland, OR. Founded 2013. We're a team of 4.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",

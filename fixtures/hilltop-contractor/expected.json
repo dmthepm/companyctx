@@ -1,7 +1,7 @@
 {
   "data": {
     "fetched_at": "2026-04-20T00:00:00Z",
-    "mentions": [],
+    "mentions": null,
     "pages": {
       "about_text": "Hilltop Home Contractor has served Denver, CO since 2011. Today we're a team of 8.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-06-11.",
       "homepage_text": "Hilltop Home Contractor is a home contractor in Denver, CO. Founded 2011. We're a team of 8.\nWhat we do\n- Kitchen remodels\n- Bathroom remodels\n- Additions\n- Deck & patio\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nHilltop Home Contractor is a home contractor in Denver, CO. Founded 2011. We're a team of 8.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",

@@ -1,7 +1,7 @@
 {
   "data": {
     "fetched_at": "2026-04-20T00:00:00Z",
-    "mentions": [],
+    "mentions": null,
     "pages": {
       "about_text": "Oakleaf Bakery has served Portland, OR since 2022. Today we're a team of 7.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-05-09.",
       "homepage_text": "Oakleaf Bakery is a bakery in Portland, OR. Founded 2022. We're a team of 7.\nWhat we do\n- Custom cakes\n- Catering\n- Wholesale bread\n- Pastry boxes\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nOakleaf Bakery is a bakery in Portland, OR. Founded 2022. We're a team of 7.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",

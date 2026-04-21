@@ -69,7 +69,7 @@ class _MissingFetch:
 
 def test_protocol_cannot_be_instantiated_directly() -> None:
     with pytest.raises(TypeError):
-        SmartProxyProvider()  # type: ignore[abstract]
+        SmartProxyProvider()  # type: ignore[misc]
 
 
 def test_concrete_provider_passes_isinstance_check() -> None:

@@ -1,7 +1,7 @@
 {
   "data": {
     "fetched_at": "2026-04-20T00:00:00Z",
-    "mentions": [],
+    "mentions": null,
     "pages": {
       "about_text": "Anchor Boutique Fitness has served Seattle, WA since 2015. Today we're a team of 10.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-02-24.",
       "homepage_text": "Anchor Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2015. We're a team of 10.\nWhat we do\n- Small-group strength\n- Private training\n- Mobility classes\n- Corporate wellness\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nAnchor Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2015. We're a team of 10.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
