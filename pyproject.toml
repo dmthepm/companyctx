@@ -40,7 +40,9 @@ dependencies = [
   "pydantic>=2.6",
   "pydantic-settings>=2.2",
   "platformdirs>=4.2",
-  "requests>=2.32",
+  # Zero-key stealth fetcher. See decisions/2026-04-20-zero-key-stealth-strategy.md
+  # and research/2026-04-21-tls-impersonation-spike.md for the pick.
+  "curl_cffi>=0.15",
   "requests-cache>=1.2",
   "tenacity>=8.2",
   "beautifulsoup4>=4.12",
@@ -70,7 +72,6 @@ dev = [
   "pytest>=8.0",
   "pytest-cov>=5.0",
   "hypothesis>=6.100",
-  "types-requests",
 ]
 
 [project.scripts]
@@ -126,6 +127,7 @@ plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = [
+  "curl_cffi.*",
   "extruct.*",
   "googlemaps.*",
   "yelpapi.*",

@@ -2,22 +2,35 @@
 type: decision
 date: 2026-04-20
 topic: zero-key stealth fetcher strategy + Deterministic Waterfall contract
-status: proposed
+status: accepted
+accepted_on: 2026-04-21
 linked_decisions:
   - decisions/2026-04-20-name-change-to-companyctx.md
 linked_docs:
   - docs/ARCHITECTURE.md
   - docs/ZERO-KEY.md
+linked_research:
+  - research/2026-04-21-tls-impersonation-spike.md
 ---
 
 # Zero-key stealth strategy + Deterministic Waterfall contract
 
 ## Status
 
-**Proposed.** The shape of the contract is decided; the specific
-TLS-impersonation library is a candidate pending an M1 spike against the
-30-prospect fixtures corpus. This ADR updates to **accepted** when the
-library choice is measured, not estimated.
+**Accepted 2026-04-21.** The chosen zero-key stealth fetcher is
+**`curl_cffi`**, pinned to `impersonate="chrome146"`. The measurement
+backing this pick is
+[`research/2026-04-21-tls-impersonation-spike.md`](../research/2026-04-21-tls-impersonation-spike.md)
+— a 20-site × 3-library matrix against @joel-req's D100 seed niches.
+Headline result: at the latest native Chrome fingerprint all three
+candidates (`curl_cffi`, `primp`, `rnet`) clear 20/20 of the probe set;
+at a 6-month-stale `chrome131` fingerprint three Cloudflare-fronted
+slugs flip to 403. The bottleneck is fingerprint freshness, not library
+identity. `rnet` is disqualified by GPL-3.0 contamination for an
+MIT-distributed CLI; `primp` loses on silent-fallback-to-random when
+an impersonation name is misspelled (violates determinism). `curl_cffi`
+wins on API-match with the existing `requests.get` call site, explicit
+fingerprint control, and MIT licensing.
 
 ## Context
 
@@ -79,17 +92,24 @@ The stealth fetcher must:
 - Be actively maintained, permissively licensed (MIT / Apache-2.0 / BSD),
   and not carry a heavy headless-browser dependency in the zero-key path.
 
-Candidates tracked for the M1 spike (in rough order of current fit, pending
-measurement):
+Measured against the D100-derived 20-site probe (see the research doc for
+the full matrix and raw JSONL):
 
-- **`curl_cffi`** — Python bindings over libcurl-impersonate. Active
-  maintenance, broad browser-fingerprint coverage, small dep footprint.
-  Current lead candidate.
-- **`primp`** — Rust-backed, exposes `impersonate="chrome_131"` etc.
-  Newer; fingerprint matrix narrower but very clean API.
-- **`tls-client`** — pure-Python, wraps the bogdanfinn Go client via a
-  local sidecar. Works but the sidecar adds distribution friction for a
-  pipx-installed CLI.
+- **`curl_cffi` — chosen.** Python bindings over libcurl-impersonate,
+  MIT-licensed. 20/20 `status: "ok"` at `chrome146`. Drop-in API shape
+  with the stdlib-style `requests.get` call site already in the provider.
+  Explicit per-call `impersonate=` kwarg — no silent fallback.
+- **`primp` — rejected.** Rust-backed, MIT-licensed. 20/20 at `chrome_146`
+  too, but the client silently falls back to a random fingerprint pool
+  when an impersonation name is misspelled (`chrome_131` vs `chrome131`
+  mismatch goes `logged-but-not-raised`). That's a determinism hazard for
+  a library we'd pin into the hot path.
+- **`rnet` — rejected on license.** Rust-backed, **GPL-3.0**. Copyleft
+  contamination is a non-starter for an MIT-distributed pipx CLI. 20/20
+  at `Chrome137` confirms the engine is comparable to the other two, but
+  the license ends the evaluation. Note: `rnet` was substituted into this
+  spike for `tls-client` from the earlier draft of this ADR — `tls-client`
+  ships a Go sidecar that adds pipx-distribution friction.
 - **`httpx` with manual `httpx.HTTPTransport` + `h2` tweaks** —
   insufficient; the JA3 fingerprint still leaks as `python-requests`
   / `httpx` defaults. Rejected as the primary.
@@ -117,9 +137,13 @@ pipeline input).
 ### 4. README honesty
 
 No README, launch copy, or docs headline commits a zero-key success-rate
-number until the M1 spike measures it against the 30-prospect fixtures
-corpus. Numbers come from measurement, not from vendor marketing, not from
-estimates. See `docs/ZERO-KEY.md` for the coverage matrix.
+number that isn't measured. The spike measured **20/20 at the latest native
+Chrome fingerprint on a 20-site probe drawn from the D100 ICP niches**;
+that number lands in `docs/ZERO-KEY.md` and the README hero, with a
+stale-fingerprint decay footnote. The larger 30-prospect fixtures corpus
+measurement remains future work (it requires network access against the
+full corpus). Numbers come from measurement, not from vendor marketing,
+not from estimates.
 
 ## Rationale
 
@@ -169,13 +193,23 @@ estimates. See `docs/ZERO-KEY.md` for the coverage matrix.
   `docs/ZERO-KEY.md` coverage matrix is explicit; the README states the
   limits above the fold.
 
-## Open questions (resolved in M1 spike)
+## Open questions
 
-- Which specific TLS-impersonation library wins?
-- What's the measured zero-key `status: "ok"` rate on the 30-prospect
-  fixtures corpus?
+Resolved in the M1 spike:
+
+- **Which specific TLS-impersonation library wins?** `curl_cffi` at
+  `impersonate="chrome146"`. See
+  [`research/2026-04-21-tls-impersonation-spike.md`](../research/2026-04-21-tls-impersonation-spike.md).
+- **What's the real decay mode?** Fingerprint freshness, not library
+  identity. A 6-month-stale `chrome131` fingerprint visibly flipped three
+  Cloudflare-fronted slugs to 403 across both `curl_cffi` and `rnet`.
+  Mitigation: bump the `impersonate=` pin with each `curl_cffi` release.
+
+Deferred:
+
+- Zero-key `status: "ok"` rate on the full 30-prospect fixtures corpus
+  (the committed spike used a 20-site subset; the 30-site measurement is
+  deliberately out-of-scope for this ADR and tracked separately).
 - Does any fixture class need a dedicated provider (e.g. a separate
   `site_text_playwright` behind a smart-proxy), or is the three-layer
   waterfall sufficient?
-
-This ADR updates to **accepted** when those are answered.

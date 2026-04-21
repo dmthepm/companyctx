@@ -58,3 +58,9 @@ out/
 # Local secrets
 .env.local
 .envrc
+
+# Local-only research artifacts (slug→URL maps, raw corpora that reference
+# private seed lists). Sanitized summaries live under research/ and DO get
+# committed; the *.local.* companions do not.
+research/*.local.*
+research/_scratch/
