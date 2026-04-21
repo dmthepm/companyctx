@@ -7,8 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0.dev0] - 2026-04-20
+
+First PyPI publish. Pre-release dev marker. Reserves the `companyctx` name
+and validates the OIDC trusted-publisher pipeline end-to-end. Every CLI
+command still exits `2` — the first working provider lands in Milestone 2.
+
 ### Added
 
+- **PyPI trusted-publisher release pipeline.** `.github/workflows/publish.yml`
+  triggers on `release: published`, builds sdist+wheel, and uploads via
+  `pypa/gh-action-pypi-publish@release/v1` using short-lived OIDC — no
+  long-lived PyPI token in the repo. The `publish` job is gated on a
+  `pypi` GitHub Environment with Devon as required reviewer; deployments
+  are restricted to `v*` tags.
 - Repo scaffolding (Milestone 1): `pyproject.toml`, package skeleton, CI, docs,
   issue/PR templates, MIT license, contributor covenant.
 - `fetch --refresh` and `fetch --from-cache` CLI stubs (surface only; behavior
