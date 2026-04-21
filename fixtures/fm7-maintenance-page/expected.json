@@ -4,13 +4,13 @@
     "mentions": null,
     "pages": {
       "about_text": null,
-      "homepage_text": "",
+      "homepage_text": "We'll be back soon.",
       "services": [],
       "tech_stack": []
     },
     "reviews": null,
     "signals": null,
-    "site": "fm6-js-redirect-root.example",
+    "site": "fm7-maintenance-page.example",
     "social": null
   },
   "error": null,

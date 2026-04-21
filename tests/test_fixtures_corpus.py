@@ -38,7 +38,7 @@ EXPECTED_FILES = (
 
 # Failure-shape fixtures carry only the files needed to reproduce the
 # empty/near-empty extraction shape — see fixtures/durability-report-*.md.
-FAILURE_FIXTURE_SLUGS = ("fm6-js-redirect-root", "fm6-maintenance-page")
+FAILURE_FIXTURE_SLUGS = ("fm7-js-redirect-root", "fm7-maintenance-page")
 FAILURE_FIXTURE_FILES = ("homepage.html", "expected.json")
 
 

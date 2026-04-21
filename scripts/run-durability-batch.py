@@ -41,19 +41,54 @@ from pathlib import Path
 PACING_FLOOR_S = 2.0
 SUBPROCESS_TIMEOUT_S = 45.0
 
+# Thin-content threshold for FM-7 classification. The register (docs/RISK-
+# REGISTER.md §FM-7) describes FM-7 as "status=ok with thin/empty content"
+# — the fetch + extraction both succeeded, the site just has little to
+# extract. We draw the line at 1024 bytes of extracted homepage_text.
+# Anything under this is flagged as FM-7; anything at-or-above is "none".
+FM7_THIN_BYTES = 1024
+
 
 def classify(envelope: dict, homepage_bytes: int) -> tuple[str, str]:
     """Return (outcome, fm_code) from an envelope + extracted byte count.
 
-    Outcomes: ``ok`` | ``ok-empty`` | ``partial`` | ``degraded`` | ``crash``.
-    FM codes track ``docs/RISK-REGISTER.md``; two extensions (RB-blocked,
-    HTTP-4xx/5xx) capture observed shapes the register did not enumerate.
+    FM codes map to ``docs/RISK-REGISTER.md``:
+
+    - ``FM-7`` — status=ok, thin/empty extract (fetch+extract succeeded;
+      site is brochureware / maintenance page / JS-redirect shell).
+    - ``FM-6`` — raw text captured but *structured* fields (services[],
+      team, founded-year) empty despite raw text present. In the M2
+      single-provider orchestrator there is no structured-signals
+      provider wired, so FM-6 cannot fire today; the branch is present
+      for when ``signals_site_heuristic`` lands.
+    - ``FM-13`` — network timeout.
+    - ``FM-1`` — CDN 401/403 anti-bot.
+    - ``RB-blocked`` — robots.txt disallow (register extension).
+    - ``HTTP-4xx`` / ``HTTP-5xx`` — other HTTP errors (register extension).
+    - ``DNS`` / ``network`` — DNS or transport errors.
+    - ``unclassified`` — anything else.
+
+    Outcomes: ``ok`` | ``thin`` | ``partial`` | ``degraded`` | ``crash``.
     """
     status = envelope.get("status", "crash")
 
     if status == "ok":
-        if homepage_bytes < 50:
-            return "ok-empty", "FM-6"
+        pages = (envelope.get("data") or {}).get("pages") or {}
+        services = pages.get("services") or []
+        # FM-7 — thin/empty extract after successful fetch.
+        if homepage_bytes < FM7_THIN_BYTES:
+            return "thin", "FM-7"
+        # FM-6 — raw text present but no structured fields. Only meaningful
+        # once a structured-signals provider ships; today services[] is the
+        # lone structured field and most sites lack a /services route, so
+        # this branch is guarded by a minimum-bytes threshold to avoid
+        # false-positiving every non-/services site.
+        if homepage_bytes >= FM7_THIN_BYTES and not services:
+            # Don't auto-classify as FM-6 — the register's FM-6 is about
+            # heuristic miss on structured *content*, not about absence of
+            # a /services route. Today we have no way to distinguish the
+            # two, so "none" is the honest answer.
+            return "ok", "none"
         return "ok", "none"
 
     prov = envelope.get("provenance") or {}
