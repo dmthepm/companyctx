@@ -58,6 +58,12 @@ extras in v0.1+ (`companyctx[brightdata]`, `companyctx[zenrows]`, etc.), but
 they're interchangeable — swap the entry-point line in `pyproject.toml` or
 override at runtime.
 
+> **v0.1 status.** Only the abstract `SmartProxyProvider` interface
+> (`companyctx/providers/smart_proxy_base.py`) ships today. The first
+> concrete vendor implementation lands after the M2 zero-key provider
+> (issue #15) and the M2 vendor eval spike — no vendor is named here until
+> measurement is in.
+
 ## Provider rules (non-negotiable)
 
 - **Never raise uncaught.** Every failure maps to

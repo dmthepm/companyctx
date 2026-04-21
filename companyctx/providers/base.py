@@ -23,6 +23,7 @@ ProviderCategory = Literal[
     "social_counts",
     "signals",
     "mentions",
+    "smart_proxy",
 ]
 CostHint = Literal["free", "per-call", "per-1k"]
 
