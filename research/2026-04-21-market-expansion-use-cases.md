@@ -3,13 +3,21 @@ type: research
 date: 2026-04-21
 topic: market-expansion use cases for companyctx beyond the D100 cold-email wedge
 category: go-to-market
-status: living document
+status: transitional
+migration_target: examples/ — per-use-case runnable recipes absorb this content; file is retired once each use case has a working example
 linked_issues:
   - https://github.com/dmthepm/companyctx/issues/36
 linked_decisions:
   - decisions/2026-04-20-name-change-to-companyctx.md
   - decisions/2026-04-20-skill-md-not-mcp.md
 ---
+
+> **Transitional artifact.** This file stages the four market-expansion
+> use cases until `examples/` scripts absorb them (one small runnable
+> recipe per use case). At that point each use case's prose moves into
+> the matching example's header comment / micro-README and this file
+> is retired. See [`research/README.md`](README.md) for the folder's
+> charter.
 
 # Market-expansion use cases
 
@@ -35,8 +43,12 @@ Two load-bearing ideas sit above the use-case list:
 1. **The primitive is not the product.** The CLI is a muscle. The value
    to an end buyer lives in the playbooks, orchestration, prompts, and
    implementation expertise layered on top — which is deliberately not
-   what this repo ships. See the companion strategy note,
-   `research/2026-04-21-funnel-and-monetization-strategy.md`.
+   what this repo ships. The three-funnel monetization framing
+   (Main Branch playbooks, Noontide agency consulting, future hosted
+   fallback) lives in
+   [Discussion #38](https://github.com/dmthepm/companyctx/discussions/38)
+   per the `research/` charter — GTM strategy is neither code nor
+   evidence and does not belong in the git tree.
 2. **Build in public is part of the channel.** Founders and developer-
    operators respond to watching market reasoning and use-case
    exploration happen in the open. The repo is where this thinking
