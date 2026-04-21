@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/SPEC.md` snapshot now specifies the top-level
   `{status: ok | partial | degraded, data, provenance, error?, suggestion?}`
   envelope and the Deterministic Waterfall provider attempt order.
+- `docs/ARCHITECTURE.md` — brains-and-muscles framing, Deterministic
+  Waterfall diagram, Vertical Memory cache posture.
+- `docs/SCHEMA.md` — Pydantic envelope in detail (`CompanyContext` +
+  sub-models + `ProviderRunMetadata`).
+- `docs/ZERO-KEY.md` — honest anti-bot coverage matrix, graceful-partial
+  contract, M1 stealth-fetcher spike deliverables.
+- `docs/PROVIDERS.md` — day-one provider table with cost hints,
+  `SmartProxyProvider` interface shape, write-your-own-provider guide.
 
 ### Changed
 
