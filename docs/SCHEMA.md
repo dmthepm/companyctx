@@ -3,7 +3,7 @@
 The Pydantic v2 shape `companyctx` emits. The schema is the product — providers
 are replaceable, the contract is not.
 
-Milestone 2 implements the full envelope below. Adding a new optional field is
+The envelope below is the v0.1.0 shape. Adding a new optional field is
 backwards-compatible; removing or renaming a field is a schema-version bump.
 
 ## The envelope
