@@ -64,6 +64,10 @@ class Provider:
     category: ClassVar[Literal["smart_proxy"]] = "smart_proxy"
     cost_hint: ClassVar[Literal["per-call"]] = "per-call"
     version: ClassVar[str] = _VERSION
+    # Environment variables the provider needs before it can run. ``providers
+    # list`` surfaces missing entries as a ``not_configured`` row with an
+    # actionable reason so users see the wiring gap before the first fetch.
+    required_env: ClassVar[tuple[str, ...]] = (ENV_URL,)
 
     def fetch(
         self,

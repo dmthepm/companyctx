@@ -17,6 +17,7 @@ pass.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ from pydantic import ValidationError
 
 from companyctx import __version__, core
 from companyctx.providers import discover
+from companyctx.providers.base import ProviderBase
 from companyctx.schema import Envelope
 
 app = typer.Typer(
@@ -118,7 +120,20 @@ _VERSION_OPT = typer.Option(
 _SITE_ARG = typer.Argument(..., help="The prospect site, e.g. example.com or https://example.com")
 _OUT_OPT_FILE = typer.Option(None, "--out", help="Write JSON to this path.")
 _OUT_OPT_DIR = typer.Option(..., "--out", help="Output directory.")
-_FORMAT_OPT = typer.Option(True, "--json/--markdown", help="Output format.")
+_FORMAT_OPT = typer.Option(
+    True,
+    "--json/--markdown",
+    help=(
+        "Output format. --json is the supported contract. "
+        "--markdown is experimental and not implemented in v0.2.0 — "
+        "runs fail fast (see issue #68)."
+    ),
+)
+_PROVIDERS_JSON_OPT = typer.Option(
+    False,
+    "--json",
+    help="Emit the registry as a JSON array (one dict per provider).",
+)
 _NO_CACHE_OPT = typer.Option(
     False,
     "--no-cache",
@@ -286,22 +301,92 @@ def cache_clear(
     _fail_stub("cache clear", _CACHE_ISSUE)
 
 
+# Waterfall-tier mapping for the provider registry. The orchestrator runs
+# providers in three bands — zero-key (Attempt 1), smart-proxy (Attempt 2),
+# and direct-API (Attempt 3) — and ``providers list`` surfaces the band next
+# to each slug so users can see the waterfall shape without reading the code.
+_TIER_BY_CATEGORY: dict[str, str] = {
+    "site_text": "zero-key",
+    "site_meta": "zero-key",
+    "social_discovery": "zero-key",
+    "signals": "zero-key",
+    "smart_proxy": "smart-proxy",
+    "reviews": "direct-api",
+    "social_counts": "direct-api",
+    "mentions": "direct-api",
+}
+
+
+def _provider_config_status(cls: type[ProviderBase]) -> tuple[str, str | None]:
+    """Return ``(status, reason)`` for a provider's runtime configuration.
+
+    A provider declares runtime-required env vars via the optional
+    ``required_env: ClassVar[tuple[str, ...]]`` attribute. Missing entries
+    surface as ``not_configured`` with a human-readable reason; zero-key
+    providers with no declared env vars report ``ready``.
+    """
+    required_env = tuple(getattr(cls, "required_env", ()))
+    if not required_env:
+        return "ready", None
+    missing = [name for name in required_env if not os.environ.get(name, "").strip()]
+    if not missing:
+        return "ready", None
+    return "not_configured", f"missing env: {', '.join(missing)}"
+
+
+def _provider_row(slug: str, cls: type[ProviderBase]) -> dict[str, str | None]:
+    category = str(getattr(cls, "category", "?"))
+    status, reason = _provider_config_status(cls)
+    return {
+        "slug": slug,
+        "tier": _TIER_BY_CATEGORY.get(category, "unknown"),
+        "category": category,
+        "cost_hint": str(getattr(cls, "cost_hint", "?")),
+        "status": status,
+        "reason": reason,
+    }
+
+
 @providers_app.command("list")
-def providers_list() -> None:
-    """Show registered providers, their category, and cost hint."""
+def providers_list(json_out: bool = _PROVIDERS_JSON_OPT) -> None:
+    """Show registered providers with waterfall tier, config status, and reason.
+
+    The text table is the human-first shape. ``--json`` emits a JSON array of
+    ``{slug, tier, category, cost_hint, status, reason}`` dicts — agents and
+    scripts should consume the JSON form.
+    """
     registry = discover()
+    if json_out:
+        payload = [_provider_row(slug, registry[slug]) for slug in sorted(registry)]
+        sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        return
     if not registry:
         typer.echo("(no providers registered)")
         return
-    rows: list[tuple[str, str, str]] = []
-    for slug in sorted(registry):
-        cls = registry[slug]
-        category = getattr(cls, "category", "?")
-        cost_hint = getattr(cls, "cost_hint", "?")
-        rows.append((slug, str(category), str(cost_hint)))
-    width = max(len(r[0]) for r in rows)
-    for slug, category, cost_hint in rows:
-        typer.echo(f"{slug.ljust(width)}  {category:<18}  {cost_hint}")
+    rows = [_provider_row(slug, registry[slug]) for slug in sorted(registry)]
+    headers = {
+        "slug": "SLUG",
+        "tier": "TIER",
+        "category": "CATEGORY",
+        "cost_hint": "COST",
+        "status": "STATUS",
+        "reason": "REASON",
+    }
+    widths = {
+        key: max(len(headers[key]), *(len(str(row[key] or "-")) for row in rows)) for key in headers
+    }
+    typer.echo(
+        "  ".join(headers[key].ljust(widths[key]) for key in ("slug", "tier", "category"))
+        + "  "
+        + "  ".join(headers[key].ljust(widths[key]) for key in ("cost_hint", "status", "reason"))
+    )
+    for row in rows:
+        typer.echo(
+            "  ".join(
+                str(row[key] or "-").ljust(widths[key])
+                for key in ("slug", "tier", "category", "cost_hint", "status", "reason")
+            )
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -448,13 +448,40 @@ def test_waterfall_handles_non_bytes_smart_proxy_body(tmp_path: Path) -> None:
     assert "non-bytes body" in env.provenance["proxy_returns_string"].error
 
 
-def test_cli_providers_list_shows_smart_proxy_http() -> None:
+def test_cli_providers_list_shows_smart_proxy_http(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Env-unset path: smart_proxy_http surfaces as ``not_configured`` in the text table."""
+    monkeypatch.delenv(ENV_URL, raising=False)
+
     runner = CliRunner()
     result = runner.invoke(app, ["providers", "list"])
     assert result.exit_code == 0, result.stdout
     assert "smart_proxy_http" in result.stdout
-    assert "smart_proxy" in result.stdout
+    assert "smart-proxy" in result.stdout
     assert "per-call" in result.stdout
+    assert "not_configured" in result.stdout
+    assert f"missing env: {ENV_URL}" in result.stdout
+
+
+def test_cli_providers_list_json_shape_tracks_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``providers list --json`` flips smart_proxy_http's status when the env var is set."""
+    runner = CliRunner()
+
+    monkeypatch.delenv(ENV_URL, raising=False)
+    unset = runner.invoke(app, ["providers", "list", "--json"])
+    assert unset.exit_code == 0, unset.stdout
+    payload = json.loads(unset.stdout)
+    proxy_row = next(row for row in payload if row["slug"] == "smart_proxy_http")
+    assert proxy_row["tier"] == "smart-proxy"
+    assert proxy_row["status"] == "not_configured"
+    assert proxy_row["reason"] == f"missing env: {ENV_URL}"
+
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:8080")
+    ready = runner.invoke(app, ["providers", "list", "--json"])
+    assert ready.exit_code == 0, ready.stdout
+    ready_payload = json.loads(ready.stdout)
+    ready_row = next(row for row in ready_payload if row["slug"] == "smart_proxy_http")
+    assert ready_row["status"] == "ready"
+    assert ready_row["reason"] is None
 
 
 def test_cli_fetch_blocked_fixture_partial_without_env(
