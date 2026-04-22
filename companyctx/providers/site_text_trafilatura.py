@@ -109,6 +109,14 @@ def _from_fixture(site: str, fixtures_dir: str | None) -> SiteSignals:
     if fixtures_dir is None:
         raise _MissingFixtureError("mock mode requires fixtures_dir")
     root = Path(fixtures_dir) / _slug_for(site)
+    # Sentinel for committed network-failure regressions. The file's contents
+    # become the BlockedError reason verbatim, which the orchestrator surfaces
+    # as `provenance[slug].error`. See fixtures/README.md ("Network-failure
+    # regressions") and the rationale in issue #40.
+    block = root / "fixture-block.txt"
+    if block.exists():
+        reason = block.read_text(encoding="utf-8").strip()
+        raise _BlockedError(reason or "blocked")
     homepage = root / "homepage.html"
     if not homepage.exists():
         raise _MissingFixtureError(f"fixture not found: {homepage}")
