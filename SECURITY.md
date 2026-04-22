@@ -28,7 +28,7 @@ filed as public GitHub issues.
 Preferred channels, in order:
 
 1. **GitHub Security Advisories.** Open a private advisory at
-   [`dmthepm/companyctx` → Security → Advisories → Report a vulnerability`](https://github.com/dmthepm/companyctx/security/advisories/new).
+   [`dmthepm/companyctx` → Security → Advisories → Report a vulnerability](https://github.com/dmthepm/companyctx/security/advisories/new).
    GitHub notifies the maintainer, gives us a private fork to work in, and
    coordinates the CVE when relevant. This is the preferred path.
 2. **Email.** `security@noontide.co`. Include a description of the issue,
