@@ -107,12 +107,11 @@ no_provider_succeeded | misconfigured_provider | empty_response`. See
 Closes the silent-success-on-empty gap called out in v0.2.0 Known
 Limitations. When the zero-key `site_text` provider completes a fetch but
 the extracted homepage text is shorter than `EMPTY_RESPONSE_BYTES = 64`
-characters (tunable in `companyctx/providers/site_text_trafilatura.py`),
-the provider row surfaces as `status: "failed"`, `error:
-"empty_response"`. The orchestrator maps that to top-level
-`error.code: "empty_response"` with an actionable suggestion
-(`"site returned HTTP 200 with effectively no content; try
---ignore-robots or check with a browser"`).
+UTF-8 bytes (tunable in `companyctx/extract.py`), the provider row
+surfaces as `status: "failed"`, `error: "empty_response"`. The
+orchestrator maps that to top-level `error.code: "empty_response"` with
+an actionable suggestion (`"site returned HTTP 200 with effectively no
+content; try --ignore-robots or check with a browser"`).
 
 The 64-byte cutoff is stricter than FM-7's 1024-byte "thin extract"
 threshold in `docs/RISK-REGISTER.md`. FM-7 describes legitimate
