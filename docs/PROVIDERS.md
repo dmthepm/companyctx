@@ -67,8 +67,9 @@ entry-point line in `pyproject.toml` or override at runtime.
 >   implementation. Reads `COMPANYCTX_SMART_PROXY_URL` (full proxy URL with
 >   embedded credentials) and, optionally, `COMPANYCTX_SMART_PROXY_VERIFY`
 >   (path to a custom CA bundle for vendors that require one). Env-unset
->   returns `not_configured`; the top-level envelope surfaces a `suggestion`
->   naming the env var. Covers any residential/datacenter proxy that accepts
+>   returns `not_configured`; the top-level envelope's structured
+>   `error.suggestion` names the env var. Covers any residential/datacenter
+>   proxy that accepts
 >   HTTP-over-CONNECT with creds folded into the URL (the 80% case).
 >
 > A **named reference adapter** — a shim over a specific vendor, shipped as

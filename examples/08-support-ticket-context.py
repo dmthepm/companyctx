@@ -50,10 +50,15 @@ def generate_support_context(
     envelope = run(domain, mock=mock, fixtures_dir=fixtures_dir)
 
     if envelope.status != "ok":
+        detail = (
+            f"{envelope.error.code}: {envelope.error.message}"
+            if envelope.error is not None
+            else "no error detail"
+        )
         return {
             "note": (
                 "AUTOMATED CONTEXT: could not enrich customer — "
-                f"envelope status {envelope.status} ({envelope.error or 'no error detail'})."
+                f"envelope status {envelope.status} ({detail})."
             ),
             "context_block": None,
         }

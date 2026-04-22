@@ -6,8 +6,7 @@ schema-locked JSON envelope out. Zero keys on the default path.
 **Commands.**
 
 - `companyctx fetch <site> --json` — run all providers; emit one envelope.
-- `companyctx fetch <site> --from-cache` — cached payload only; exit non-zero on miss.
-- `companyctx fetch <site> --refresh` — ignore cache, re-fetch every provider.
+- `companyctx schema` — emit the envelope's JSON Schema to stdout.
 - `companyctx providers list` — show providers + status + cost hint.
 - `companyctx validate <path.json>` — round-trip through the pydantic schema.
 
@@ -15,8 +14,11 @@ schema-locked JSON envelope out. Zero keys on the default path.
 
 - Companies only. Never extract people data.
 - Branch on `status` (`ok | partial | degraded`), not on try/except.
-- Respect `error` + `suggestion` when `status != "ok"`; the envelope is always
-  well-formed even on anti-bot block.
+- Every envelope carries `schema_version`. v0.2 is `"0.2.0"`.
+- When `status != "ok"`, `error` is a structured `{code, message, suggestion}`;
+  switch on `error.code` (one of `ssrf_rejected | network_timeout |
+  blocked_by_antibot | path_traversal_rejected | response_too_large |
+  no_provider_succeeded | misconfigured_provider`).
 - Pipe stdout; don't parse logs. The JSON envelope is the contract.
 - The `data.site` field is the identifier; `data.pages` holds homepage-
   derived content; `data.reviews` / `data.social` / `data.signals` /

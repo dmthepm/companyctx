@@ -30,6 +30,7 @@ Built with Typer. Conforms to clig.dev.
 | Command | Behavior |
 |---|---|
 | `companyctx fetch <site>` | Run all providers for one site; print or write result. |
+| `companyctx schema` | Emit the envelope's Draft 2020-12 JSON Schema to stdout. |
 | `companyctx batch <csv>` | Run fetch over CSV of sites, write each result to a file. |
 | `companyctx validate <json>` | Validate a JSON payload against the pydantic schema. |
 | `companyctx cache list` | Inspect cache entries. |
@@ -55,6 +56,7 @@ around a crash.
 
 ```
 {
+  "schema_version": "0.2.0",       // top-level shape discriminator
   "status": "ok" | "partial" | "degraded",
   "data":   CompanyContext,        // the schema payload (always present, may
                                    //   have nullable fields on partial)
@@ -62,8 +64,7 @@ around a crash.
     <provider_slug>: ProviderRunMetadata,
     ...
   },
-  "error":      str | None,        // present when status != "ok"
-  "suggestion": str | None         // actionable next step when status != "ok"
+  "error": EnvelopeError | null    // structured error when status != "ok"
 }
 ```
 
@@ -71,11 +72,15 @@ Status semantics:
 
 - **`ok`** — every required provider succeeded and no per-field fallback fired.
 - **`partial`** — one or more providers degraded (missing key, anti-bot block,
-  timeout), but `data` is still schema-conformant. `error` names the primary
-  cause; `suggestion` names the fix (`"configure a smart-proxy provider key"`,
-  `"skip this prospect"`, etc.).
-- **`degraded`** — no provider succeeded. `error` names the primary failure;
-  `suggestion` names the next action.
+  timeout), but `data` is still schema-conformant. `error.code` names the
+  primary cause from a closed set; `error.suggestion` names the fix.
+- **`degraded`** — no provider succeeded. `error.code` names the primary
+  failure; `error.suggestion` names the next action.
+
+`EnvelopeError.code` is one of `ssrf_rejected | network_timeout |
+blocked_by_antibot | path_traversal_rejected | response_too_large |
+no_provider_succeeded | misconfigured_provider`. See `docs/SCHEMA.md` for the
+shape.
 
 ## Data model (pydantic v2)
 

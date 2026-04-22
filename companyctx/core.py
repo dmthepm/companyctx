@@ -24,11 +24,14 @@ from companyctx.providers.base import FetchContext, ProviderBase
 from companyctx.schema import (
     CompanyContext,
     Envelope,
+    EnvelopeError,
+    EnvelopeErrorCode,
     EnvelopeStatus,
     HeuristicSignals,
     MediaMention,
     MentionsSignals,
     ProviderRunMetadata,
+    ProviderStatus,
     ReviewsSignals,
     SiteSignals,
     SocialSignals,
@@ -157,13 +160,12 @@ def run(
             **_merge_signals(results),
         )
         status = _aggregate_status(provenance, registry, recovered_slugs)
-        error, suggestion = _envelope_narrative(status, provenance)
+        error = _build_envelope_error(status, provenance)
         return Envelope(
             status=status,
             data=data,
             provenance=provenance,
             error=error,
-            suggestion=suggestion,
         )
     except Exception as exc:  # noqa: BLE001 - deliberate boundary
         provenance = {slug: meta for slug, _, meta in results}
@@ -368,29 +370,72 @@ def _aggregate_status(
     return "degraded"
 
 
-def _envelope_narrative(
+def _build_envelope_error(
     status: EnvelopeStatus,
     provenance: Mapping[str, ProviderRunMetadata],
-) -> tuple[str | None, str | None]:
+) -> EnvelopeError | None:
+    """Map the first failing provenance row to a structured :class:`EnvelopeError`.
+
+    Returns ``None`` when ``status == "ok"``. Otherwise picks the first
+    provider row with a non-``ok`` status and a populated error string,
+    classifies the string into one of the closed set of codes
+    (:data:`EnvelopeErrorCode`), and pairs it with a generic-but-actionable
+    suggestion. Callers should treat this as the orchestrator's one source of
+    truth for the top-level error — per-provider rows still carry their own
+    raw error strings in :attr:`ProviderRunMetadata.error`.
+    """
     if status == "ok":
-        return None, None
-    # Pull the first concrete failure reason for the error string; suggestion
-    # is generic-but-actionable so downstream pipelines can branch.
+        return None
     failure_reason = None
+    failure_status: ProviderStatus | None = None
     for meta in provenance.values():
         if meta.status in ("failed", "not_configured", "degraded") and meta.error:
             failure_reason = meta.error
+            failure_status = meta.status
             break
-    if status == "partial":
-        return (
-            failure_reason or "one or more providers failed",
-            GENERIC_SUGGESTION,
-        )
-    # degraded
-    return (
-        failure_reason or "no providers succeeded",
-        GENERIC_SUGGESTION,
+    message = failure_reason or (
+        "one or more providers failed" if status == "partial" else "no providers succeeded"
     )
+    code = _classify_error_code(message, failure_status, status)
+    return EnvelopeError(code=code, message=message, suggestion=GENERIC_SUGGESTION)
+
+
+def _classify_error_code(
+    message: str,
+    failure_status: ProviderStatus | None,
+    envelope_status: EnvelopeStatus,
+) -> EnvelopeErrorCode:
+    """Map a provider's raw error string to one of the 7 envelope error codes.
+
+    The classifier is substring-matched on the provider's error prefix. New
+    error paths should emit a string with a recognised prefix (see
+    ``companyctx/providers/*.py``) so they route to the right code without
+    expanding the Literal. When nothing matches, fall back on the envelope
+    status: ``not_configured`` → ``misconfigured_provider``, everything else
+    → ``no_provider_succeeded``.
+    """
+    del envelope_status  # Reserved for future per-status heuristics.
+    lower = message.lower()
+    if "unsafe_url" in lower or "unsupported scheme" in lower or "invalid site" in lower:
+        return "ssrf_rejected"
+    if "fixture path escapes" in lower or "fixture file escapes" in lower:
+        return "path_traversal_rejected"
+    if "invalid fixture slug" in lower:
+        return "path_traversal_rejected"
+    if "response_too_large" in lower:
+        return "response_too_large"
+    if "timeout" in lower:
+        return "network_timeout"
+    if "blocked_by_antibot" in lower or "blocked_by_robots" in lower:
+        return "blocked_by_antibot"
+    # 401/403 without the canonical `blocked_by_antibot` prefix still read as
+    # an access block; other 4xx/5xx codes fall through to the generic
+    # no-provider-succeeded catch.
+    if "http 401" in lower or "http 403" in lower:
+        return "blocked_by_antibot"
+    if failure_status == "not_configured" or "missing env var" in lower:
+        return "misconfigured_provider"
+    return "no_provider_succeeded"
 
 
 def _normalize_provider_result(
@@ -455,17 +500,18 @@ def _fallback_envelope(
     registry: Mapping[str, type[ProviderBase]],
 ) -> Envelope:
     status = _aggregate_status(provenance, registry)
-    error, suggestion = _envelope_narrative(status, provenance)
-    if error is None:
-        error = "no providers succeeded"
-    if suggestion is None:
-        suggestion = GENERIC_SUGGESTION
+    error = _build_envelope_error(status, provenance)
+    if status != "ok" and error is None:
+        error = EnvelopeError(
+            code="no_provider_succeeded",
+            message="no providers succeeded",
+            suggestion=GENERIC_SUGGESTION,
+        )
     return Envelope(
         status=status,
         data=CompanyContext(site=site, fetched_at=when),
         provenance=dict(provenance),
         error=error,
-        suggestion=suggestion,
     )
 
 

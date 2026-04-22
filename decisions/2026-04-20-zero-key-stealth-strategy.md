@@ -121,17 +121,22 @@ framework does **not** raise. It emits:
 
 ```json
 {
+  "schema_version": "0.2.0",
   "status": "partial",
   "data": { "site": "…", "fetched_at": "…", "pages": null, … },
   "provenance": { "<slug>": {"status": "failed", "error": "blocked_by_antibot (HTTP 403)", …} },
-  "error": "blocked_by_antibot",
-  "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  "error": {
+    "code": "blocked_by_antibot",
+    "message": "blocked_by_antibot (HTTP 403)",
+    "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  }
 }
 ```
 
-`status != "ok"` is always accompanied by an actionable `suggestion`. No
-bare errors, no stack traces bubbling out to the shell, no non-zero exit
-on partial (exit-0 on partial is on purpose — the envelope is well-formed
+`status != "ok"` always carries a structured `EnvelopeError` with an
+actionable `suggestion`. No bare errors, no stack traces bubbling out to the
+shell, no non-zero exit on partial (exit-0 on partial is on purpose — the
+envelope is well-formed
 pipeline input).
 
 ### 4. README honesty

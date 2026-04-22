@@ -5,6 +5,49 @@ All notable changes to `companyctx` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-04-22
+
+### Changed — BREAKING (envelope schema)
+
+- **Envelope `error` changed from `str | None` to a structured
+  `EnvelopeError | None`** with machine-readable `code`, human-readable
+  `message`, and actionable `suggestion`. Agents branching on the old
+  free-text `error` substring will need to switch to `error.code`. The
+  former top-level `suggestion` field is removed; it now lives inside
+  `EnvelopeError.suggestion`. SemVer-major for the envelope contract;
+  SemVer-minor for the package. See COX-37 / #70.
+- `error.code` is a closed Literal: `ssrf_rejected | network_timeout |
+  blocked_by_antibot | path_traversal_rejected | response_too_large |
+  no_provider_succeeded | misconfigured_provider`. New codes land in
+  minor releases and bump `schema_version`.
+
+### Added
+
+- **New top-level `schema_version: Literal["0.2.0"]` envelope field.**
+  Consumers can branch on shape without substring-parsing. v0.1 envelopes
+  lack this field and fail validation under `extra="forbid"`.
+- **`companyctx schema` CLI verb.** Dumps the envelope's Draft 2020-12 JSON
+  Schema to stdout. Agents validate against our shape without importing
+  `companyctx`.
+- **`companyctx/py.typed` marker (PEP 561).** Ships in wheel + sdist so
+  downstream `mypy` users see concrete Pydantic types instead of `Any`.
+- **Public-API re-exports in `companyctx/__init__.py`.** `from companyctx
+  import Envelope` (and every other public model) now works without
+  reaching into `companyctx.schema`. Closes #56.
+
+### Changed (CLI honesty — #68 Part A)
+
+- `--from-cache` / `--refresh` / `--no-cache` / `--config` previously were
+  accepted silently and ignored. They now raise `typer.BadParameter` with a
+  link to the tracking issue (#37). No silent-pass behavior for contracts
+  the tool does not honour.
+- `batch` / `cache list` / `cache clear` previously exited 2 with no output.
+  They now print `<command> is not implemented in v0.2.0 — see #N` to
+  stderr before exiting non-zero.
+- Dev-dep version bounds tightened from `>=` to `~=` (compatible-release)
+  for `ruff`, `mypy`, `pytest`, `pytest-cov`, `hypothesis` — matches the
+  `curl_cffi` policy already in core deps.
+
 ## [0.1.0] — 2026-04-21
 
 ### Added

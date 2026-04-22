@@ -79,9 +79,23 @@ jobs:
         # not propagate errors out of $(...) without `inherit_errexit`,
         # which would silently swallow a bad allowlist and run the
         # audit with truncated flags.
+        #
+        # We audit a freeze of the env's non-editable packages instead
+        # of scanning the env directly. Reasons:
+        #   * ``pip install -e .`` marks companyctx itself as editable;
+        #     pip-audit would try to resolve ``companyctx==0.2.0`` on
+        #     PyPI between a local version bump and the matching PyPI
+        #     release and fail with "Dependency not found on PyPI".
+        #   * ``--skip-editable`` doesn't help under ``--strict``:
+        #     strict mode treats any skipped audit as a failure.
+        # ``pip freeze --exclude-editable`` produces the concrete pinned
+        # set of third-party deps (including the extras), which is
+        # exactly what the supply-chain gate needs to cover.
         run: |
           python scripts/pip_audit_ignores.py > pip-audit-ignores.args
-          pip-audit --strict $(cat pip-audit-ignores.args)
+          pip freeze --exclude-editable > pip-audit-requirements.txt
+          pip-audit --strict --requirement pip-audit-requirements.txt \
+            $(cat pip-audit-ignores.args)
 
       - name: pyroma (package metadata health, threshold 9/10)
         run: pyroma -n 9 .

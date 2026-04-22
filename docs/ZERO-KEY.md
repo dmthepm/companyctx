@@ -37,7 +37,7 @@ companyctx fetch acme-bakery.com` experience.
 | Site class | Zero-key measured outcome |
 |---|---|
 | **Small-biz WordPress / Squarespace / Wix / Webflow / small-agency custom** | Full payload on the homepage. The TLS-impersonation fetcher clears the passive checks, and most small-biz stacks don't run aggressive anti-bot. The M1 spike measured **20/20 `status: "ok"`** on a 20-site probe across eight ICP niches (bariatric, biz-immigration, cosmetic-dentistry, fertility, HNW-divorce, real-estate-lending, orthopedics, plastic-surgery) at the latest native Chrome fingerprint; a follow-on shape-balanced probe ([research/2026-04-22](../research/2026-04-22-wix-webflow-spa-probe.md)) confirmed HTTP 200 on every reachable Wix and Webflow endpoint in a 15-site Wix/Webflow/SPA draw.\* |
-| **Sites behind Cloudflare Turnstile, DataDome, Akamai, or PerimeterX** | Often blocked on zero-key when the pinned fingerprint is stale. Returns `status: "partial"` with `error: "blocked_by_antibot"` and `suggestion: "configure a smart-proxy provider key or skip this prospect"`. The payload contains whatever *did* succeed (e.g. `extruct` on a cached preview) — not a crash. |
+| **Sites behind Cloudflare Turnstile, DataDome, Akamai, or PerimeterX** | Often blocked on zero-key when the pinned fingerprint is stale. Returns `status: "partial"` with `error.code == "blocked_by_antibot"` and `error.suggestion == "configure a smart-proxy provider key or skip this prospect"`. The payload contains whatever *did* succeed (e.g. `extruct` on a cached preview) — not a crash. |
 | **JS-heavy SPAs that need a real browser** | Zero-key fetcher returns the HTML shell only. Schema fields that need rendered content (often `pages.about_text`, some JSON-LD) come back null. `status: "partial"`; configure a smart-proxy + headless-browser provider to fill the gap. The decay mode is *client-only-rendered app shells* (e.g. sign-in-gated dashboards like `manage.wix.com`, which trips the 5-hop redirect cap on anonymous traffic and surfaces as a `partial` envelope), not SSR-rendered SPA **marketing** pages — the 2026-04-22 probe saw 7/7 Next.js / React-rendered SPA marketing homepages clear the 1 KB extract threshold. |
 | **Aggregator pages (Yelp / Houzz / G2 / Birdeye)** | Zero-key will not get these — ToS + anti-bot posture make them a bad target. The right path is the `reviews_google_places` / `reviews_yelp_fusion` **direct-API** providers (user-keyed) under Attempt 3 of the Deterministic Waterfall. README must not imply otherwise. |
 
@@ -60,6 +60,7 @@ When zero-key can't fully succeed, `companyctx` does not crash, does not
 
 ```json
 {
+  "schema_version": "0.2.0",
   "status": "partial",
   "data": {
     "site": "example.com",
@@ -83,8 +84,11 @@ When zero-key can't fully succeed, `companyctx` does not crash, does not
       "provider_version": "0.1.0"
     }
   },
-  "error": "blocked_by_antibot",
-  "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  "error": {
+    "code": "blocked_by_antibot",
+    "message": "blocked_by_antibot (HTTP 403)",
+    "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  }
 }
 ```
 
@@ -95,7 +99,8 @@ ctx = fetch_companyctx(site)
 if ctx["status"] == "ok":
     synthesize(ctx["data"])
 elif ctx["status"] == "partial":
-    log.warning("partial: %s — %s", ctx["error"], ctx["suggestion"])
+    err = ctx["error"]          # {code, message, suggestion?}
+    log.warning("partial: %s — %s", err["code"], err.get("suggestion"))
     synthesize_with_caveat(ctx["data"])   # pipeline-safe, not a skip
 else:  # degraded (nothing usable succeeded)
     synthesize(ctx["data"])               # or route to a fallback/skip path

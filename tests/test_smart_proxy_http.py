@@ -10,7 +10,7 @@ Covers the Slice B1 acceptance from #6:
 - Orchestrator waterfall: zero-key blocked + smart-proxy configured +
   fixture's ``homepage.html`` present → top-level ``ok`` (recovery).
 - Orchestrator waterfall: zero-key blocked + smart-proxy env unset →
-  top-level ``partial`` with ``suggestion`` pointing at the env var.
+  top-level ``partial`` with ``error.suggestion`` pointing at the env var.
 - Orchestrator waterfall: zero-key blocked + smart-proxy env set but vendor
   errors → top-level ``degraded``.
 """
@@ -343,7 +343,6 @@ def test_waterfall_recovers_when_smart_proxy_configured(
     assert env.provenance["site_text_trafilatura"].status == "failed"
     assert env.provenance["smart_proxy_http"].status == "ok"
     assert env.error is None
-    assert env.suggestion is None
 
 
 def test_waterfall_partial_when_smart_proxy_not_configured(
@@ -369,7 +368,7 @@ def test_waterfall_partial_when_smart_proxy_not_configured(
     assert env.provenance["site_text_trafilatura"].status == "failed"
     assert env.provenance["smart_proxy_http"].status == "not_configured"
     assert env.error is not None
-    assert env.suggestion is not None
+    assert env.error.suggestion is not None
     # The suggestion should include the env var name somewhere along the chain.
     joined_errors = " ".join(meta.error or "" for meta in env.provenance.values())
     assert ENV_URL in joined_errors
@@ -396,7 +395,7 @@ def test_waterfall_degraded_when_proxy_configured_but_fails(
     assert env.provenance["site_text_trafilatura"].status == "failed"
     assert env.provenance["proxy_vendor_down"].status == "failed"
     assert env.error is not None
-    assert env.suggestion is not None
+    assert env.error.suggestion is not None
 
 
 def test_waterfall_skips_smart_proxy_when_site_text_ok(
