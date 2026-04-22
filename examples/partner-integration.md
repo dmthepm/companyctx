@@ -1,15 +1,15 @@
-# D100 integration — dropping `companyctx` into a D100-class cold-outreach pipeline
+# Partner-pipeline integration — dropping `companyctx` into a cold-outreach pipeline
 
 This recipe shows the exact diff needed to replace the "LLM reads raw
-HTML" step in a D100-class cold-outreach pipeline with the
-deterministic `companyctx` envelope.
+HTML" step in a cold-outreach pipeline with the deterministic
+`companyctx` envelope.
 
 It is the canonical reference for the brains-and-muscles pattern that
 motivates this repo's existence: the frontier model stays as the
 **brain** (synthesis, brief-writing, sequence generation), and
 `companyctx` becomes the **muscle** that feeds it structured context.
 
-## What changes in the D100 pipeline
+## What changes in the pipeline
 
 **Before.** The agent crawls a prospect's homepage, dumps raw HTML
 (or a rough trafilatura pass) into the frontier model, and asks it
@@ -87,7 +87,7 @@ deterministic version of the same thing.
 The default fetch path is zero-key — no API credentials required for
 the homepage-derived fields (`data.pages.*`) or the heuristic signals
 (`data.signals.copyright_year`, `.last_blog_post_at`, etc.). The
-D100 pipeline can run the muscle against an entire batch without any
+pipeline can run the muscle against an entire batch without any
 credentials setup.
 
 For `data.reviews`, `data.social.follower_counts`, and the media
@@ -117,19 +117,19 @@ This is the whole point of the envelope — your pipeline branches on
 
 ## Batch pattern
 
-For a 100-domain D100 batch:
+For a 100-domain batch:
 
 ```bash
 # Fan out the muscle. --refresh bypasses the cache for a fresh run;
 # drop it on subsequent passes to reuse cached payloads.
 while IFS= read -r domain; do
   companyctx fetch "$domain" --json --refresh > "out/${domain}.json"
-done < d100-batch.csv
+done < prospects-batch.csv
 
 # Then in your Python pipeline, iterate the envelopes.
 ```
 
-Or, when it lands, `companyctx batch d100-batch.csv --out-dir out/`.
+Or, when it lands, `companyctx batch prospects-batch.csv --out-dir out/`.
 
 ## Related recipes in this gallery
 
@@ -144,7 +144,7 @@ Or, when it lands, `companyctx batch d100-batch.csv --out-dir out/`.
 
 ```
 ┌──────────────┐   domain    ┌──────────────────────┐   envelope   ┌──────────────┐
-│  D100 list   │ ──────────▶ │    companyctx        │ ───────────▶ │  frontier    │
+│ prospect CSV │ ──────────▶ │    companyctx        │ ───────────▶ │  frontier    │
 │  (CSV)       │             │    (the muscle)      │              │  LLM         │
 └──────────────┘             │                      │              │  (the brain) │
                              │  zero-key path       │              │              │

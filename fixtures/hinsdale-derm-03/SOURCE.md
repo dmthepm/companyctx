@@ -38,8 +38,8 @@ the `.hand-curated` marker in this directory makes
 
 - Artifact date: `2026-04-11`
 - Artifact id: `brief-29cc51c3333a` (opaque sha256 prefix — the partner
-  reverse-maps this privately to the specific research-brief.md in the
-  D100 pipeline repository on the local machine)
+  reverse-maps this privately to the specific research-brief.md in a
+  private partner repo on the local machine)
 
 The brief path, subject name, and real domain never appear in this public
 repo. Identifiers in the sanitized HTML are rewritten to
