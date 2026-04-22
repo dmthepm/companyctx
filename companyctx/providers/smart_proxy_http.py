@@ -33,6 +33,7 @@ from curl_cffi import requests
 
 from companyctx.providers.base import FetchContext
 from companyctx.providers.smart_proxy_base import failed_metadata, not_configured_metadata
+from companyctx.robots import is_allowed
 from companyctx.schema import ProviderRunMetadata
 
 _VERSION = "0.1.0"
@@ -121,6 +122,11 @@ def _from_fixture(url: str, fixtures_dir: str | None) -> bytes:
 
 def _from_network(url: str, proxy_url: str, ctx: FetchContext) -> bytes:
     target = url if "://" in url else f"https://{url}"
+    # Honor robots.txt on the smart-proxy path too. Residential-proxy egress
+    # shouldn't launder a robots violation — the user opted into compliance
+    # by not passing ``--ignore-robots``. Same policy as the zero-key path.
+    if not ctx.ignore_robots and not is_allowed(target, user_agent=ctx.user_agent):
+        raise _ProxyError("blocked_by_robots")
     verify_path = os.environ.get(ENV_VERIFY, "").strip()
     try:
         # curl_cffi types ``verify`` as ``bool | None`` but accepts a CA-bundle

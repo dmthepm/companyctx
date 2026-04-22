@@ -488,3 +488,210 @@ def test_cli_fetch_blocked_fixture_ok_with_env(
     env = Envelope.model_validate(json.loads(result.stdout))
     assert env.status == "ok"
     assert env.data.pages is not None
+
+
+# ---------------------------------------------------------------------------
+# Robots.txt enforcement on the smart-proxy path (regression for review #1)
+# ---------------------------------------------------------------------------
+
+
+def test_smart_proxy_http_honors_robots_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Robots-disallow on the target URL → failed row, never fires the proxy."""
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+    monkeypatch.setattr(
+        "companyctx.providers.smart_proxy_http.is_allowed",
+        lambda url, user_agent: False,
+    )
+
+    def _boom(*args: object, **kwargs: object) -> _FakeResponse:
+        raise AssertionError("proxy must not be contacted when robots disallows")
+
+    monkeypatch.setattr("companyctx.providers.smart_proxy_http.requests.get", _boom)
+
+    body, meta = SmartProxyHttpProvider().fetch("https://example.com", ctx=_ctx())
+    assert body is None
+    assert meta.status == "failed"
+    assert meta.error == "blocked_by_robots"
+
+
+def test_smart_proxy_http_ignore_robots_bypasses_check(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With ``ctx.ignore_robots=True`` the robots check is skipped, same as zero-key."""
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+    monkeypatch.setattr(
+        "companyctx.providers.smart_proxy_http.is_allowed",
+        lambda url, user_agent: False,
+    )
+    monkeypatch.setattr(
+        "companyctx.providers.smart_proxy_http.requests.get",
+        lambda *args, **kwargs: _FakeResponse(200, body=b"<html>proxied</html>"),
+    )
+
+    ctx = FetchContext(
+        user_agent=DEFAULT_USER_AGENT,
+        timeout_s=DEFAULT_TIMEOUT_S,
+        ignore_robots=True,
+    )
+    body, meta = SmartProxyHttpProvider().fetch("https://example.com", ctx=ctx)
+    assert body == b"<html>proxied</html>"
+    assert meta.status == "ok"
+
+
+def test_waterfall_does_not_launder_robots_block(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Zero-key robots-block must not be recovered by smart-proxy.
+
+    The orchestrator short-circuits the retry when the zero-key failure is
+    ``blocked_by_robots``; the smart-proxy's own robots check is the
+    defense-in-depth second layer (tested above).
+    """
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+    monkeypatch.setattr(
+        "companyctx.providers.site_text_trafilatura.is_allowed",
+        lambda url, user_agent: False,
+    )
+
+    def _boom(*args: object, **kwargs: object) -> _FakeResponse:
+        raise AssertionError("smart-proxy network path must not fire on a robots block")
+
+    monkeypatch.setattr("companyctx.providers.smart_proxy_http.requests.get", _boom)
+
+    env = core.run(
+        "https://example.com",
+        providers=_reg(
+            site_text_trafilatura=TrafilaturaProvider,
+            smart_proxy_http=SmartProxyHttpProvider,
+        ),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "degraded"
+    assert env.provenance["site_text_trafilatura"].status == "failed"
+    assert env.provenance["site_text_trafilatura"].error == "blocked_by_robots"
+    # Orchestrator short-circuits before invoking smart-proxy.
+    assert "smart_proxy_http" not in env.provenance
+
+
+# ---------------------------------------------------------------------------
+# Recovery accounting (regression for review #2)
+# ---------------------------------------------------------------------------
+
+
+class _AlwaysFailSiteText:
+    slug: ClassVar[str] = "always_fail_site_text"
+    category: ClassVar[Literal["site_text"]] = "site_text"
+    cost_hint: ClassVar[Literal["free"]] = "free"
+    version: ClassVar[str] = "0.1.0"
+
+    def fetch(self, site: str, *, ctx: FetchContext) -> tuple[object | None, ProviderRunMetadata]:
+        return None, ProviderRunMetadata(
+            status="failed",
+            latency_ms=7,
+            error="always-fail",
+            provider_version=self.version,
+        )
+
+
+class _AlsoFailSiteText:
+    slug: ClassVar[str] = "also_fail_site_text"
+    category: ClassVar[Literal["site_text"]] = "site_text"
+    cost_hint: ClassVar[Literal["free"]] = "free"
+    version: ClassVar[str] = "0.1.0"
+
+    def fetch(self, site: str, *, ctx: FetchContext) -> tuple[object | None, ProviderRunMetadata]:
+        return None, ProviderRunMetadata(
+            status="failed",
+            latency_ms=11,
+            error="also-fail",
+            provider_version=self.version,
+        )
+
+
+def test_recovery_only_suppresses_the_retried_slug() -> None:
+    """Multiple failing site_text providers + one proxy-ok → status partial.
+
+    Only the first eligible failing slug (alphabetical:
+    ``also_fail_site_text``) gets retried; the orchestrator must not count
+    the second failure as recovered.
+    """
+    env = core.run(
+        "example.com",
+        providers=_reg(
+            also_fail_site_text=_AlsoFailSiteText,
+            always_fail_site_text=_AlwaysFailSiteText,
+            proxy_recovers_site=_ProxyRecoversSite,
+        ),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "partial"
+    assert env.provenance["also_fail_site_text"].status == "failed"
+    assert env.provenance["always_fail_site_text"].status == "failed"
+    assert env.provenance["proxy_recovers_site"].status == "ok"
+    # The pages slot was populated by the proxy recovery on the first failure.
+    assert env.data.pages is not None
+
+
+# ---------------------------------------------------------------------------
+# site_meta is NOT recoverable (regression for review #3)
+# ---------------------------------------------------------------------------
+
+
+class _FailingSiteMeta:
+    """A failing ``site_meta`` provider — must not trigger smart-proxy recovery.
+
+    The recovery extractor produces ``SiteSignals`` (for the ``pages`` slot);
+    overlaying that onto a failed ``site_meta`` row would clobber the page
+    data from a sibling ``site_text`` provider and attribute the wrong shape
+    to the metadata slot.
+    """
+
+    slug: ClassVar[str] = "failing_site_meta"
+    category: ClassVar[Literal["site_meta"]] = "site_meta"
+    cost_hint: ClassVar[Literal["free"]] = "free"
+    version: ClassVar[str] = "0.1.0"
+
+    def fetch(self, site: str, *, ctx: FetchContext) -> tuple[object | None, ProviderRunMetadata]:
+        return None, ProviderRunMetadata(
+            status="failed",
+            latency_ms=9,
+            error="meta-miss",
+            provider_version=self.version,
+        )
+
+
+def test_site_meta_failure_does_not_trigger_recovery(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """site_text ok, site_meta fails → pages stays site_text's richer output.
+
+    Without the recovery-category tightening the orchestrator would feed
+    proxy bytes into ``SiteSignals`` and overwrite ``pages`` with the
+    homepage-only recovery payload. The fix keeps site_meta off the retry
+    list entirely.
+    """
+    slug = "metaok"
+    site_dir = tmp_path / slug
+    site_dir.mkdir()
+    (site_dir / "homepage.html").write_bytes(
+        b"<html><body><h1>Real Biz</h1><p>full homepage</p></body></html>"
+    )
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+
+    env = core.run(
+        f"{slug}.example",
+        mock=True,
+        fixtures_dir=tmp_path,
+        providers=_reg(
+            failing_site_meta=_FailingSiteMeta,
+            site_text_trafilatura=TrafilaturaProvider,
+            smart_proxy_http=SmartProxyHttpProvider,
+        ),
+        fetched_at=FIXED_WHEN,
+    )
+
+    # site_meta failure should NOT be recovered — smart-proxy stays off.
+    assert "smart_proxy_http" not in env.provenance
+    assert env.provenance["failing_site_meta"].status == "failed"
+    assert env.provenance["site_text_trafilatura"].status == "ok"
+    # Pages reflects the site_text payload, not a homepage-only overlay.
+    assert env.data.pages is not None
+    assert "Real Biz" in env.data.pages.homepage_text
+    # Envelope is partial: site_text ok + site_meta failed, no recovery.
+    assert env.status == "partial"

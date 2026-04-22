@@ -44,8 +44,18 @@ DISCOVERY_PROVIDER_SLUG = "_provider_discovery"
 ORCHESTRATOR_PROVIDER_SLUG = "_orchestrator"
 GENERIC_SUGGESTION = "configure a smart-proxy provider key or skip this prospect"
 
-_RECOVERABLE_CATEGORIES = frozenset({"site_text", "site_meta"})
+# Only ``site_text`` recovers through the smart-proxy path. The recovery
+# extractor (:func:`extract.site_signals_from_homepage_bytes`) produces a
+# ``SiteSignals`` payload for the ``pages`` slot; recovering ``site_meta``
+# would need its own extractor (extruct/json-ld) and would clobber the
+# ``pages`` slot produced by a sibling ``site_text`` provider. Keep this set
+# tight — widen deliberately when a slot-aware recovery extractor lands.
+_RECOVERABLE_CATEGORIES = frozenset({"site_text"})
 _SMART_PROXY_CATEGORY = "smart_proxy"
+# Error strings that indicate a policy block rather than an anti-bot block.
+# The smart-proxy must not "recover" these — the user opted into robots
+# compliance by not passing ``--ignore-robots``.
+_ROBOTS_BLOCK_ERROR = "blocked_by_robots"
 
 
 def run(
@@ -112,10 +122,14 @@ def run(
 
         provenance: dict[str, ProviderRunMetadata] = {slug: meta for slug, _, meta in results}
 
-        # Waterfall Attempt 2: on a failed site_text / site_meta row, let a
-        # registered smart-proxy try to recover the pages slot. Only the
-        # first failure gets a retry — the smart-proxy is a fallback fetcher
-        # for the page, not a sibling provider, so one success is enough.
+        # Waterfall Attempt 2: on a failed site_text row, let a registered
+        # smart-proxy try to recover the pages slot. Only the first eligible
+        # failure gets a retry — the smart-proxy is a fallback fetcher for
+        # the page, not a sibling provider, so one success is enough.
+        # A ``blocked_by_robots`` failure is NOT retried: the user opted
+        # into robots compliance by not passing ``--ignore-robots``, and
+        # routing through a residential proxy would launder the violation.
+        recovered_slugs: set[str] = set()
         if smart_proxy_registry:
             for index, (slug, _signals, meta) in enumerate(list(results)):
                 primary_cls = primary_registry.get(slug)
@@ -123,6 +137,8 @@ def run(
                 if category not in _RECOVERABLE_CATEGORIES:
                     continue
                 if meta.status != "failed":
+                    continue
+                if meta.error == _ROBOTS_BLOCK_ERROR:
                     continue
                 recovered_signals = _attempt_smart_proxy_recovery(
                     site=site,
@@ -132,6 +148,7 @@ def run(
                 )
                 if recovered_signals is not None:
                     results[index] = (slug, recovered_signals, meta)
+                    recovered_slugs.add(slug)
                 break
 
         data = CompanyContext(
@@ -139,7 +156,7 @@ def run(
             fetched_at=when,
             **_merge_signals(results),
         )
-        status = _aggregate_status(provenance, registry)
+        status = _aggregate_status(provenance, registry, recovered_slugs)
         error, suggestion = _envelope_narrative(status, provenance)
         return Envelope(
             status=status,
@@ -315,36 +332,29 @@ def _merge_signals(
 def _aggregate_status(
     provenance: Mapping[str, ProviderRunMetadata],
     registry: Mapping[str, type[ProviderBase]],
+    recovered_slugs: set[str] | None = None,
 ) -> EnvelopeStatus:
     """Waterfall-aware status rollup.
 
-    A failed site_text/site_meta row is ``recovered`` when a smart-proxy row
-    in the same run is ``ok`` — recovery rows stay in provenance for
-    traceability but don't count as top-level failures. When no ``ok`` rows
-    exist and any row is ``not_configured``, the envelope reports
-    ``partial`` with a config-based suggestion rather than ``degraded``,
-    matching the shape documented in ``docs/EXTRACTION-STRATEGY.md``.
+    ``recovered_slugs`` names the exact primary-provider slugs whose failure
+    was superseded by a smart-proxy ``ok`` row during this run — the caller
+    is the only source of truth for that (the orchestrator overlays
+    ``results[index]`` only for the slug it actually retried). Rows in that
+    set stay in provenance for traceability but don't count as top-level
+    failures.
+
+    When no ``ok`` rows remain and any row is ``not_configured``, the
+    envelope reports ``partial`` with a config-based suggestion rather than
+    ``degraded``, matching the shape documented in
+    ``docs/EXTRACTION-STRATEGY.md``.
     """
+    del registry  # registry reserved for future per-category rollup; kept in signature for callers.
     rows = list(provenance.items())
     if not rows:
         return "degraded"
 
-    recovered_slugs: set[str] = set()
-    smart_proxy_recovered = any(
-        meta.status == "ok"
-        and getattr(registry.get(slug), "category", None) == _SMART_PROXY_CATEGORY
-        for slug, meta in rows
-    )
-    if smart_proxy_recovered:
-        for slug, meta in rows:
-            cls = registry.get(slug)
-            if cls is None:
-                continue
-            category = getattr(cls, "category", None)
-            if category in _RECOVERABLE_CATEGORIES and meta.status == "failed":
-                recovered_slugs.add(slug)
-
-    effective = [(slug, meta) for slug, meta in rows if slug not in recovered_slugs]
+    dropped = recovered_slugs or set()
+    effective = [(slug, meta) for slug, meta in rows if slug not in dropped]
     any_ok = any(meta.status == "ok" for _slug, meta in effective)
     any_fail = any(
         meta.status in ("failed", "not_configured", "degraded") for _slug, meta in effective
