@@ -46,6 +46,15 @@ _VERSION = "0.1.0"
 # research/2026-04-21-tls-impersonation-spike.md.
 _IMPERSONATE: Literal["chrome146"] = "chrome146"
 _SAFE_FIXTURE_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+# Extracted-text-length cutoff for the ``empty_response`` honesty check.
+# Tighter than FM-7's 1024-byte "thin extract" cutoff in
+# ``docs/RISK-REGISTER.md`` — a legitimate one-page brochure site still
+# clears 64 characters of visible text. Below this, the fetch worked but
+# the site returned effectively nothing (HTTP 200 with an empty body or a
+# login-wall stub); silent-success there violates the "loud failure >
+# silent fallthrough" contract. Surface it as a structured failure.
+EMPTY_RESPONSE_BYTES = 64
+EMPTY_RESPONSE_ERROR = "empty_response"
 
 
 class Provider:
@@ -74,6 +83,14 @@ class Provider:
             return None, _failed(str(exc), start, self.version, mock=ctx.mock)
         except Exception as exc:  # pragma: no cover — defensive boundary
             return None, _failed(f"unexpected: {exc!r}", start, self.version, mock=ctx.mock)
+
+        # Empty-response honesty check (COX-44): a successful fetch that
+        # yields effectively no extracted text is silent-success, not ok.
+        # Surface it as a structured failure so downstream agents branch on
+        # ``error.code == "empty_response"`` instead of seeing ``status: ok``
+        # with a zero-length homepage.
+        if len(signals.homepage_text) < EMPTY_RESPONSE_BYTES:
+            return None, _failed(EMPTY_RESPONSE_ERROR, start, self.version, mock=ctx.mock)
 
         # Mock mode has no real network latency; zero it so --mock runs are
         # byte-identical across invocations (the determinism contract).
