@@ -1,8 +1,9 @@
-# Risk Register — D100-grounded failure modes
+# Risk Register — partner-transcript-grounded failure modes
 
 This document catalogs the Phase 1 web-fetch / content-extraction failure
-modes observed in the D100 cold-outreach pipeline's session transcripts and
-maps each one to the `companyctx` envelope surfaces that must describe it.
+modes observed in an external partner's cold-outreach pipeline session
+transcripts and maps each one to the `companyctx` envelope surfaces that
+must describe it.
 
 It exists so that `expected.json` fixtures, provider implementations, and
 downstream pipelines stop writing against *assumed* failures and start
@@ -10,8 +11,8 @@ writing against *observed* ones.
 
 ## Scope
 
-- **Evidence base.** 37 session transcripts committed to
-  `joel-req/new-signal-studio` at `logs/` and `logs/backfill/`, spanning
+- **Evidence base.** 37 session transcripts committed in a private partner
+  repo at `logs/` and `logs/backfill/`, spanning
   **2026-04-12 → 2026-04-21**. 13 contained substantive Phase 1 activity
   (web fetch + HTML extraction); 24 were orchestration shells, MCP ping
   diagnostics, or out-of-scope Apollo / Google Docs / Instantly work.
@@ -21,8 +22,8 @@ writing against *observed* ones.
   sampled.
 - **Only Phase 1 is in scope.** Apollo, Google Docs, Instantly, and
   launchd/auth failures belong to other systems and are excluded.
-- **Transcripts are evidence, not source code.** They live in
-  `new-signal-studio`; they are not committed here. Quoted snippets are
+- **Transcripts are evidence, not source code.** They live in a private
+  partner repo; they are not committed here. Quoted snippets are
   sanitized (business names → `<site>`, owners → `<owner>`, cities and
   real domains redacted).
 
@@ -38,8 +39,8 @@ Each failure mode gets:
   a cross-cutting concern).
 - **Envelope mapping** — `ProviderRunMetadata.status`, top-level
   envelope `status`, `error` template, `suggestion` template.
-- **Agent recovery observed** — what the D100 agent did, and whether it
-  was the right thing for `companyctx` to do.
+- **Agent recovery observed** — what the partner's agent did, and whether
+  it was the right thing for `companyctx` to do.
 
 Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
 
@@ -84,8 +85,8 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   vendor, roofing/gutter contractor). Low absolute count, 100%
   unrecoverable in-transcript.
 - **Evidence.**
-  - `backfill-2026-04-18-command-message-d100-command-m-05ed4365.md:3775`
-  - `backfill-2026-04-16-command-message-d100-command-m-167f63bc.md:1605`
+  - `backfill-2026-04-18-command-message-05ed4365.md:3775`
+  - `backfill-2026-04-16-command-message-167f63bc.md:1605`
 - **Agent recovery.** Pivoted to BBB / Birdeye / search-snippet sources
   in-LLM with no structured record of the swap. Homepage-sourced fields
   (services, team, founder bio) absent from the brief.
@@ -117,8 +118,8 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   corpus.
 - **Frequency.** 4 transcripts, 5+ distinct prospects.
 - **Evidence.**
-  - `backfill-2026-04-17-command-message-d100-command-m-77656e04.md:2840`
-  - `backfill-2026-04-17-command-message-d100-command-m-1ff83f41.md:3126`
+  - `backfill-2026-04-17-command-message-77656e04.md:2840`
+  - `backfill-2026-04-17-command-message-1ff83f41.md:3126`
 - **Agent recovery.** Substituted Birdeye / HomeAdvisor / Angi / BBB /
   Houzz aggregates where available; otherwise `INSUFFICIENT DATA`.
 - **Waterfall layer.** Attempt 1 fails reliably. Attempt 2 (smart-proxy)
@@ -145,8 +146,8 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   asymmetric: FB likes succeed ~70% of the time, IG follower count
   succeeds <30%.
 - **Evidence.**
-  - `d100-run-waste-management-services-2026-04-21-e1155059-3079-4046-b663-18f8258a314f.md:2115`
-  - `backfill-2026-04-17-command-message-d100-command-m-9bc12c4e.md:4107`
+  - `run-waste-management-services-2026-04-21-e1155059.md:2115`
+  - `backfill-2026-04-17-command-message-9bc12c4e.md:4107`
 - **Agent recovery.** Marked the count `INSUFFICIENT DATA`. Often
   captured the platform's *presence* (handle is active) but not the
   *numeric count*.
@@ -174,8 +175,8 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
 - **Frequency.** 3+ transcripts, high per-transcript occurrence count.
   The home-inspection vertical alone showed 6+ prospects with this flag.
 - **Evidence.**
-  - `backfill-2026-04-17-command-message-d100-command-m-9bc12c4e.md:3989`
-  - `backfill-2026-04-17-command-message-d100-command-m-57f83f37.md:1820`
+  - `backfill-2026-04-17-command-message-9bc12c4e.md:3989`
+  - `backfill-2026-04-17-command-message-57f83f37.md:1820`
 - **Agent recovery.** Captured whatever aggregates were visible
   (Birdeye, HomeAdvisor, Houzz, Angi, franchise-rollup pages) and
   flagged Google-specific numbers as `INSUFFICIENT DATA`.
@@ -200,7 +201,7 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
 - **Frequency.** 1 transcript, 1 direct occurrence + 1 adjacent note.
   Low count but a clean, named shape.
 - **Evidence.**
-  - `backfill-2026-04-18-command-message-d100-command-m-05ed4365.md:3776`
+  - `backfill-2026-04-18-command-message-05ed4365.md:3776`
 - **Agent recovery.** Followed the redirect manually, pulled data from
   the parent-brand site, preserved the original business name in the
   brief. Caveat: the redirect target is a *different* business entity
@@ -235,8 +236,8 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   (13/13). This is the **dominant token-cost failure** across the
   corpus, not a fetch failure.
 - **Evidence.**
-  - `d100-run-waste-management-services-2026-04-21-e1155059-3079-4046-b663-18f8258a314f.md:2085`
-  - `backfill-2026-04-18-command-message-d100-command-m-9aea3234.md:827`
+  - `run-waste-management-services-2026-04-21-e1155059.md:2085`
+  - `backfill-2026-04-18-command-message-9aea3234.md:827`
 - **Why it matters.** This *is* the companyctx wedge: emit structured
   fields, so synthesis never re-fetches. Confirms the OSS-extraction
   gap that services-list extraction has no clean OSS (see
@@ -259,8 +260,8 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   despite a successful fetch.
 - **Frequency.** 2 transcripts, 3+ prospects.
 - **Evidence.**
-  - `backfill-2026-04-16-command-message-d100-command-m-167f63bc.md:1473`
-  - `backfill-2026-04-18-command-message-d100-command-m-05ed4365.md:3669`
+  - `backfill-2026-04-16-command-message-167f63bc.md:1473`
+  - `backfill-2026-04-18-command-message-05ed4365.md:3669`
 - **Agent recovery.** Accepted thin data, pivoted script angles to lean
   on Apollo firmographics. This is the right pattern to mirror.
 - **Waterfall layer.** Attempt 1 succeeds fetch-wise; no later layer
@@ -291,8 +292,8 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
 - **Frequency.** 1 transcript (waste-management 2026-04-21), 2
   prospects in a single batch.
 - **Evidence.**
-  - `d100-run-waste-management-services-2026-04-21-e1155059-3079-4046-b663-18f8258a314f.md:2059`
-  - `d100-run-waste-management-services-2026-04-21-e1155059-3079-4046-b663-18f8258a314f.md:2139`
+  - `run-waste-management-services-2026-04-21-e1155059.md:2059`
+  - `run-waste-management-services-2026-04-21-e1155059.md:2139`
 - **Agent recovery.** Corrected the classification from homepage text
   mid-research. The correction lives in prose, not in a structured
   field.
@@ -316,8 +317,8 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
 - **Frequency.** 2 transcripts (home-inspection, real-estate-staging),
   6+ prospects.
 - **Evidence.**
-  - `backfill-2026-04-17-command-message-d100-command-m-9bc12c4e.md:4141`
-  - `backfill-2026-04-17-command-message-d100-command-m-9bc12c4e.md:4146`
+  - `backfill-2026-04-17-command-message-9bc12c4e.md:4141`
+  - `backfill-2026-04-17-command-message-9bc12c4e.md:4146`
 - **Agent recovery.** Kept both numbers, prefixed one "franchise
   aggregate." No structure.
 - **Waterfall layer.** Attempt 3 (Google Places) is the real fix, same
@@ -344,8 +345,8 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
 - **Frequency.** Co-occurs with every FM-1/FM-2/FM-4 firing: 5+
   transcripts, 10+ prospects.
 - **Evidence.**
-  - `backfill-2026-04-16-command-message-d100-command-m-167f63bc.md:1605`
-  - `backfill-2026-04-18-command-message-d100-command-m-05ed4365.md:3775`
+  - `backfill-2026-04-16-command-message-167f63bc.md:1605`
+  - `backfill-2026-04-18-command-message-05ed4365.md:3775`
 - **Waterfall layer.** Cross-cutting — this is a schema concern, not a
   single-attempt concern.
 - **Envelope mapping (today's schema).** The v0.1 envelope carries
@@ -373,7 +374,7 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   local magazine interview, not the vendor's own About surface.
 - **Frequency.** 3+ transcripts, recurring pattern.
 - **Evidence.**
-  - `d100-run-waste-management-services-2026-04-21-e1155059-3079-4046-b663-18f8258a314f.md:2055`
+  - `run-waste-management-services-2026-04-21-e1155059.md:2055`
 - **Why it happens.** OSS extractors clean body text but do not
   *discover* which URL on a site is the About page. Small businesses
   hide it under "Our Story", "Meet the Team", or a nav dropdown.
@@ -394,7 +395,7 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
 
 - **Signature.** Briefs cite awards, media mentions, industry
   rankings, and external accreditation — sourced via web search rather
-  than the prospect's own domain. The D100 skill's own Phase 1
+  than the prospect's own domain. The partner skill's own Phase 1
   instructions explicitly separate this into a dedicated
   "web search" step for "media mentions, awards, community presence"
   distinct from the "website fetch" step.
@@ -405,15 +406,15 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   consistently include award / press content that did not come from
   the prospect's own domain.
 - **Evidence.**
-  - `backfill-2026-04-16-command-message-d100-command-m-167f63bc.md:1609`
+  - `backfill-2026-04-16-command-message-167f63bc.md:1609`
     — brief summary for one prospect lists multiple press / award /
     accreditation signals (a national-magazine category ranking, a
     BBB rating, an industry list mention, and a national rank) all
     derived from web search, not the vendor's own site.
-  - `backfill-2026-04-18-command-message-d100-command-m-9aea3234.md:794`
+  - `backfill-2026-04-18-command-message-9aea3234.md:794`
     — agent explicitly records that it "verified … via fresh web
     research" to fill award content for a brief.
-  - `backfill-2026-04-18-command-message-d100-command-m-9aea3234.md:403`
+  - `backfill-2026-04-18-command-message-9aea3234.md:403`
     and siblings — the skill reference itself codifies a search-based
     step for awards / media mentions as distinct from site fetching.
 - **Waterfall layer.** Distinct from the three site-fetch attempts;
@@ -436,7 +437,7 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   - **Design note.** This means a clean zero-key install is
     `partial`-by-default on every run until a search key is set. That
     is intentional: silent absence of press coverage is the exact
-    failure the D100 transcripts show — the envelope should signal it
+    failure the partner transcripts show — the envelope should signal it
     loudly, not hide it.
 
 ## FM-13 — Site-fetch timeouts / transient failures
@@ -462,8 +463,8 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   surfaced"`; `"no IG surfaced in searches"`.
 - **Frequency.** 3+ transcripts, 5+ prospects.
 - **Evidence.**
-  - `backfill-2026-04-17-command-message-d100-command-m-9bc12c4e.md:4020`
-  - `backfill-2026-04-17-command-message-d100-command-m-9bc12c4e.md:4071`
+  - `backfill-2026-04-17-command-message-9bc12c4e.md:4020`
+  - `backfill-2026-04-17-command-message-9bc12c4e.md:4071`
 - **Why it happens.** This is the canonical deterministic companyctx
   job: walk the homepage DOM for `a[href*="instagram.com"]`, etc., and
   cross-check against `extruct` `sameAs` metadata. Transcripts show
@@ -642,7 +643,7 @@ The 2026-04-21 100-site durability run
 ([`fixtures/durability-report-2026-04-21.md`](../fixtures/durability-report-2026-04-21.md))
 measured 3 / 100 = **3%** FM-13 timeouts against @joel-req's medical /
 aesthetic SMB cohort. The register body says "0 observed … do not
-over-invest" based on the D100 log-mining corpus (gutter / roofing /
+over-invest" based on the partner log-mining corpus (gutter / roofing /
 IV / waste-management). **Three caveats keep this out of the main
 body:**
 

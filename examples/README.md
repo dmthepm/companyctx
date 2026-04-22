@@ -44,11 +44,11 @@ always the same; the orchestration around it is what changes.
 | [`06-competitor-monitor.py`](06-competitor-monitor.py) | Daily JSON diff + change alert | Founders, PMMs |
 | [`07-inbound-webhook-enrichment/`](07-inbound-webhook-enrichment/) | Webhook → domain → CRM payload | RevOps, growth |
 | [`08-support-ticket-context.py`](08-support-ticket-context.py) | Inject customer context into a support-agent prompt | CS, AI-support builders |
-| [`d100-integration.md`](d100-integration.md) | Drop-in replacement for the "LLM reads HTML" step in a D100-class cold-outreach pipeline | D100 operators |
+| [`partner-integration.md`](partner-integration.md) | Drop-in replacement for the "LLM reads HTML" step in a partner cold-outreach pipeline | Outbound operators |
 
 ## The four use cases the gallery covers
 
-`companyctx` started life as the deterministic muscle for the D100
+`companyctx` started life as the deterministic muscle for a partner's
 cold-outreach wedge. The same schema-locked envelope plugs into four
 adjacent use cases that the gallery demonstrates in code.
 
@@ -73,7 +73,7 @@ adjacent use cases that the gallery demonstrates in code.
   strong local reputation but weak tech and marketing. Manually
   screening them — review counts, copyright years, stale blogs,
   dated stacks — does not scale past a hundred domains.
-- **Why it matters.** The same cache that speeds D100 outreach
+- **Why it matters.** The same cache that speeds cold-outreach
   doubles as a queryable SMB dataset for deal flow. One filter
   pipeline, hundreds of domains, zero data-broker spend.
 

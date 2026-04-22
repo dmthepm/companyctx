@@ -3,16 +3,17 @@
 
 Two modes:
 
-1. ``--source <dir>`` — read Joel's private research-brief.md dump, extract
-   prospect site + public web snippets, sanitize PII, write per-site fixtures.
+1. ``--source <dir>`` — read an external partner's private research-brief.md
+   dump, extract prospect site + public web snippets, sanitize PII, write
+   per-site fixtures.
    Brief files must have YAML-ish front-matter with at minimum a ``site:``
    key, then free-form markdown body. The body is scanned for
    sanitizable public content (homepage/about/services snippets). Everything
    that looks like a contact name / email / phone is masked.
 2. ``--synthetic`` — no corpus required. Produces the same 30 prospect
    directories from a deterministic taxonomy (6 niches × 5 tech stacks).
-   Used by contributors without access to Joel's corpus, by CI, and as the
-   starter corpus committed to the repo.
+   Used by contributors without access to the partner's corpus, by CI, and
+   as the starter corpus committed to the repo.
 
 The two modes emit the **same per-site layout** per ``fixtures/README.md``:
 
@@ -635,7 +636,7 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument(
         "--source",
         type=Path,
-        help="Directory of research-brief.md files (Joel's private corpus).",
+        help="Directory of research-brief.md files (the partner's private corpus).",
     )
     mode.add_argument(
         "--synthetic",

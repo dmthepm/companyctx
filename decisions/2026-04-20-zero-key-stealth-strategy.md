@@ -21,7 +21,7 @@ linked_research:
 **`curl_cffi`**, pinned to `impersonate="chrome146"`. The measurement
 backing this pick is
 [`research/2026-04-21-tls-impersonation-spike.md`](../research/2026-04-21-tls-impersonation-spike.md)
-— a 20-site × 3-library matrix against @joel-req's D100 seed niches.
+— a 20-site × 3-library matrix against @joel-req's external seed niches.
 Headline result: at the latest native Chrome fingerprint all three
 candidates (`curl_cffi`, `primp`, `rnet`) clear 20/20 of the probe set;
 at a 6-month-stale `chrome131` fingerprint three Cloudflare-fronted
@@ -92,7 +92,7 @@ The stealth fetcher must:
 - Be actively maintained, permissively licensed (MIT / Apache-2.0 / BSD),
   and not carry a heavy headless-browser dependency in the zero-key path.
 
-Measured against the D100-derived 20-site probe (see the research doc for
+Measured against the external-seed-derived 20-site probe (see the research doc for
 the full matrix and raw JSONL):
 
 - **`curl_cffi` — chosen.** Python bindings over libcurl-impersonate,
@@ -138,7 +138,7 @@ pipeline input).
 
 No README, launch copy, or docs headline commits a zero-key success-rate
 number that isn't measured. The spike measured **20/20 at the latest native
-Chrome fingerprint on a 20-site probe drawn from the D100 ICP niches**;
+Chrome fingerprint on a 20-site probe drawn from the partner ICP niches**;
 that number lands in `docs/ZERO-KEY.md` and the README hero, with a
 stale-fingerprint decay footnote. The larger 30-prospect fixtures corpus
 measurement remains future work (it requires network access against the
