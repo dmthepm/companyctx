@@ -79,26 +79,30 @@ Five is the smallest set that touches every stack branch *and* the
 empty-`tech_stack` branch, so a regression in any of them breaks at
 least one regression case.
 
-### Failure-shape regressions — the durability two
+### Failure-shape regressions — the durability two + COX-44
 
 The 2026-04-21 100-site durability run against @joel-req's external seed list
 (see `durability-report-2026-04-21.md`) surfaced two HTML-capturable
-**FM-7** shapes (thin/empty content after successful fetch, per
-`docs/RISK-REGISTER.md` §FM-7) that sit outside the synthetic-corpus
-taxonomy:
+shapes where the fetch returns HTTP 200 with effectively no body:
 
 | Slug                       | Failure mode             | What it guards against                                                 |
 | -------------------------- | ------------------------ | ---------------------------------------------------------------------- |
 | `fm7-js-redirect-root`     | JS redirect to subpath   | Extractor hallucinating content from an empty `<head>`-only response.  |
 | `fm7-maintenance-page`     | "Temporarily unavailable"| Extractor inventing text when the body carries only a maintenance notice. |
+| `empty-response`           | 0-byte body, COX-44 pin  | Silent-success slipping back in if the `empty_response` provider gate regresses. |
 
-Both envelope outputs are `status: ok` with thin-or-empty
-`homepage_text` — the correct shape when a fetch succeeds but the
-response has little to extract. These fixtures carry only
-`homepage.html` + `expected.json` (no about/services/provider JSON), so
-they bypass the 30-synthetic-dirs invariant; the test suite filters
-them via `FAILURE_FIXTURE_SLUGS` in `tests/test_fixtures_corpus.py` and
-includes them in the byte-diff regression suite via
+Under v0.3 (COX-44 / #79), all three extract to fewer than
+`EMPTY_RESPONSE_BYTES` (64) characters and trip the provider's
+empty-response honesty check, so the envelope surfaces as
+`status: degraded`, `error.code: "empty_response"` instead of the
+v0.2 silent-success `status: ok` with zero-length `homepage_text`.
+Distinct from FM-7 in `docs/RISK-REGISTER.md`, which covers legitimate
+one-page brochure sites with thin-but-real content (≥ 64 chars) — those
+still return `status: ok`. These fixtures carry only `homepage.html` +
+`expected.json` (no about/services/provider JSON), so they bypass the
+30-synthetic-dirs invariant; the test suite filters them via
+`FAILURE_FIXTURE_SLUGS` in `tests/test_fixtures_corpus.py` and includes
+them in the byte-diff regression suite via
 `tests/test_regression_corpus.py`.
 
 ### Network-failure regressions — the `fixture-block.txt` sentinel
