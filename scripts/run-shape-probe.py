@@ -7,25 +7,35 @@ durability run (#22 / PR #41) both drew from a WordPress-dominated partner
 seed list; this harness lets us deliberately re-probe against Wix, Webflow,
 and JS-heavy SPA homepages.
 
-Exercises the same two moving parts the zero-key provider wires together in
-``companyctx/providers/site_text_trafilatura.py``:
+Reuses the same guardrails the zero-key provider applies in
+``companyctx/providers/site_text_trafilatura.py`` so the probe's
+"reachable" numbers line up with what ``companyctx fetch`` actually
+exercises:
 
 1. ``curl_cffi.requests.get(url, impersonate="chrome146")`` — the stealth
    fetcher at the library's currently-pinned Chrome fingerprint.
-2. ``trafilatura.extract`` via ``companyctx.extract.extract_body_text`` —
+2. :func:`companyctx.security.validate_public_http_url` pre-flight on
+   the initial URL and on every redirect hop (SSRF guard).
+3. Manual redirect walk capped at :data:`MAX_REDIRECTS` hops
+   (``allow_redirects=False`` on each call).
+4. Streamed response with a :data:`MAX_RESPONSE_BYTES` cap
+   (gzip-bomb / oversize-body guard).
+5. ``trafilatura.extract`` via ``companyctx.extract.extract_body_text`` —
    the same extractor the provider uses.
 
-Plus a probe-local shape-marker detector that tags each row with the
-platform actually observed in the HTML (``wix``, ``webflow``, ``next``,
+``robots.txt`` is honored by default (``is_allowed`` called with the
+core's :data:`DEFAULT_USER_AGENT`, matching ``companyctx fetch`` —
+UA-specific robots policies do not diverge between harness and
+production). Pass ``--ignore-robots`` to skip. 2-second pacing floor
+between requests. :data:`DEFAULT_TIMEOUT_S` per request, matching the
+core orchestrator's default.
+
+A probe-local shape-marker detector tags each row with the platform
+actually observed in the HTML (``wix``, ``webflow``, ``next``,
 ``react``, ``vue``, ``nuxt``, ``wordpress``, ``other``). The provider's
 ``detect_tech_stack`` only identifies WordPress / Elementor / Shopify /
 Squarespace / Wix / Webflow; SPA framework markers are detected here,
 in the harness only — no production schema change.
-
-``robots.txt`` is honored by default; pass ``--ignore-robots`` to skip
-(mirrors the CLI flag). 2-second pacing floor between requests. 15-second
-per-request timeout. One redirect-follow pass via ``curl_cffi``'s own
-redirect handling.
 
 Input CSV columns (header required):
 
@@ -50,16 +60,23 @@ import json
 import re
 import time
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from curl_cffi import requests
 
+from companyctx.core import DEFAULT_TIMEOUT_S, DEFAULT_USER_AGENT
 from companyctx.extract import detect_tech_stack, extract_body_text
 from companyctx.robots import is_allowed
+from companyctx.security import (
+    MAX_REDIRECTS,
+    MAX_RESPONSE_BYTES,
+    UnsafeURLError,
+    validate_public_http_url,
+)
 
 PACING_FLOOR_S = 2.0
-PER_REQUEST_TIMEOUT_S = 15.0
 IMPERSONATE = "chrome146"
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 
 
 def _normalize_url(host: str) -> str:
@@ -125,16 +142,113 @@ def detect_shape(html: str) -> str:
     return "other"
 
 
-def probe_one(host: str, *, ignore_robots: bool = False) -> dict:
-    """Single stealth-fetch probe. Mirrors ``_stealth_fetch`` + extract path."""
+def _read_capped_body(resp: requests.Response) -> bytes:
+    """Stream the response, refusing to exceed :data:`MAX_RESPONSE_BYTES`.
+
+    Mirror of the guard in
+    :func:`companyctx.providers.site_text_trafilatura._read_capped_body`
+    so the probe cannot be weaponised as a gzip-bomb or
+    resource-exhaustion vector via an attacker-controlled CSV entry.
+    """
+    declared = resp.headers.get("content-length") or resp.headers.get("Content-Length")
+    if declared is not None:
+        try:
+            if int(declared) > MAX_RESPONSE_BYTES:
+                raise _ProbeFetchError(
+                    f"response_too_large: content-length {declared} exceeds {MAX_RESPONSE_BYTES}"
+                )
+        except ValueError:
+            pass
+    buf = bytearray()
+    for chunk in resp.iter_content(chunk_size=8192):
+        buf.extend(chunk)
+        if len(buf) > MAX_RESPONSE_BYTES:
+            raise _ProbeFetchError(f"response_too_large: exceeded {MAX_RESPONSE_BYTES} bytes")
+    return bytes(buf)
+
+
+class _ProbeFetchError(Exception):
+    """Internal signal from the stealth-fetch path — same shape as the
+    provider's private :class:`_BlockedError` but kept local to the
+    harness so we never ``except`` production exceptions."""
+
+
+def _stealth_fetch_guarded(url: str, timeout_s: float) -> tuple[int, str, int, int]:
+    """Single fetch + SSRF + redirect + size-cap walk.
+
+    Returns ``(status, body_text, body_bytes, redirects_followed)``.
+    Raises :class:`_ProbeFetchError` on any guardrail trip (SSRF, redirect
+    cap, over-size body, HTTP 4xx/5xx, transport error, decode error).
+    """
+    current = url
+    hops = 0
+    while True:
+        try:
+            validate_public_http_url(current)
+        except UnsafeURLError as exc:
+            raise _ProbeFetchError(f"unsafe_url: {exc}") from exc
+        try:
+            resp = requests.get(
+                current,
+                impersonate=IMPERSONATE,
+                timeout=timeout_s,
+                allow_redirects=False,
+                stream=True,
+            )
+        except requests.RequestsError as exc:
+            raise _ProbeFetchError(f"network: {exc.__class__.__name__}: {exc}") from exc
+
+        if resp.status_code in _REDIRECT_STATUSES:
+            location = resp.headers.get("location") or resp.headers.get("Location")
+            resp.close()  # type: ignore[no-untyped-call]
+            if not location:
+                raise _ProbeFetchError(f"HTTP {resp.status_code} with no Location header")
+            hops += 1
+            if hops > MAX_REDIRECTS:
+                raise _ProbeFetchError(f"redirect limit ({MAX_REDIRECTS}) exceeded")
+            current = urljoin(current, location)
+            continue
+
+        status = resp.status_code
+        if status in (401, 403):
+            resp.close()  # type: ignore[no-untyped-call]
+            raise _ProbeFetchError(f"blocked_by_antibot (HTTP {status})")
+        if status >= 400:
+            resp.close()  # type: ignore[no-untyped-call]
+            raise _ProbeFetchError(f"HTTP {status}")
+        try:
+            body = _read_capped_body(resp)
+        finally:
+            resp.close()  # type: ignore[no-untyped-call]
+        encoding = resp.encoding or "utf-8"
+        text = body.decode(encoding, errors="replace")
+        return status, text, len(body), hops
+
+
+def probe_one(
+    host: str,
+    *,
+    ignore_robots: bool = False,
+    user_agent: str = DEFAULT_USER_AGENT,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+) -> dict:
+    """Single stealth-fetch probe.
+
+    Applies the same guardrails the production zero-key provider does:
+    SSRF pre-flight on every hop, ``MAX_REDIRECTS`` cap, streamed
+    response capped at ``MAX_RESPONSE_BYTES``, ``DEFAULT_USER_AGENT`` for
+    robots, ``DEFAULT_TIMEOUT_S`` per request.
+    """
     url = _normalize_url(host)
     row: dict = {
         "host": host,
         "url": url,
         "impersonate": IMPERSONATE,
+        "user_agent": user_agent,
+        "timeout_s": timeout_s,
         "robots_allowed": None,
         "status": None,
-        "final_url_host": None,
+        "redirects": 0,
         "bytes": 0,
         "extract_chars": 0,
         "extract_bytes": 0,
@@ -146,9 +260,8 @@ def probe_one(host: str, *, ignore_robots: bool = False) -> dict:
     }
     if not ignore_robots:
         try:
-            allowed = is_allowed(url, user_agent="*")
+            allowed = is_allowed(url, user_agent=user_agent)
         except Exception as exc:  # pragma: no cover — defensive
-            row["robots_allowed"] = None
             row["error"] = f"robots_check_error: {exc!r}"
             row["outcome"] = "robots_error"
             return row
@@ -157,47 +270,38 @@ def probe_one(host: str, *, ignore_robots: bool = False) -> dict:
             row["outcome"] = "blocked_by_robots"
             row["error"] = "blocked_by_robots"
             return row
-    else:
-        row["robots_allowed"] = None  # skipped
 
     t0 = time.monotonic()
     try:
-        resp = requests.get(
-            url,
-            impersonate=IMPERSONATE,
-            timeout=PER_REQUEST_TIMEOUT_S,
-            allow_redirects=True,
-        )
-    except Exception as exc:
+        status, html, body_bytes, hops = _stealth_fetch_guarded(url, timeout_s)
+    except _ProbeFetchError as exc:
         row["elapsed_ms"] = int((time.monotonic() - t0) * 1000)
-        row["error"] = f"network: {exc.__class__.__name__}: {exc}"
-        row["outcome"] = "network_error"
+        reason = str(exc)
+        row["error"] = reason
+        if reason.startswith("unsafe_url"):
+            row["outcome"] = "unsafe_url"
+        elif reason.startswith("blocked_by_antibot"):
+            row["outcome"] = "blocked_by_antibot"
+            row["status"] = 403 if "403" in reason else 401
+        elif reason.startswith("redirect limit"):
+            row["outcome"] = "redirect_loop"
+        elif reason.startswith("response_too_large"):
+            row["outcome"] = "response_too_large"
+        elif reason.startswith("HTTP "):
+            try:
+                code = int(reason.split()[1])
+                row["status"] = code
+                row["outcome"] = f"http_{code}"
+            except (IndexError, ValueError):
+                row["outcome"] = "http_error"
+        else:
+            row["outcome"] = "network_error"
         return row
 
     row["elapsed_ms"] = int((time.monotonic() - t0) * 1000)
-    row["status"] = resp.status_code
-    row["bytes"] = len(resp.content or b"")
-    try:
-        row["final_url_host"] = urlparse(resp.url).netloc
-    except Exception:
-        row["final_url_host"] = None
-
-    if resp.status_code in (401, 403):
-        row["outcome"] = "blocked_by_antibot"
-        row["error"] = f"HTTP {resp.status_code}"
-        return row
-    if resp.status_code >= 400:
-        row["outcome"] = f"http_{resp.status_code}"
-        row["error"] = f"HTTP {resp.status_code}"
-        return row
-
-    try:
-        html = resp.text
-    except Exception as exc:  # pragma: no cover
-        row["outcome"] = "decode_error"
-        row["error"] = f"decode: {exc!r}"
-        return row
-
+    row["status"] = status
+    row["bytes"] = body_bytes
+    row["redirects"] = hops
     row["detected_shape"] = detect_shape(html)
     row["tech_stack"] = detect_tech_stack(html)
     extracted = extract_body_text(html) or ""
@@ -272,6 +376,7 @@ def main() -> None:
             "bytes": r["bytes"],
             "extract_bytes": r["extract_bytes"],
             "elapsed_ms": r["elapsed_ms"],
+            "redirects": r.get("redirects", 0),
             "error": r["error"],
             "tech_stack": r["tech_stack"],
         }

@@ -17,11 +17,15 @@ raw_evidence: research/2026-04-22-wix-webflow-spa-probe-raw.jsonl
 ## One-sentence summary
 
 On a deliberately shape-balanced 15-site probe spanning Wix, Webflow, and
-React/Next SPA marketing homepages, `curl_cffi @ chrome146` returned
-**HTTP 200 on 14 of 15** reachable endpoints with **13 of those 14**
-yielding ≥ 1 KB of extracted `homepage_text` — no zero-key coverage
-regression vs. the [2026-04-21 TLS spike](2026-04-21-tls-impersonation-spike.md)
-or the [100-site durability run](../fixtures/durability-report-2026-04-21.md)
+React/Next SPA marketing homepages, `curl_cffi @ chrome146` under the
+same SSRF/redirect/size guardrails the production provider applies
+returned **HTTP 200 on 13 of 15** endpoints, all 13 yielding ≥ 1 KB of
+extracted `homepage_text`; the remaining two were a retired domain
+(`www.wixanswers.com` — HTTP 404) and a Wix account dashboard
+(`manage.wix.com`) that trips the 5-hop redirect cap the provider
+enforces. No zero-key coverage regression vs. the
+[2026-04-21 TLS spike](2026-04-21-tls-impersonation-spike.md) or the
+[100-site durability run](../fixtures/durability-report-2026-04-21.md)
 on these platform cohorts.
 
 ## Why this probe
@@ -96,17 +100,30 @@ React/Next-framework marketing homepages.
 
 ## Methodology
 
-- **Fetcher.** `curl_cffi` pinned to `impersonate="chrome146"` — the
-  exact library + fingerprint
+- **Fetcher + guardrails.** `curl_cffi` pinned to
+  `impersonate="chrome146"` — the exact library + fingerprint
   [`companyctx/providers/site_text_trafilatura.py`](../companyctx/providers/site_text_trafilatura.py)
-  ships in v0.1.0. The harness calls `curl_cffi.requests.get(url,
-  impersonate="chrome146", timeout=15, allow_redirects=True)` directly
-  — mirroring the provider's `_stealth_fetch` at the one-URL level
-  without the redirect-manual-walk + response-size cap (neither fired
-  on this cohort).
-- **Extractor.** `companyctx.extract.extract_body_text` — the same
-  trafilatura wrapper the provider uses. Extract-length is the
-  UTF-8-encoded byte length of what trafilatura emits.
+  ships in v0.1.0. The harness reuses the provider's full guardrail
+  stack from
+  [`companyctx/security.py`](../companyctx/security.py) rather than
+  calling `curl_cffi` directly with defaults:
+    - [`validate_public_http_url`](../companyctx/security.py) runs
+      before every request **and** on every redirect hop (SSRF guard —
+      rejects non-HTTP schemes, empty hosts, cloud-metadata vanity
+      hosts, and any host that DNS-resolves to a non-global IP).
+    - Redirects are followed manually with
+      `allow_redirects=False` and capped at
+      [`MAX_REDIRECTS`](../companyctx/security.py) (5 hops).
+    - Response bodies stream via `resp.iter_content` and are capped at
+      [`MAX_RESPONSE_BYTES`](../companyctx/security.py) (10 MiB) —
+      any `Content-Length` over the cap short-circuits before the
+      first chunk.
+  The mirror is intentional: the probe advertises itself as
+  "re-runnable against any CSV", and we do not want to ship a script
+  that drops SSRF/resource guards the production path already closes.
+- **Extractor.** [`companyctx.extract.extract_body_text`](../companyctx/extract.py)
+  — the same trafilatura wrapper the provider uses. Extract-length is
+  the UTF-8-encoded byte length of what trafilatura emits.
 - **Shape detection.** Probe-local
   ([`scripts/run-shape-probe.py:detect_shape`](../scripts/run-shape-probe.py)).
   Checks high-specificity SPA-build-artefact markers
@@ -117,9 +134,15 @@ React/Next-framework marketing homepages.
   pass corrects known false-positives — e.g. `linear.app` mentions the
   string "webflow" three times in its Next.js-rendered marketing copy,
   which the production detector would label as Webflow.
-- **Pacing + robots.** 2-second pacing floor between requests;
-  `robots.txt` checked via `companyctx.robots.is_allowed` before every
-  fetch (no `--ignore-robots` on this run).
+- **Pacing + robots + timeout.** 2-second pacing floor between
+  requests; `robots.txt` checked via
+  [`companyctx.robots.is_allowed`](../companyctx/robots.py) using the
+  core orchestrator's
+  [`DEFAULT_USER_AGENT`](../companyctx/core.py) (not `"*"`, so
+  UA-specific policies apply identically to production); per-request
+  timeout is [`DEFAULT_TIMEOUT_S`](../companyctx/core.py) (10s),
+  matching the orchestrator's default. No `--ignore-robots` on this
+  run.
 - **Harness source.**
   [`scripts/run-shape-probe.py`](../scripts/run-shape-probe.py) —
   committed; re-runnable against any CSV with `expected_shape,host,note`
@@ -141,63 +164,76 @@ are already-public — unlike the TLS spike's partner-private slug list.
 
 ### Per-site
 
-| Host                  | Measured shape | HTTP | Response bytes | Extract bytes | Outcome |
-|-----------------------|----------------|------|----------------|---------------|---------|
-| `www.wix.com`         | wix            | 200  | 2,289,322      | 13,008        | ok      |
-| `www.editorx.com`     | wix            | 200  | 2,101,942      | 11,464        | ok      |
-| `www.wixanswers.com`  | —              | 404  | 3,059          | 0             | http_404 |
-| `support.wix.com`     | wix            | 200  | 989,843        | 1,250         | ok      |
-| `manage.wix.com`      | wix            | 200  | 11,998         | 0             | thin    |
-| `webflow.com`         | webflow        | 200  | 708,707        | 2,231         | ok      |
-| `www.lattice.com`     | webflow        | 200  | 326,165        | 2,404         | ok      |
-| `www.attentive.com`   | webflow        | 200  | 293,504        | 1,532         | ok      |
-| `www.ramp.com`        | next           | 200  | 1,442,003      | 3,215         | ok      |
-| `www.loom.com`        | next           | 200  | 208,217        | 2,510         | ok      |
-| `vercel.com`          | next           | 200  | 954,469        | 1,874         | ok      |
-| `linear.app`          | next           | 200  | 2,303,172      | 1,119         | ok      |
-| `supabase.com`        | next           | 200  | 377,330        | 10,517        | ok      |
-| `resend.com`          | next           | 200  | 449,707        | 12,580        | ok      |
-| `railway.com`         | react          | 200  | 687,757        | 1,573         | ok      |
+| Host                  | Measured shape | HTTP | Response bytes | Extract bytes | Outcome        |
+|-----------------------|----------------|------|----------------|---------------|----------------|
+| `www.wix.com`         | wix            | 200  | 2,289,322      | 13,008        | ok             |
+| `www.editorx.com`     | wix            | 200  | 2,101,942      | 11,464        | ok             |
+| `www.wixanswers.com`  | —              | 404  | 0              | 0             | http_404       |
+| `support.wix.com`     | wix            | 200  | 989,843        | 1,250         | ok             |
+| `manage.wix.com`      | —              | —    | 0              | 0             | redirect_loop  |
+| `webflow.com`         | webflow        | 200  | 708,707        | 2,231         | ok             |
+| `www.lattice.com`     | webflow        | 200  | 326,165        | 2,404         | ok             |
+| `www.attentive.com`   | webflow        | 200  | 293,504        | 1,532         | ok             |
+| `www.ramp.com`        | next           | 200  | 1,120,263      | 3,226         | ok             |
+| `www.loom.com`        | next           | 200  | 208,217        | 2,510         | ok             |
+| `vercel.com`          | next           | 200  | 957,245        | 1,874         | ok             |
+| `linear.app`          | next           | 200  | 2,303,170      | 1,119         | ok             |
+| `supabase.com`        | next           | 200  | 377,330        | 10,517        | ok             |
+| `resend.com`          | next           | 200  | 449,707        | 12,580        | ok             |
+| `railway.com`         | react          | 200  | 687,752        | 1,573         | ok             |
 
-`outcome` is thin when HTTP 200 returned but extract < 1,024 bytes (the
-durability-report `FM7_THIN_BYTES` threshold); ok when both fetch and
-extract cleared that threshold; `http_4xx` otherwise.
+`outcome` is `ok` when both fetch and extract cleared the 1,024-byte
+threshold (the durability report's `FM7_THIN_BYTES`); `thin` when
+HTTP 200 returned with < 1,024 bytes extracted; `http_4xx` on HTTP
+400–499; `redirect_loop` when the provider's 5-hop redirect cap
+(`security.MAX_REDIRECTS`) trips; `blocked_by_antibot` on HTTP
+401/403; `response_too_large` on bodies over 10 MiB; `unsafe_url` when
+the SSRF pre-flight rejects. Only `ok`, `http_404`, and
+`redirect_loop` fired on this run.
 
 ### Aggregate
 
-| Cohort (measured shape) | n  | HTTP 200 | ≥ 1 KB extract | Blocked | Thin | 404 |
-|-------------------------|----|----------|----------------|---------|------|-----|
-| Wix                     | 4\*| 4/4      | 3/4            | 0       | 1    | 0   |
-| Webflow                 | 3  | 3/3      | 3/3            | 0       | 0    | 0   |
-| Next.js SPA             | 6  | 6/6      | 6/6            | 0       | 0    | 0   |
-| React SPA               | 1  | 1/1      | 1/1            | 0       | 0    | 0   |
-| **Total (reachable)**   | 14 | 14/14    | 13/14          | 0       | 1    | —   |
-| Unreachable (404)       | 1  | —        | —              | —       | —    | 1   |
+| Cohort (measured shape) | n  | HTTP 200 | ≥ 1 KB extract | Anti-bot block | Redirect-loop | 404 |
+|-------------------------|----|----------|----------------|----------------|---------------|-----|
+| Wix                     | 3  | 3/3      | 3/3            | 0              | 0             | 0   |
+| Webflow                 | 3  | 3/3      | 3/3            | 0              | 0             | 0   |
+| Next.js SPA             | 6  | 6/6      | 6/6            | 0              | 0             | 0   |
+| React SPA               | 1  | 1/1      | 1/1            | 0              | 0             | 0   |
+| **Subtotal reached**    | 13 | 13/13    | 13/13          | 0              | —             | —   |
+| Redirect-loop           | 1  | —        | —              | —              | 1             | —   |
+| HTTP 404                | 1  | —        | —              | —              | —             | 1   |
 
-\* Excludes `www.wixanswers.com` which returned HTTP 404 (the Wixanswers
-product was rebranded into `support.wix.com`; the domain still resolves
-but serves a 404 HTML). Not a fetcher failure — the endpoint is gone.
+The two non-reach rows:
+
+- `www.wixanswers.com` — HTTP 404. The Wixanswers product was folded
+  into `support.wix.com` (which succeeded); the legacy domain still
+  resolves but serves a retirement 404. Not a fetcher failure.
+- `manage.wix.com` — trips the 5-hop redirect cap
+  (`security.MAX_REDIRECTS`). The Wix account dashboard redirects
+  anonymous clients through a login chain that exceeds five hops, so
+  the production provider would also surface this as
+  `provenance[slug].error = "redirect limit (5) exceeded"` and the
+  envelope would come back partial — the expected behavior for a
+  sign-in-gated dashboard endpoint, not a public marketing page.
 
 ## Plain-language findings
 
 1. **`curl_cffi @ chrome146` is not the bottleneck on any of the three
-   site classes in this cohort.** Every reachable Wix, Webflow,
-   Next.js-SPA, and React-SPA endpoint returned HTTP 200. No
-   Cloudflare / Akamai / DataDome challenge fired. No `blocked_by_antibot`
-   observations. This is consistent with the TLS-spike finding that
-   fingerprint-freshness is the real decay mode — none of these
-   platforms index the current Chrome 146 JA3 at a level that blocked
-   the probe.
+   site classes in this cohort.** Every public marketing homepage —
+   Wix, Webflow, Next.js-SPA, and React-SPA — returned HTTP 200. No
+   Cloudflare / Akamai / DataDome challenge fired. No
+   `blocked_by_antibot` observations. This is consistent with the
+   TLS-spike finding that fingerprint-freshness is the real decay
+   mode — none of these platforms index the current Chrome 146 JA3 at
+   a level that blocked the probe.
 2. **Usable text-extract on the Wix / Webflow / Next-SPA cohorts is
-   essentially the same as the WordPress-heavy durability cohort.**
-   13 / 14 reachable sites cleared the 1 KB extract threshold — 93%.
-   The single thin result is `manage.wix.com`, Wix's own account
-   dashboard, which serves a 12 KB React-shell HTML with the real
-   content rendered client-side. That matches
-   [`docs/ZERO-KEY.md`](../docs/ZERO-KEY.md)'s existing "JS-heavy SPAs
-   that need a real browser" row — the dashboard ships the shell, the
-   shell lacks extractable copy, the provider reports thin, the
-   waterfall routes to Attempt 2. No matrix copy change needed.
+   on par with the WordPress-heavy durability cohort.** 13 / 13
+   reached endpoints cleared the 1 KB extract threshold. The only
+   Wix-hosted endpoint that did not reach is `manage.wix.com`, Wix's
+   own authenticated-account dashboard — it redirects anonymous
+   traffic through > 5 hops, tripping the provider's redirect cap.
+   That's the expected partial-envelope path for a sign-in-gated page
+   and not a public-marketing failure mode.
 3. **Next.js marketing sites are in the covered cohort, not the SPA
    failure cohort.** Every site the probe labelled `next` returned
    ≥ 1 KB of body text because SaaS marketing pages SSR-render their
@@ -228,10 +264,15 @@ the harness records both, so mis-classifications surface immediately.
 Re-run against the same 15-site list:
 
 ```bash
-python3 scripts/run-shape-probe.py \
+PYTHONPATH=. python3 scripts/run-shape-probe.py \
     --candidates <path-to-candidates.csv> \
     --out .context/cox-17-probe
 ```
+
+`PYTHONPATH=.` (or an editable install via `pip install -e .`) is
+required so the harness can import the production
+`companyctx.security` / `companyctx.core` / `companyctx.robots` /
+`companyctx.extract` primitives it reuses.
 
 The committed CSV header is `expected_shape,host,note`; any file with
 those columns works. Per-site JSON lands in `--out/runs/`; the
