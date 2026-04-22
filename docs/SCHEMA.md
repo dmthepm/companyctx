@@ -61,14 +61,74 @@ Agents should branch on `error.code`; humans read `error.message`.
 `"skip this prospect"`. Additional codes are added in minor releases and bump
 `schema_version`; removing or renaming a code is a major bump.
 
-### Example (partial)
+### Example — `ok`
+
+Zero-key Attempt 1 (`site_text_trafilatura`) populates `pages`; the other
+slots are reserved for providers that register later (see
+`docs/SPEC.md` — shipped-vs-deferred).
+
+```json
+{
+  "schema_version": "0.2.0",
+  "status": "ok",
+  "data": {
+    "site": "acme-bakery.com",
+    "fetched_at": "2026-04-22T18:35:02.767112Z",
+    "pages": {
+      "homepage_text": "Acme Bakery is a bakery in Portland, OR. ...",
+      "about_text": "Acme Bakery has served Portland, OR since 2010. ...",
+      "services": ["Custom cakes", "Catering", "Wholesale bread", "Pastry boxes"],
+      "tech_stack": ["WordPress", "Elementor"]
+    },
+    "reviews": null,
+    "social": null,
+    "signals": null,
+    "mentions": null
+  },
+  "provenance": {
+    "site_text_trafilatura": {
+      "status": "ok",
+      "latency_ms": 412,
+      "error": null,
+      "provider_version": "0.1.0",
+      "cost_incurred": 0
+    }
+  },
+  "error": null
+}
+```
+
+### Example — `partial` (zero-key blocked, smart-proxy unset)
 
 ```json
 {
   "schema_version": "0.2.0",
   "status": "partial",
-  "data": { "site": "example.com", "fetched_at": "...", "pages": null, ... },
-  "provenance": { "site_text_trafilatura": { "status": "failed", ... } },
+  "data": {
+    "site": "walled-garden.example",
+    "fetched_at": "2026-04-22T18:35:14.928144Z",
+    "pages": null,
+    "reviews": null,
+    "social": null,
+    "signals": null,
+    "mentions": null
+  },
+  "provenance": {
+    "site_text_trafilatura": {
+      "status": "failed",
+      "latency_ms": 842,
+      "error": "blocked_by_antibot (HTTP 403)",
+      "provider_version": "0.1.0",
+      "cost_incurred": 0
+    },
+    "smart_proxy_http": {
+      "status": "not_configured",
+      "latency_ms": 0,
+      "error": "missing env var: COMPANYCTX_SMART_PROXY_URL — export COMPANYCTX_SMART_PROXY_URL='http://user:pass@host:port' to wire your residential-proxy vendor",
+      "provider_version": "0.1.0",
+      "cost_incurred": 0
+    }
+  },
   "error": {
     "code": "blocked_by_antibot",
     "message": "blocked_by_antibot (HTTP 403)",
@@ -95,9 +155,14 @@ class CompanyContext(BaseModel):
     signals: HeuristicSignals | None = None
 ```
 
-Nothing else goes at the top level in v0.1. People-data fields (contact,
+Nothing else goes at the top level. People-data fields (contact,
 decision-maker, enrichment) are out of scope — that enrichment belongs
 upstream (Apollo / Clearbit / manual research).
+
+In v0.2, only `pages` populates on a live zero-key or smart-proxy run.
+`reviews` / `social` / `signals` / `mentions` stay `null` until their
+providers register (see `docs/SPEC.md` for the deferred-provider table
+and tracking issues).
 
 ## Sub-models
 

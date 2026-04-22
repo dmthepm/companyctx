@@ -5,10 +5,11 @@ schema-locked JSON envelope out. Zero keys on the default path.
 
 **Commands.**
 
-- `companyctx fetch <site> --json` — run all providers; emit one envelope.
-- `companyctx schema` — emit the envelope's JSON Schema to stdout.
-- `companyctx providers list` — show providers + status + cost hint.
-- `companyctx validate <path.json>` — round-trip through the pydantic schema.
+- `companyctx fetch <site> --json` — run the waterfall; emit one envelope.
+- `companyctx schema` — emit the envelope's Draft 2020-12 JSON Schema.
+- `companyctx providers list --json` — registered providers as JSON
+  (`slug`, `tier`, `category`, `cost_hint`, `status`, `reason`).
+- `companyctx validate <path.json>` — round-trip through the Pydantic schema.
 
 **Rules for agents.**
 
@@ -21,15 +22,52 @@ schema-locked JSON envelope out. Zero keys on the default path.
   no_provider_succeeded | misconfigured_provider`).
 - Pipe stdout; don't parse logs. The JSON envelope is the contract.
 - The `data.site` field is the identifier; `data.pages` holds homepage-
-  derived content; `data.reviews` / `data.social` / `data.signals` /
-  `data.mentions` fill the rest of the schema.
+  derived content (`homepage_text`, `about_text`, `services`, `tech_stack`).
+- `data.reviews` / `data.social` / `data.signals` / `data.mentions` are
+  reserved in the schema but stay `null` in v0.2 — the providers that
+  fill them are deferred (see `docs/SPEC.md`). Schema-locked partials,
+  not bugs.
 
-**Example.**
+**Envelope shape (v0.2).**
+
+```json
+{
+  "schema_version": "0.2.0",
+  "status": "ok",
+  "data": {
+    "site": "acme-bakery.com",
+    "fetched_at": "2026-04-22T18:35:02.767112Z",
+    "pages": {
+      "homepage_text": "...",
+      "about_text": "...",
+      "services": ["..."],
+      "tech_stack": ["..."]
+    },
+    "reviews": null,
+    "social": null,
+    "signals": null,
+    "mentions": null
+  },
+  "provenance": {
+    "site_text_trafilatura": {
+      "status": "ok",
+      "latency_ms": 412,
+      "error": null,
+      "provider_version": "0.1.0",
+      "cost_incurred": 0
+    }
+  },
+  "error": null
+}
+```
+
+**Example pipe.**
 
 ```bash
 companyctx fetch acme-bakery.com --json \
-  | jq '.data | {site, signals, reviews}'
+  | jq '.data.pages | {services, tech_stack}'
 ```
 
-See `docs/SCHEMA.md` for the full envelope and `docs/ZERO-KEY.md` for the
+See `docs/SCHEMA.md` for the full envelope, `docs/SPEC.md` for the CLI
+surface (including deferred commands), and `docs/ZERO-KEY.md` for the
 honest anti-bot coverage matrix.

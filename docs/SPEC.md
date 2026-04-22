@@ -1,17 +1,18 @@
 # SNAPSHOT — canonical at `noontide-projects/boston-v1/decisions/`; do not maintain here
 
-> This file is a frozen snapshot taken at scaffolding time (Milestone 1).
-> The canonical spec lives in the upstream design workspace under the
-> `companyctx` spec-location/shape decision (schema + CLI shape) and the
-> `companyctx` scope-and-brand-lock decision (output contract, Deterministic
-> Waterfall, Vertical Memory, `status` enum).
+> This file is a snapshot of the CLI + envelope surface. The canonical spec
+> lives in the upstream design workspace under the `companyctx`
+> spec-location/shape decision (schema + CLI shape) and the `companyctx`
+> scope-and-brand-lock decision (output contract, Deterministic Waterfall,
+> Vertical Memory, `status` enum).
 >
-> Future spec edits land upstream and flow back via a new handoff cycle, not
-> via PRs against this file.
+> Shape edits land upstream and flow back via a new handoff cycle. Shipped-vs-
+> deferred state (which commands / flags / providers are wired today) is
+> refreshed with each release — this file is current as of `v0.2.0`.
 
 ---
 
-# companyctx — v0.1 spec
+# companyctx — spec (v0.2)
 
 ## Purpose
 
@@ -27,25 +28,44 @@ layer that consumes the JSON. No people data in v0.1 (company side only).
 
 Built with Typer. Conforms to clig.dev.
 
+Shipped in v0.2:
+
 | Command | Behavior |
 |---|---|
-| `companyctx fetch <site>` | Run all providers for one site; print or write result. |
+| `companyctx fetch <site>` | Run the Deterministic Waterfall for one site; emit one envelope. |
 | `companyctx schema` | Emit the envelope's Draft 2020-12 JSON Schema to stdout. |
-| `companyctx batch <csv>` | Run fetch over CSV of sites, write each result to a file. |
-| `companyctx validate <json>` | Validate a JSON payload against the pydantic schema. |
-| `companyctx cache list` | Inspect cache entries. |
-| `companyctx cache clear [--site X] [--older-than 7d]` | Prune the cache. |
-| `companyctx providers list` | Show available providers + their status + cost hint. |
+| `companyctx validate <path>` | Round-trip a JSON envelope through the Pydantic schema. |
+| `companyctx providers list [--json]` | Enumerate registered providers — slug, waterfall tier, category, cost hint, config status, reason. |
 
-Global flags on `fetch`:
+Reserved in the CLI surface but **not wired** in v0.2 — invoking them
+prints a tracking-issue pointer to stderr and exits non-zero, so agents
+don't build on a contract we don't honour yet:
 
-- `--out <path>`, `--json` / `--markdown`, `--verbose`
-- `--no-cache` — bypass the cache read path for this run.
-- `--refresh` — ignore cache, re-fetch every provider, write fresh back.
-- `--from-cache` — return only the cached payload, never hit the network;
-  exit non-zero on miss. (First-class Vertical-Memory flag.)
-- `--config <toml>`, `--mock` (loads from `fixtures/<site>/` instead of network).
+| Command / flag | Why reserved | Tracking |
+|---|---|---|
+| `companyctx batch <csv>` | Fan-out wrapper over `fetch`; lands with the cache so re-runs are cheap. | #38 (external) |
+| `companyctx cache list` | Vertical Memory surface; needs the SQLite layer. | #9 |
+| `companyctx cache clear [--site X] [--older-than 7d]` | Same. | #9 |
+
+Flags on `fetch`:
+
+- `--out <path>` — write JSON to a file instead of stdout.
+- `--json` / `--markdown` — `--json` is the supported contract.
+  `--markdown` is **experimental and not implemented** in v0.2; the CLI
+  rejects it with an explicit message so downstream pipelines don't ship a
+  silent contract (#68).
+- `--mock` — load from `fixtures/<site>/` instead of the network. Paired
+  with `--fixtures-dir` (default `./fixtures`).
+- `--verbose` — per-provider run-log to stderr.
 - `--ignore-robots` — explicit CLI-only; **not** settable via TOML or env.
+
+Reserved but **not wired** — `fetch` rejects these with a `typer.BadParameter`
+pointing at #9 so pipelines can't silently rely on cache behavior:
+
+- `--no-cache`
+- `--refresh`
+- `--from-cache`
+- `--config <toml>`
 
 ## Output contract
 
@@ -81,6 +101,48 @@ Status semantics:
 blocked_by_antibot | path_traversal_rejected | response_too_large |
 no_provider_succeeded | misconfigured_provider`. See `docs/SCHEMA.md` for the
 shape.
+
+### `schema_version`
+
+Every envelope carries a top-level `schema_version: Literal["0.2.0"]`.
+Agents branch on shape by reading this field directly — no substring-
+parsing an error string. Adding an optional envelope field is a PATCH (no
+`schema_version` bump); adding or renaming an `EnvelopeError.code` is a
+MINOR bump; changing or removing an existing field is a MAJOR bump. v0.1
+envelopes lack the `schema_version` field and fail validation under
+`extra="forbid"`.
+
+### `providers list` output shape
+
+The text output is human-first; the JSON output is the agent contract.
+`--json` emits a list of dicts, one per registered provider:
+
+```json
+[
+  {
+    "slug": "site_text_trafilatura",
+    "tier": "zero-key",
+    "category": "site_text",
+    "cost_hint": "free",
+    "status": "ready",
+    "reason": null
+  },
+  {
+    "slug": "smart_proxy_http",
+    "tier": "smart-proxy",
+    "category": "smart_proxy",
+    "cost_hint": "per-call",
+    "status": "not_configured",
+    "reason": "missing env: COMPANYCTX_SMART_PROXY_URL"
+  }
+]
+```
+
+`tier ∈ {"zero-key", "smart-proxy", "direct-api"}` reflects the Attempt
+band in the waterfall. `status ∈ {"ready", "not_configured"}` is computed
+at list-time from each provider's declared `required_env`; agents should
+treat `not_configured` as "the provider will not run until the reason is
+addressed."
 
 ## Data model (pydantic v2)
 
@@ -133,6 +195,12 @@ Missing providers degrade — never raise — and surface their reason via
 `provenance[slug].status`. The top-level envelope's `status` aggregates these
 into a single pipeline-branchable value.
 
+In v0.2 the only Attempt-1 provider registered is `site_text_trafilatura`,
+so live + `--mock` runs populate `data.pages.*` and leave `data.reviews` /
+`data.social` / `data.signals` / `data.mentions` as `null`. Those slots
+fill in as the direct-API and site-heuristic providers listed above
+register. The envelope shape does not change.
+
 ## Provider-plugin interface
 
 Each deterministic call class is a pluggable provider, discovered via Python
@@ -170,41 +238,55 @@ Providers sit on the **Deterministic Waterfall** (see `docs/ARCHITECTURE.md`):
 Every attempt maps to the same `CompanyContext` shape. Pipelines never branch
 on which attempt succeeded — they branch on the envelope's `status`.
 
-### Day-one providers (committed for v0.1)
+### Providers shipped in v0.2
 
-- **Site text:** `trafilatura` (primary) + `readability-lxml` (fallback) —
-  bus-factor mitigation, both wired day-one.
-- **Site metadata:** `extruct` — JSON-LD, microdata, OpenGraph, RDFa,
-  schema.org `Organization` + `LocalBusiness` + `sameAs` social handle
-  discovery.
-- **Reviews:** Google Places via `googlemaps`; Yelp Fusion via `yelpapi`.
-  Env-gated; missing key → `status: "not_configured"`.
-- **Social discovery:** BeautifulSoup + regex against platform URL shapes
-  + extruct `sameAs`.
-- **Social counts:** YouTube via `google-api-python-client` `channels.list`
-  (ToS-safe). IG / FB / TikTok follower counts stay nullable in v0.1.
-- **Signals:** site-heuristic provider — `copyright_year`,
-  `last_blog_post_at`, `team_size_claim` (regex), tech-stack detection
-  (WordPress / Shopify / Webflow / Wix / Squarespace / custom).
-- **Mentions:** Brave Search stub — plumbing only, returns
-  `status: "not_configured"` so `providers list` surfaces a clear TODO.
+- **`site_text_trafilatura`** (Attempt 1, zero-key). Stealth fetch via
+  `curl_cffi` pinned to `impersonate="chrome146"` + `trafilatura`
+  extraction + tech-stack fingerprint (WordPress / Shopify / Webflow / Wix
+  / Squarespace / Elementor / WooCommerce). Populates `data.pages.*`.
+  Graceful-partial on 401 / 403 / timeout.
+- **`smart_proxy_http`** (Attempt 2, user-keyed, vendor-agnostic). URL-
+  style HTTP proxy: user embeds credentials in
+  `COMPANYCTX_SMART_PROXY_URL`; unset → `status: "not_configured"` with an
+  actionable suggestion. On success the recovered bytes flow through the
+  same shared extractor and populate `data.pages.*`. The named-vendor
+  adapter lands after the smart-proxy vendor eval spike (#63).
 
-## Cache (Vertical Memory)
+### Providers deferred
 
-SQLite fetch cache under XDG-compliant paths. Opt-in via `--cache` flag or
-TOML; disabled by default in v0.1.
+- **`site_text_readability`** — bus-factor fallback for Attempt 1; wires
+  alongside the fallback-selection logic in a future milestone.
+- **`site_meta_extruct`** — JSON-LD / microdata / OpenGraph / RDFa /
+  `sameAs` social-handle discovery.
+- **`reviews_google_places`** (direct-API) — Google Places via
+  `googlemaps`. Tracking: #7.
+- **`reviews_yelp_fusion`** (direct-API) — Yelp Fusion via `yelpapi`.
+- **`social_discovery_site`** (zero-key) — BeautifulSoup + regex +
+  extruct `sameAs`.
+- **`social_counts_youtube`** (direct-API) — YouTube Data via
+  `google-api-python-client` `channels.list` (ToS-safe). IG / FB / TikTok
+  follower counts stay nullable per-provider policy.
+- **`signals_site_heuristic`** (zero-key) — `copyright_year`,
+  `last_blog_post_at`, `team_size_claim`.
+- **`mentions_brave_stub`** (direct-API) — press / awards / podcast
+  discovery. Tracking: #58.
 
-- Key: `(normalized_host, provider_set_hash, provider_slug)` + TTL per
-  provider.
-- Payload: the full normalized `CompanyContext` payload + `provenance`
-  (not raw HTML snippets).
-- Schema is versioned alongside the Pydantic model; migrations are
-  first-class.
-- `companyctx --refresh` forces re-fetch; `companyctx --from-cache` is the
-  cache-only mode.
+Until a direct-API provider registers, `data.reviews` / `data.social` /
+`data.mentions` / `data.signals` stay `null` on live runs and in
+`--mock` fixture output. The envelope shape is stable regardless.
 
-The cache is designed to compound into a queryable local B2B dataset over
-normal use. A `companyctx query ...` DSL is v0.2 scope, not v0.1.
+## Cache (Vertical Memory) — reserved, not wired in v0.2
+
+The SQLite fetch cache is a **design invariant** but not implemented in
+v0.2. The CLI surface reserves `--refresh` / `--from-cache` / `--no-cache`
+/ `--config` and rejects them with a `typer.BadParameter` until #9 lands.
+Tracked shape when wired:
+
+- Storage: SQLite under XDG-compliant paths (`platformdirs`).
+- Key: `(normalized_host, provider_set_hash, provider_slug)` + per-provider TTL.
+- Payload: the full normalized `CompanyContext` + `provenance` (not raw HTML).
+- Schema is versioned alongside the Pydantic model; migrations are first-class.
+- A `companyctx query ...` DSL over the cache is future scope, not v0.2.
 
 ## Observability
 
