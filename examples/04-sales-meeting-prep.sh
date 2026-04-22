@@ -34,10 +34,12 @@ DATA=$(companyctx fetch "$SITE" $FETCH_FLAGS)
 
 STATUS=$(echo "$DATA" | jq -r '.status')
 if [ "$STATUS" != "ok" ]; then
-  ERR=$(echo "$DATA" | jq -r '.error // "unknown"')
-  SUGGESTION=$(echo "$DATA" | jq -r '.suggestion // "none"')
+  CODE=$(echo "$DATA" | jq -r '.error.code // "unknown"')
+  MSG=$(echo "$DATA" | jq -r '.error.message // "unknown"')
+  SUGGESTION=$(echo "$DATA" | jq -r '.error.suggestion // "none"')
   echo "⚠️  Envelope status: $STATUS"
-  echo "   error:      $ERR"
+  echo "   code:       $CODE"
+  echo "   message:    $MSG"
   echo "   suggestion: $SUGGESTION"
   echo "   — proceed with the partial info below —"
   echo

@@ -42,7 +42,7 @@ STATUS=$(companyctx fetch "$SITE" --mock --json | jq -r '.status')
 case "$STATUS" in
   ok)       echo "✅ complete envelope — safe to synthesize" ;;
   partial)  echo "⚠️  some providers failed — check .provenance for which" ;;
-  degraded) echo "❌ primary fetch blocked — see .error and .suggestion" ;;
+  degraded) echo "❌ primary fetch blocked — see .error.code / .error.suggestion" ;;
 esac
 
 # --- EXPECTED OUTPUT ---

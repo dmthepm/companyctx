@@ -73,7 +73,7 @@ deterministic version of the same thing.
   schema ships with `extra="forbid"` and schema-version bumps are
   explicit. Your pipeline code doesn't need defensive parsing.
 - **`status` is the only branch you ever need.** `ok` → use all of
-  `data`. `partial` → use what's populated, honor the `suggestion`.
+  `data`. `partial` → use what's populated, honor `error.suggestion`.
   `degraded` → log and skip. No try/except around the fetch itself.
 - **Provenance tells you which provider did what.** If a later run
   shows `reviews` went from populated to null, `provenance.reviews_*`
@@ -101,7 +101,7 @@ counts, Brave Search API for press mentions). See
 
 For prospects behind Cloudflare Turnstile / DataDome / Akamai, the
 zero-key path may return `status: "partial"` with
-`error: "blocked_by_antibot"`. The pipeline should not treat this as
+`error.code == "blocked_by_antibot"`. The pipeline should not treat this as
 a fatal error:
 
 ```python

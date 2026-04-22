@@ -18,8 +18,9 @@ brain upstream; `companyctx` is one of many CLIs the brain composes via pipes.
 ## Design commitments
 
 1. **Schema is the product.** The Pydantic v2 envelope (`CompanyContext` +
-   `ProviderRunMetadata` + the `{status, data, provenance, error?, suggestion?}`
-   wrapper, see `docs/SCHEMA.md`) is the contract. Providers are replaceable.
+   `ProviderRunMetadata` + the `{schema_version, status, data, provenance,
+   error?}` wrapper with a structured `EnvelopeError`, see `docs/SCHEMA.md`)
+   is the contract. Providers are replaceable.
 2. **Never raise at the boundary.** Every failure — anti-bot block, missing
    API key, cache miss, timeout — maps to the `status` enum on the envelope
    and/or `ProviderRunMetadata.status` per provider. Downstream pipelines

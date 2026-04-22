@@ -43,7 +43,7 @@ fi
 #     "mentions": null
 #   },
 #   "provenance": {
-#     "site_text_trafilatura":  { "status": "ok", "latency_ms": 0,   "error": null, "provider_version": "0.2.0" },
+#     "site_text_trafilatura":  { "status": "ok", "latency_ms": 0,   "error": null, "provider_version": "0.1.0" },
 #     "reviews_google_places":  { "status": "ok", "latency_ms": 312, "error": null, "provider_version": "0.1.0" }
 #   },
 #   "error": null

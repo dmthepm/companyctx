@@ -24,7 +24,7 @@ companyctx fetch acme-bakery.com --json
     "signals": { "copyright_year": 2024, "last_blog_post_at": "2026-02-11T00:00:00Z", "team_size_claim": "team of 6" }
   },
   "provenance": {
-    "site_text_trafilatura": { "status": "ok",            "latency_ms": 412, "error": null,                       "provider_version": "0.2.0" },
+    "site_text_trafilatura": { "status": "ok",            "latency_ms": 412, "error": null,                       "provider_version": "0.1.0" },
     "reviews_google_places": { "status": "not_configured","latency_ms": 0,   "error": "GOOGLE_PLACES_API_KEY not set", "provider_version": "0.1.0" }
   },
   "error": null
@@ -35,10 +35,13 @@ One site in. One schema-locked JSON object out. No API keys for the
 zero-key path. Graceful partials on anti-bot blocks. A local SQLite cache
 that compounds into a queryable B2B dataset over time.
 
-> **Status:** `v0.1.0` is live on PyPI. The zero-key provider
+> **Status:** `v0.2.0` is the current release (schema-breaking envelope bump:
+> structured `EnvelopeError` + top-level `schema_version`; see
+> [`CHANGELOG.md`](CHANGELOG.md)). The zero-key provider
 > (`site_text_trafilatura`) is wired end-to-end: `companyctx fetch <site> --json`
 > returns a schema-locked `Envelope` with `pages.homepage_text` / `about_text` /
-> `services`. Measured 97% envelope-`ok` rate on a 100-site real-world sample.
+> `services`. Measured 97% envelope-`ok` rate on a 100-site real-world sample
+> (v0.1.0 baseline; re-measurement lands with the post-v0.2 docs pass).
 > Schema + CLI surface in [`docs/SPEC.md`](docs/SPEC.md) and
 > [`docs/SCHEMA.md`](docs/SCHEMA.md); architecture in
 > [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); release-readiness ADR in
@@ -85,7 +88,7 @@ that compounds into a queryable B2B dataset over time.
             ↓  still blocked?
   Attempt 3 — Direct-API provider    (user-keyed — Google Places, Yelp Fusion, YouTube)
             ↓
-  { status, data, provenance, error?, suggestion? }
+  { schema_version, status, data, provenance, error? }
 ```
 
 Every attempt maps to the **same** Pydantic schema. Downstream pipelines
@@ -150,11 +153,11 @@ context means.
 
 ## Install
 
-`v0.1.0` is live on PyPI (first working provider + real `fetch`):
+`v0.2.0` is the current release (schema-breaking envelope bump):
 
 ```bash
 pipx install companyctx
-companyctx --version   # companyctx 0.1.0
+companyctx --version   # companyctx 0.2.0
 companyctx fetch acme-bakery.com --mock --json
 ```
 

@@ -10,7 +10,7 @@ Covers the Slice B1 acceptance from #6:
 - Orchestrator waterfall: zero-key blocked + smart-proxy configured +
   fixture's ``homepage.html`` present → top-level ``ok`` (recovery).
 - Orchestrator waterfall: zero-key blocked + smart-proxy env unset →
-  top-level ``partial`` with ``suggestion`` pointing at the env var.
+  top-level ``partial`` with ``error.suggestion`` pointing at the env var.
 - Orchestrator waterfall: zero-key blocked + smart-proxy env set but vendor
   errors → top-level ``degraded``.
 """
