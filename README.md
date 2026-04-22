@@ -148,7 +148,7 @@ context means.
 ```bash
 pipx install companyctx
 companyctx --version   # companyctx 0.1.0
-companyctx fetch example.com --mock --json
+companyctx fetch acme-bakery.com --mock --json
 ```
 
 From source:
