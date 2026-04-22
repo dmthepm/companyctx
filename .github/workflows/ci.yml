@@ -79,9 +79,17 @@ jobs:
         # not propagate errors out of $(...) without `inherit_errexit`,
         # which would silently swallow a bad allowlist and run the
         # audit with truncated flags.
+        #
+        # --skip-editable: companyctx itself is installed via `pip install
+        # -e .`, and pip-audit tries to look up every environment package
+        # on PyPI. Between a local version bump and the matching PyPI
+        # release the audit would fail with "Dependency not found on
+        # PyPI" for our own package. Skipping editable installs scopes
+        # the audit to third-party deps, which is what we actually
+        # care about.
         run: |
           python scripts/pip_audit_ignores.py > pip-audit-ignores.args
-          pip-audit --strict $(cat pip-audit-ignores.args)
+          pip-audit --strict --skip-editable $(cat pip-audit-ignores.args)
 
       - name: pyroma (package metadata health, threshold 9/10)
         run: pyroma -n 9 .

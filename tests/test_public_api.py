@@ -9,29 +9,28 @@ from __future__ import annotations
 
 import importlib.resources
 
-import companyctx
+from companyctx import (
+    SCHEMA_VERSION,
+    CompanyContext,
+    Envelope,
+    EnvelopeError,
+    EnvelopeErrorCode,  # noqa: F401 — typing Literal, importability is the test
+    EnvelopeStatus,  # noqa: F401 — typing Literal, importability is the test
+    FundingRound,
+    HeuristicSignals,
+    MediaMention,
+    MentionKind,  # noqa: F401 — typing Literal, importability is the test
+    MentionsSignals,
+    ProviderRunMetadata,
+    ProviderStatus,  # noqa: F401 — typing Literal, importability is the test
+    ReviewsSignals,
+    SiteSignals,
+    SocialSignals,
+    __version__,
+)
 
 
 def test_top_level_reexports_are_importable() -> None:
-    from companyctx import (
-        SCHEMA_VERSION,
-        CompanyContext,
-        Envelope,
-        EnvelopeError,
-        EnvelopeErrorCode,  # noqa: F401 — typing Literal, importability is the test
-        EnvelopeStatus,  # noqa: F401 — typing Literal, importability is the test
-        FundingRound,
-        HeuristicSignals,
-        MediaMention,
-        MentionKind,  # noqa: F401 — typing Literal, importability is the test
-        MentionsSignals,
-        ProviderRunMetadata,
-        ProviderStatus,  # noqa: F401 — typing Literal, importability is the test
-        ReviewsSignals,
-        SiteSignals,
-        SocialSignals,
-    )
-
     assert SCHEMA_VERSION == "0.2.0"
     assert Envelope.__name__ == "Envelope"
     assert EnvelopeError.__name__ == "EnvelopeError"
@@ -50,7 +49,7 @@ def test_top_level_reexports_are_importable() -> None:
 
 
 def test_package_version_is_020() -> None:
-    assert companyctx.__version__ == "0.2.0"
+    assert __version__ == "0.2.0"
 
 
 def test_py_typed_marker_ships_with_package() -> None:

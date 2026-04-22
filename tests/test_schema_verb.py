@@ -13,6 +13,7 @@ Covers the v0.2 additions driven by COX-37:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import jsonschema
@@ -22,6 +23,17 @@ from typer.testing import CliRunner
 from companyctx.cli import app
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
+
+# Typer renders ``typer.BadParameter`` messages through Rich, which wraps
+# flag names (``--from-cache``) in per-character ANSI color codes. The escape
+# sequences split ``--from-cache`` into ``-`` + ``-from`` + ``-cache`` in
+# ``result.output``, so a literal substring match fails on CI even though the
+# visible output is correct. Strip ANSI before asserting.
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def _plain(output: str) -> str:
+    return _ANSI_RE.sub("", output)
 
 
 def test_schema_verb_emits_draft_2020_12_json_schema() -> None:
@@ -84,8 +96,9 @@ def test_fetch_rejects_silent_cache_flag(flag: str) -> None:
         ],
     )
     assert result.exit_code != 0
-    assert flag in result.output
-    assert "not implemented" in result.output or "issues/37" in result.output
+    plain = _plain(result.output)
+    assert flag in plain
+    assert "not implemented" in plain or "issues/37" in plain
 
 
 def test_fetch_rejects_silent_config_flag(tmp_path: Path) -> None:
@@ -106,8 +119,9 @@ def test_fetch_rejects_silent_config_flag(tmp_path: Path) -> None:
         ],
     )
     assert result.exit_code != 0
-    assert "--config" in result.output
-    assert "not implemented" in result.output or "issues/37" in result.output
+    plain = _plain(result.output)
+    assert "--config" in plain
+    assert "not implemented" in plain or "issues/37" in plain
 
 
 @pytest.mark.parametrize(
@@ -128,5 +142,6 @@ def test_stubs_fail_loudly(argv: list[str], needle: str) -> None:
     # Click/Typer 0.12+: stderr is separated; ``result.output`` is the merged
     # stream, ``result.stderr`` the stderr-only view. The stub writes its
     # "not implemented" banner via ``typer.secho(..., err=True)``.
-    assert needle in result.output
-    assert "not implemented in v0.2.0" in result.output
+    plain = _plain(result.output)
+    assert needle in plain
+    assert "not implemented in v0.2.0" in plain
