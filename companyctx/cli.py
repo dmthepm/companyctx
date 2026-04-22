@@ -3,10 +3,15 @@
 Exposes the public contract described in ``docs/SPEC.md``:
 
 - ``fetch <site>`` — run the Deterministic Waterfall and emit one envelope.
+- ``schema`` — print the envelope's JSON Schema (Draft 2020-12) to stdout.
 - ``validate <path>`` — round-trip a JSON envelope through the schema.
 - ``providers list`` — show registered providers with status + cost hint.
-- ``cache list`` / ``cache clear`` — Vertical Memory plumbing (M4).
-- ``batch <csv>`` — batch mode (M4).
+- ``cache list`` / ``cache clear`` — Vertical Memory plumbing (see issue #37).
+- ``batch <csv>`` — batch mode (see issue #38).
+
+Several flags and subcommands in v0.2 are stubs. They fail loudly rather than
+silently accepting input and doing nothing — see issue #68 for the honesty
+pass.
 """
 
 from __future__ import annotations
@@ -14,6 +19,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import typer
 from pydantic import ValidationError
@@ -44,10 +50,58 @@ providers_app = typer.Typer(
 app.add_typer(providers_app, name="providers")
 
 
+# Tracking-issue links for honesty-mode rejections. Each stub command / flag
+# carries its own issue so users who hit the wall can follow progress.
+_CACHE_ISSUE = 37
+_BATCH_ISSUE = 38
+_CONFIG_ISSUE = 37
+
+
 def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"companyctx {__version__}")
         raise typer.Exit()
+
+
+def _reject_cache_flag(flag: str, issue: int) -> Any:
+    """Typer callback that rejects a cache-related flag if the user set it.
+
+    Cache flags exist in the CLI surface as first-class options (per v0.1
+    SPEC) but the cache itself is still unwired. Silently ignoring them used
+    to be the behavior; v0.2 rejects them loudly so agents don't build on a
+    contract we don't honour yet. See issue #68 Part A.
+    """
+
+    def _callback(value: bool) -> bool:
+        if value:
+            raise typer.BadParameter(
+                f"{flag} is not implemented in v0.2.0 — "
+                f"see https://github.com/dmthepm/companyctx/issues/{issue}"
+            )
+        return value
+
+    return _callback
+
+
+def _reject_config_flag(value: Path | None) -> Path | None:
+    """Reject ``--config <path>`` until the TOML loader lands."""
+    if value is not None:
+        raise typer.BadParameter(
+            "--config is not implemented in v0.2.0 — "
+            f"see https://github.com/dmthepm/companyctx/issues/{_CONFIG_ISSUE}"
+        )
+    return value
+
+
+def _fail_stub(command: str, issue: int) -> None:
+    """Print a loud stderr message and exit non-zero for a not-yet-wired command."""
+    typer.secho(
+        f"{command} is not implemented in v0.2.0 — "
+        f"see https://github.com/dmthepm/companyctx/issues/{issue}",
+        fg=typer.colors.RED,
+        err=True,
+    )
+    raise typer.Exit(code=2)
 
 
 # Module-level Typer parameter singletons.
@@ -65,8 +119,18 @@ _SITE_ARG = typer.Argument(..., help="The prospect site, e.g. example.com or htt
 _OUT_OPT_FILE = typer.Option(None, "--out", help="Write JSON to this path.")
 _OUT_OPT_DIR = typer.Option(..., "--out", help="Output directory.")
 _FORMAT_OPT = typer.Option(True, "--json/--markdown", help="Output format.")
-_NO_CACHE_OPT = typer.Option(False, "--no-cache", help="Bypass the fetch cache.")
-_CONFIG_OPT = typer.Option(None, "--config", help="TOML config path.")
+_NO_CACHE_OPT = typer.Option(
+    False,
+    "--no-cache",
+    help="Bypass the fetch cache. (Not implemented in v0.2.0 — see issue #37.)",
+    callback=_reject_cache_flag("--no-cache", _CACHE_ISSUE),
+)
+_CONFIG_OPT = typer.Option(
+    None,
+    "--config",
+    help="TOML config path. (Not implemented in v0.2.0 — see issue #37.)",
+    callback=_reject_config_flag,
+)
 _MOCK_FETCH_OPT = typer.Option(
     False, "--mock", help="Load from fixtures/<site>/ instead of network."
 )
@@ -85,12 +149,14 @@ _IGNORE_ROBOTS_OPT = typer.Option(
 _REFRESH_OPT = typer.Option(
     False,
     "--refresh",
-    help="Ignore cache and re-fetch all providers; still write fresh results back.",
+    help="Ignore cache and re-fetch. (Not implemented in v0.2.0 — see issue #37.)",
+    callback=_reject_cache_flag("--refresh", _CACHE_ISSUE),
 )
 _FROM_CACHE_OPT = typer.Option(
     False,
     "--from-cache",
-    help="Return only the cached payload; never hit the network. Exit non-zero on miss.",
+    help="Return only the cached payload. (Not implemented in v0.2.0 — see issue #37.)",
+    callback=_reject_cache_flag("--from-cache", _CACHE_ISSUE),
 )
 _CSV_ARG = typer.Argument(..., help="CSV of sites.")
 _JSON_ARG = typer.Argument(..., help="Path to a companyctx JSON.")
@@ -110,10 +176,10 @@ def fetch(
     site: str = _SITE_ARG,
     out: Path | None = _OUT_OPT_FILE,
     json_out: bool = _FORMAT_OPT,
-    no_cache: bool = _NO_CACHE_OPT,  # noqa: ARG001 — cache wiring lands in M4
-    refresh: bool = _REFRESH_OPT,  # noqa: ARG001 — cache wiring lands in M4
-    from_cache: bool = _FROM_CACHE_OPT,  # noqa: ARG001 — cache wiring lands in M4
-    config: Path | None = _CONFIG_OPT,  # noqa: ARG001 — TOML loader lands in M4
+    no_cache: bool = _NO_CACHE_OPT,  # noqa: ARG001 — callback rejects if set
+    refresh: bool = _REFRESH_OPT,  # noqa: ARG001 — callback rejects if set
+    from_cache: bool = _FROM_CACHE_OPT,  # noqa: ARG001 — callback rejects if set
+    config: Path | None = _CONFIG_OPT,  # noqa: ARG001 — callback rejects if set
     mock: bool = _MOCK_FETCH_OPT,
     verbose: bool = _VERBOSE_OPT,
     ignore_robots: bool = _IGNORE_ROBOTS_OPT,
@@ -123,7 +189,7 @@ def fetch(
     if not json_out:
         # Markdown output belongs in a downstream synthesis layer, not here.
         typer.secho(
-            "--markdown is not implemented in v0.1; rerun with --json.",
+            "--markdown is not implemented in v0.2.0; rerun with --json.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -159,17 +225,32 @@ def fetch(
 
 
 @app.command()
+def schema() -> None:
+    """Emit the envelope's JSON Schema (Draft 2020-12) to stdout.
+
+    Consumers can validate envelopes without importing ``companyctx`` — the
+    schema is self-describing and carries ``$defs`` for every nested model.
+    """
+    payload = Envelope.model_json_schema()
+    # Pydantic v2 targets Draft 2020-12 but omits the ``$schema`` key by
+    # default. Stamp it so downstream validators (``jsonschema.validate`` and
+    # friends) pick the right dialect without probing the payload.
+    payload.setdefault("$schema", "https://json-schema.org/draft/2020-12/schema")
+    sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+@app.command()
 def batch(
-    csv: Path = _CSV_ARG,  # noqa: ARG001 — M4
-    out: Path = _OUT_OPT_DIR,  # noqa: ARG001 — M4
-    json_out: bool = _FORMAT_OPT,  # noqa: ARG001 — M4
-    no_cache: bool = _NO_CACHE_OPT,  # noqa: ARG001 — M4
-    config: Path | None = _CONFIG_OPT,  # noqa: ARG001 — M4
-    mock: bool = _MOCK_BATCH_OPT,  # noqa: ARG001 — M4
-    verbose: bool = _VERBOSE_OPT,  # noqa: ARG001 — M4
+    csv: Path = _CSV_ARG,  # noqa: ARG001 — stub
+    out: Path = _OUT_OPT_DIR,  # noqa: ARG001 — stub
+    json_out: bool = _FORMAT_OPT,  # noqa: ARG001 — stub
+    no_cache: bool = _NO_CACHE_OPT,  # noqa: ARG001 — stub
+    config: Path | None = _CONFIG_OPT,  # noqa: ARG001 — stub
+    mock: bool = _MOCK_BATCH_OPT,  # noqa: ARG001 — stub
+    verbose: bool = _VERBOSE_OPT,  # noqa: ARG001 — stub
 ) -> None:
-    """Run fetch over a CSV of sites. (Stub — implemented in M4.)"""
-    raise typer.Exit(code=2)
+    """Run fetch over a CSV of sites. (Stub — see issue #38.)"""
+    _fail_stub("batch", _BATCH_ISSUE)
 
 
 @app.command()
@@ -192,17 +273,17 @@ def validate(
 
 @cache_app.command("list")
 def cache_list() -> None:
-    """List cache entries. (Stub — implemented in M4.)"""
-    raise typer.Exit(code=2)
+    """List cache entries. (Stub — see issue #37.)"""
+    _fail_stub("cache list", _CACHE_ISSUE)
 
 
 @cache_app.command("clear")
 def cache_clear(
-    site: str | None = _CACHE_SITE_OPT,  # noqa: ARG001 — M4
-    older_than: str | None = _CACHE_OLDER_OPT,  # noqa: ARG001 — M4
+    site: str | None = _CACHE_SITE_OPT,  # noqa: ARG001 — stub
+    older_than: str | None = _CACHE_OLDER_OPT,  # noqa: ARG001 — stub
 ) -> None:
-    """Prune the cache. (Stub — implemented in M4.)"""
-    raise typer.Exit(code=2)
+    """Prune the cache. (Stub — see issue #37.)"""
+    _fail_stub("cache clear", _CACHE_ISSUE)
 
 
 @providers_app.command("list")
