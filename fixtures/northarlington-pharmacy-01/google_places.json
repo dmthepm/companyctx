@@ -1,6 +1,6 @@
 {
   "result": {
-    "formatted_address": "100 Main St, North Arlington, NJ 00000, USA",
+    "formatted_address": "100 Main St, <city>, <region> 00000, USA",
     "name": "Northarlington Pharmacy 01",
     "place_id": "ChIJ-realgolden-northarlington-pharmacy-01",
     "types": [

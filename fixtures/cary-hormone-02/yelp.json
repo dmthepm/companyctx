@@ -1,15 +1,15 @@
 {
   "categories": [
     {
-      "alias": "hormone",
-      "title": "Bioidentical Hormone Replacement Clinic"
+      "alias": "health",
+      "title": "Health"
     }
   ],
   "id": "yelp-cary-hormone-02",
   "location": {
-    "city": "Cary",
+    "city": "<city>",
     "country": "US",
-    "state": "NC"
+    "state": "<region>"
   },
   "name": "Cary Hormone 02",
   "url": "https://yelp.com/biz/yelp-cary-hormone-02"

@@ -1,15 +1,15 @@
 {
   "categories": [
     {
-      "alias": "iv",
-      "title": "Iv Therapy And Cryotherapy Clinic"
+      "alias": "health",
+      "title": "Health"
     }
   ],
   "id": "yelp-birmingham-iv-04",
   "location": {
-    "city": "Birmingham",
+    "city": "<city>",
     "country": "US",
-    "state": "AL"
+    "state": "<region>"
   },
   "name": "Birmingham Iv 04",
   "review_count": 17,

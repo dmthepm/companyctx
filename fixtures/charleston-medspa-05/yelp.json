@@ -1,15 +1,15 @@
 {
   "categories": [
     {
-      "alias": "medspa",
-      "title": "Medical Spa"
+      "alias": "health",
+      "title": "Health"
     }
   ],
   "id": "yelp-charleston-medspa-05",
   "location": {
-    "city": "Charleston",
+    "city": "<city>",
     "country": "US",
-    "state": "SC"
+    "state": "<region>"
   },
   "name": "Charleston Medspa 05",
   "review_count": 51,

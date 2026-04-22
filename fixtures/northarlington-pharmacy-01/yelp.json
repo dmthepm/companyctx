@@ -1,15 +1,15 @@
 {
   "categories": [
     {
-      "alias": "pharmacy",
-      "title": "Community Compounding Pharmacy"
+      "alias": "health",
+      "title": "Health"
     }
   ],
   "id": "yelp-northarlington-pharmacy-01",
   "location": {
-    "city": "North Arlington",
+    "city": "<city>",
     "country": "US",
-    "state": "NJ"
+    "state": "<region>"
   },
   "name": "Northarlington Pharmacy 01",
   "review_count": 13,

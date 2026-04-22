@@ -1,6 +1,6 @@
 {
   "result": {
-    "formatted_address": "100 Main St, Charleston, SC 00000, USA",
+    "formatted_address": "100 Main St, <city>, <region> 00000, USA",
     "name": "Charleston Medspa 05",
     "place_id": "ChIJ-realgolden-charleston-medspa-05",
     "rating": 4.8,

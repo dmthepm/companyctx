@@ -1,39 +1,59 @@
 # SOURCE — northarlington-pharmacy-01
 
-Part of the **real golden corpus** (issue #24, v0.1.0 release gate). The
-oracle (`expected.json`) is **hand-curated** from raw observations captured
-by the external B2B brief pipeline against the real site this fixture is
-sanitized from. The oracle is **frozen** — the `.hand-curated` marker in
-this directory makes `scripts/build-fixtures.py` refuse to overwrite it.
+Part of the **real golden corpus** (issue #24, v0.1.0 release gate). This
+fixture is a sanitized snapshot of a real site the external B2B brief
+pipeline processed on `2026-04-10`. The oracle (`expected.json`) is frozen;
+the `.hand-curated` marker in this directory makes
+`scripts/build-fixtures.py` refuse to overwrite it.
+
+## Inputs (what the extractor sees)
+
+- `homepage.html`, `about.html`, `services.html` — **structural
+  skeletons** produced by fetching the real site, dropping every
+  non-content tag (scripts, styles, iframes, svgs, forms, navs, footers,
+  tracking), then rewriting identity tokens to the fixture slug and
+  masking contact PII. The surviving markup is the site's real h1..h6 /
+  p / li / blockquote structure with its real text content after name and
+  PII sanitization. Where the site returned 404 for /about or /services,
+  the stub page explicitly says the external pipeline did not capture
+  that URL.
+- `google_places.json`, `yelp.json`, `youtube.json` — provider-response
+  fixtures whose review counts, ratings, and channel metadata are
+  cross-checked against `raw_observations.json` by
+  `tests/test_real_golden_corpus.py` so they cannot drift silently.
+
+## Oracle (what must match)
+
+- `expected.json` — the envelope companyctx must produce when it runs
+  against the sanitized HTML above. Any extractor, tech-stack detector,
+  or envelope-serializer change that shifts the output fails the test.
+- `raw_observations.json` — the **non-envelope** half of the oracle:
+  review/rating/social signals the external pipeline recorded verbatim.
+  Today these fields sit outside the envelope because v0.1 only wires
+  `site_text_trafilatura`; when future providers surface them in the
+  envelope, the regenerated `expected.json` must continue to agree with
+  `raw_observations.json`.
 
 ## Source artifact
 
 - Artifact date: `2026-04-10`
-- Artifact id: `brief-b84ae44060b4` (opaque, stable across regeneration)
+- Artifact id: `brief-b84ae44060b4` (opaque sha256 prefix — the partner
+  reverse-maps this privately to the specific research-brief.md in the
+  D100 pipeline repository on the local machine)
 
-The underlying brief lives in the partner's private pipeline repository on
-the local machine. It is not referenced by path, slug, or subject name from
-this public repo; the opaque `artifact id` lets the partner reverse-map
-privately without leaking client identity here. Only raw observations
-(homepage text, about text, services list, review counts, ratings, social
-follower counts) are reflected in this fixture.
+The brief path, subject name, and real domain never appear in this public
+repo. Identifiers in the sanitized HTML are rewritten to
+`northarlington-pharmacy-01.example` / "Northarlington Pharmacy 01" and any personal name to "the Owner";
+contact PII is masked per `fixtures/README.md` (emails →
+`hello@example.test`, phones → `(555) 555-0100`, ZIPs → `00000`).
 
-## Sanitization
+## What drift trips which test
 
-Site identity is rewritten to the slug `northarlington-pharmacy-01` (display name "Northarlington Pharmacy 01").
-Contact PII is masked per `fixtures/README.md` (emails → `*.example.test`,
-phones → `(555) 555-0100`, contact names → "the Owner"). No client name,
-personal name, real domain, or real phone number appears in any file in
-this directory.
-
-Review counts, ratings, and social follower counts are **preserved
-verbatim** because they are the raw signal the external pipeline captured
-and the whole point of having an oracle.
-
-## Drift detection
-
-`tests/test_real_golden_corpus.py` runs `companyctx fetch
-northarlington-pharmacy-01.example --mock --json` and diffs the output against `expected.json`
-(modulo `fetched_at`). Any change in the envelope shape, extractor
-behavior, or provider wiring that shifts the output away from this oracle
-fails the test loudly — that is the point of the real golden corpus.
+- Extractor change that decodes sanitized markup differently →
+  `test_envelope_matches_hand_curated_oracle[northarlington-pharmacy-01]` fails.
+- Provider-JSON fixture edit that diverges from the captured
+  observations → `test_{google,yelp,youtube}_fixture_matches_observations[northarlington-pharmacy-01]`
+  fails.
+- Attempt to regenerate this directory with `scripts/build-fixtures.py`
+  while the marker is present →
+  `test_build_fixtures_refuses_to_overwrite_hand_curated` fails.

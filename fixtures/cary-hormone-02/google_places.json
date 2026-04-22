@@ -1,6 +1,6 @@
 {
   "result": {
-    "formatted_address": "100 Main St, Cary, NC 00000, USA",
+    "formatted_address": "100 Main St, <city>, <region> 00000, USA",
     "name": "Cary Hormone 02",
     "place_id": "ChIJ-realgolden-cary-hormone-02",
     "rating": 4.9,

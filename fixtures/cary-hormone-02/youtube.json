@@ -1,4 +1,15 @@
 {
-  "items": [],
+  "items": [
+    {
+      "id": "UCrealgolden-cary-hormone-02",
+      "kind": "youtube#channel",
+      "snippet": {
+        "title": "Cary Hormone 02"
+      },
+      "statistics": {
+        "hiddenSubscriberCount": true
+      }
+    }
+  ],
   "kind": "youtube#channelListResponse"
 }
