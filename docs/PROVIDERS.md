@@ -59,10 +59,21 @@ zero-key path — the schema doesn't know which layer produced the bytes.
 extras after the measurement spike, but they're interchangeable — swap the
 entry-point line in `pyproject.toml` or override at runtime.
 
-> **v0.1.0 status.** Only the `SmartProxyProvider` Protocol
-> (`companyctx/providers/smart_proxy_base.py`) ships today. The first
-> concrete vendor implementation lands after the vendor eval spike — no
-> vendor is named here until measurement is in.
+> **v0.1.x status.** Two modules ship today:
+>
+> - `companyctx/providers/smart_proxy_base.py` — the `SmartProxyProvider`
+>   Protocol.
+> - `companyctx/providers/smart_proxy_http.py` — a vendor-agnostic URL-style
+>   implementation. Reads `COMPANYCTX_SMART_PROXY_URL` (full proxy URL with
+>   embedded credentials) and, optionally, `COMPANYCTX_SMART_PROXY_VERIFY`
+>   (path to a custom CA bundle for vendors that require one). Env-unset
+>   returns `not_configured`; the top-level envelope surfaces a `suggestion`
+>   naming the env var. Covers any residential/datacenter proxy that accepts
+>   HTTP-over-CONNECT with creds folded into the URL (the 80% case).
+>
+> A **named reference adapter** — a shim over a specific vendor, shipped as
+> an optional extra — lands after the vendor eval spike. No vendor is named
+> here until that measurement is in.
 
 ## Provider rules (non-negotiable)
 

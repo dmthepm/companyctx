@@ -89,6 +89,11 @@ Changelog = "https://github.com/dmthepm/companyctx/blob/main/CHANGELOG.md"
 # Provider plugin discovery. First provider landed in M2 (issue #15).
 [project.entry-points."companyctx.providers"]
 site_text_trafilatura = "companyctx.providers.site_text_trafilatura:Provider"
+# Vendor-agnostic URL-style smart-proxy — Attempt 2 of the waterfall. User
+# supplies their proxy URL via COMPANYCTX_SMART_PROXY_URL; env-unset returns
+# not_configured. Named-vendor adapter lands after the vendor eval spike
+# (issue #63).
+smart_proxy_http = "companyctx.providers.smart_proxy_http:Provider"
 # site_text_readability  = "companyctx.providers.readability_site:Provider"
 # site_meta_extruct      = "companyctx.providers.extruct_meta:Provider"
 # reviews_google_places  = "companyctx.providers.google_places:Provider"

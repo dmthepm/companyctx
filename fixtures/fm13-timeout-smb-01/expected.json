@@ -16,8 +16,15 @@
       "latency_ms": 0,
       "provider_version": "0.1.0",
       "status": "failed"
+    },
+    "smart_proxy_http": {
+      "cost_incurred": 0,
+      "error": "missing env var: COMPANYCTX_SMART_PROXY_URL \u2014 export COMPANYCTX_SMART_PROXY_URL='http://user:pass@host:port' to wire your residential-proxy vendor",
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "not_configured"
     }
   },
-  "status": "degraded",
+  "status": "partial",
   "suggestion": "configure a smart-proxy provider key or skip this prospect"
 }

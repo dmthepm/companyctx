@@ -473,8 +473,14 @@ def test_cli_fetch_partial_exits_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     assert env.suggestion is not None
 
 
-def test_cli_fetch_degraded_exits_zero_on_missing_fixture() -> None:
-    """Missing fixture → degraded envelope still emitted, exit 0."""
+def test_cli_fetch_partial_exits_zero_on_missing_fixture() -> None:
+    """Missing fixture → partial envelope (smart-proxy advertises recovery), exit 0.
+
+    The ``smart_proxy_http`` provider is discovered via entry points but
+    returns ``not_configured`` without ``COMPANYCTX_SMART_PROXY_URL`` — the
+    aggregator promotes the top-level status from ``degraded`` to ``partial``
+    so the envelope's ``suggestion`` can name the config-based escape hatch.
+    """
     runner = CliRunner()
     result = runner.invoke(
         app,
@@ -490,7 +496,7 @@ def test_cli_fetch_degraded_exits_zero_on_missing_fixture() -> None:
     assert result.exit_code == 0, result.stdout
     payload = json.loads(result.stdout)
     env = Envelope.model_validate(payload)
-    assert env.status == "degraded"
+    assert env.status == "partial"
     assert env.error is not None
     assert env.suggestion is not None
 
