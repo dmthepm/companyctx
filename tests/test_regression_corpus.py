@@ -56,6 +56,15 @@ REGRESSION_SLUGS = (
     # content from an effectively empty page.
     "fm7-js-redirect-root",
     "fm7-maintenance-page",
+    # COX-44 empty-response honesty regression. With the v0.3 provider
+    # gate, an HTTP 200 that extracts to < EMPTY_RESPONSE_BYTES flips from
+    # the v0.2 silent-success shape (status: ok, homepage_text: "") to the
+    # honest shape: status: degraded, error.code: "empty_response" with an
+    # actionable suggestion. The fm7-* fixtures above also exercise this
+    # code path post-COX-44; this dedicated fixture is the minimal,
+    # zero-content trigger so the pin survives a future fm7-* semantic
+    # rename. See docs/SPEC.md §empty_response.
+    "empty-response",
     # FM-13 network-failure regression. Driven by the fixture-block.txt
     # sentinel honoured by site_text_trafilatura._from_fixture: the file's
     # contents become the BlockedError reason verbatim, the provider maps

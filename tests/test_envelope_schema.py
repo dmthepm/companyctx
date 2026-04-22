@@ -159,13 +159,13 @@ def test_envelope_rejects_inconsistent_status_and_error(
         Envelope.model_validate(payload)
 
 
-def test_envelope_schema_version_defaults_to_02() -> None:
+def test_envelope_schema_version_defaults_to_03() -> None:
     env = Envelope(
         status="ok",
         data=CompanyContext(site="x", fetched_at=_fixed_dt()),
         provenance={},
     )
-    assert env.schema_version == "0.2.0"
+    assert env.schema_version == "0.3.0"
 
 
 def test_envelope_error_requires_a_valid_code() -> None:

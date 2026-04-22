@@ -405,8 +405,12 @@ def test_waterfall_skips_smart_proxy_when_site_text_ok(
     slug = "cleanfix"
     site_dir = tmp_path / slug
     site_dir.mkdir()
+    # Body clears the v0.3 ``EMPTY_RESPONSE_BYTES`` cutoff so this test
+    # stays about the smart-proxy skip path, not the empty-response check.
     (site_dir / "homepage.html").write_bytes(
-        b"<html><body><h1>Clean Biz</h1><p>hello</p></body></html>"
+        b"<html><body><h1>Clean Biz</h1>"
+        b"<p>hello from the clean-path homepage, long enough to clear the cutoff</p>"
+        b"</body></html>"
     )
     monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
 
@@ -829,8 +833,13 @@ def test_site_meta_failure_does_not_trigger_recovery(
     slug = "metaok"
     site_dir = tmp_path / slug
     site_dir.mkdir()
+    # Body clears ``EMPTY_RESPONSE_BYTES`` so the zero-key provider
+    # completes with ``ok`` — this test is about site_meta failures not
+    # being routed to smart-proxy recovery, not about empty responses.
     (site_dir / "homepage.html").write_bytes(
-        b"<html><body><h1>Real Biz</h1><p>full homepage</p></body></html>"
+        b"<html><body><h1>Real Biz</h1>"
+        b"<p>full homepage prose long enough to clear the empty-response cutoff</p>"
+        b"</body></html>"
     )
     monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
 
