@@ -6,8 +6,8 @@ Exposes the public contract described in ``docs/SPEC.md``:
 - ``schema`` — print the envelope's JSON Schema (Draft 2020-12) to stdout.
 - ``validate <path>`` — round-trip a JSON envelope through the schema.
 - ``providers list`` — show registered providers with status + cost hint.
-- ``cache list`` / ``cache clear`` — Vertical Memory plumbing (see issue #37).
-- ``batch <csv>`` — batch mode (see issue #38).
+- ``cache list`` / ``cache clear`` — Vertical Memory plumbing (see issue #9).
+- ``batch <csv>`` — batch mode (lands alongside cache; see issue #9).
 
 Several flags and subcommands in v0.2 are stubs. They fail loudly rather than
 silently accepting input and doing nothing — see issue #68 for the honesty
@@ -54,9 +54,11 @@ app.add_typer(providers_app, name="providers")
 
 # Tracking-issue links for honesty-mode rejections. Each stub command / flag
 # carries its own issue so users who hit the wall can follow progress.
-_CACHE_ISSUE = 37
-_BATCH_ISSUE = 38
-_CONFIG_ISSUE = 37
+# Cache, --config (TOML loader), and `batch` all block on the SQLite + config
+# layer tracked under issue #9.
+_CACHE_ISSUE = 9
+_BATCH_ISSUE = 9
+_CONFIG_ISSUE = 9
 
 
 def _version_callback(value: bool) -> None:
@@ -137,13 +139,13 @@ _PROVIDERS_JSON_OPT = typer.Option(
 _NO_CACHE_OPT = typer.Option(
     False,
     "--no-cache",
-    help="Bypass the fetch cache. (Not implemented in v0.2.0 — see issue #37.)",
+    help="Bypass the fetch cache. (Not implemented in v0.2.0 — see issue #9.)",
     callback=_reject_cache_flag("--no-cache", _CACHE_ISSUE),
 )
 _CONFIG_OPT = typer.Option(
     None,
     "--config",
-    help="TOML config path. (Not implemented in v0.2.0 — see issue #37.)",
+    help="TOML config path. (Not implemented in v0.2.0 — see issue #9.)",
     callback=_reject_config_flag,
 )
 _MOCK_FETCH_OPT = typer.Option(
@@ -164,13 +166,13 @@ _IGNORE_ROBOTS_OPT = typer.Option(
 _REFRESH_OPT = typer.Option(
     False,
     "--refresh",
-    help="Ignore cache and re-fetch. (Not implemented in v0.2.0 — see issue #37.)",
+    help="Ignore cache and re-fetch. (Not implemented in v0.2.0 — see issue #9.)",
     callback=_reject_cache_flag("--refresh", _CACHE_ISSUE),
 )
 _FROM_CACHE_OPT = typer.Option(
     False,
     "--from-cache",
-    help="Return only the cached payload. (Not implemented in v0.2.0 — see issue #37.)",
+    help="Return only the cached payload. (Not implemented in v0.2.0 — see issue #9.)",
     callback=_reject_cache_flag("--from-cache", _CACHE_ISSUE),
 )
 _CSV_ARG = typer.Argument(..., help="CSV of sites.")
@@ -264,7 +266,7 @@ def batch(
     mock: bool = _MOCK_BATCH_OPT,  # noqa: ARG001 — stub
     verbose: bool = _VERBOSE_OPT,  # noqa: ARG001 — stub
 ) -> None:
-    """Run fetch over a CSV of sites. (Stub — see issue #38.)"""
+    """Run fetch over a CSV of sites. (Stub — see issue #9.)"""
     _fail_stub("batch", _BATCH_ISSUE)
 
 
@@ -288,7 +290,7 @@ def validate(
 
 @cache_app.command("list")
 def cache_list() -> None:
-    """List cache entries. (Stub — see issue #37.)"""
+    """List cache entries. (Stub — see issue #9.)"""
     _fail_stub("cache list", _CACHE_ISSUE)
 
 
@@ -297,7 +299,7 @@ def cache_clear(
     site: str | None = _CACHE_SITE_OPT,  # noqa: ARG001 — stub
     older_than: str | None = _CACHE_OLDER_OPT,  # noqa: ARG001 — stub
 ) -> None:
-    """Prune the cache. (Stub — see issue #37.)"""
+    """Prune the cache. (Stub — see issue #9.)"""
     _fail_stub("cache clear", _CACHE_ISSUE)
 
 

@@ -43,7 +43,7 @@ don't build on a contract we don't honour yet:
 
 | Command / flag | Why reserved | Tracking |
 |---|---|---|
-| `companyctx batch <csv>` | Fan-out wrapper over `fetch`; lands with the cache so re-runs are cheap. | #38 (external) |
+| `companyctx batch <csv>` | Fan-out wrapper over `fetch`; lands alongside the cache so re-runs are cheap. | #9 |
 | `companyctx cache list` | Vertical Memory surface; needs the SQLite layer. | #9 |
 | `companyctx cache clear [--site X] [--older-than 7d]` | Same. | #9 |
 
