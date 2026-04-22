@@ -42,3 +42,46 @@ jobs:
 
       - name: Pytest with coverage
         run: pytest tests/ -v --cov=companyctx --cov-report=term-missing --cov-fail-under=70
+
+  supply-chain:
+    # Public-OSS health gates. See docs/OSS-HYGIENE.md (Automated gates).
+    # pip-audit: fails on any known CVE in direct/transitive deps
+    #   (including all provider extras, so a vuln in googlemaps/yelpapi/
+    #   etc. still surfaces even though they're optional at runtime).
+    #   False positives allowlisted in .pip-audit.toml with cited reasons.
+    # pyroma: fails if the package metadata health score drops below 9/10.
+    #
+    # Runs on a single Python version. pip-audit and pyroma inspect
+    # installed package metadata, not runtime behavior, so output agrees
+    # across supported interpreters in practice. The one gap is
+    # interpreter-conditional deps (e.g. tomli on 3.10 only) — if a CVE
+    # ever surfaces in one of those, re-matrix this job.
+    name: supply-chain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package with all extras + audit tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all,dev]"
+          pip install pip-audit pyroma
+
+      - name: pip-audit (CVE scan on runtime + extras deps)
+        # Split into two steps so a script failure (e.g. malformed
+        # allowlist entry exiting 2) fails the job. Bash `set -e` does
+        # not propagate errors out of $(...) without `inherit_errexit`,
+        # which would silently swallow a bad allowlist and run the
+        # audit with truncated flags.
+        run: |
+          python scripts/pip_audit_ignores.py > pip-audit-ignores.args
+          pip-audit --strict $(cat pip-audit-ignores.args)
+
+      - name: pyroma (package metadata health, threshold 9/10)
+        run: pyroma -n 9 .

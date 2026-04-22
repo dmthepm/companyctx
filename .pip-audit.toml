@@ -1,0 +1,19 @@
+# pip-audit allowlist.
+#
+# CI fails on any advisory reported by pip-audit. Add an entry here to
+# dismiss a specific advisory that does not apply to companyctx — e.g.
+# the vulnerable code path is not reached from any of our providers.
+# Every entry MUST cite a reason. Empty reasons are rejected in review.
+#
+# Schema:
+#   [[ignore]]
+#   id = "GHSA-xxxx-xxxx-xxxx"  # or "PYSEC-YYYY-NNNN"
+#   reason = "One-line justification, e.g. 'vuln in foo() which we never call'."
+#
+# When a dependency ships a fixed version, delete the entry rather than
+# leaving stale allowlist items lying around.
+#
+# Leave this file entry-less (only comments) when there is nothing to
+# allowlist — do NOT seed `ignore = []`. TOML rejects mixing a bare
+# array with `[[ignore]]` table-array entries, so an accidental seed
+# breaks the gate the moment someone needs it.
