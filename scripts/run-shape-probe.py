@@ -158,6 +158,7 @@ def _read_capped_body(resp: requests.Response) -> bytes:
                     f"response_too_large: content-length {declared} exceeds {MAX_RESPONSE_BYTES}"
                 )
         except ValueError:
+            # Bogus Content-Length — fall through to the streaming cap below.
             pass
     buf = bytearray()
     for chunk in resp.iter_content(chunk_size=8192):
