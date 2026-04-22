@@ -188,9 +188,10 @@ pyroma gates then gate those PRs just like any human PR.
 
 ### `pip-audit` — CVE scan on direct + transitive deps
 
-Runs in the `supply-chain` job alongside ruff / mypy / pytest. Uses the
-`--strict` flag so any advisory against any installed package fails the
-build. The job installs `.[all,dev]` so every provider extra
+Runs in the `supply-chain` job (parallel to the `lint-type-test` job
+that owns ruff / mypy / pytest). Uses the `--strict` flag so any
+advisory against any installed package fails the build. The job
+installs `.[all,dev]` so every provider extra
 (`extract`, `reviews`, `youtube`) is audited, not just the default
 runtime deps. The job also matrixes across Python 3.10 / 3.11 / 3.12 so
 interpreter-pinned deps (e.g. `tomli` on 3.10) are actually covered.

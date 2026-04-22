@@ -55,6 +55,7 @@ coverage.xml
 out/
 .companyctx-cache/
 .competitor-state-*.json
+pip-audit-ignores.args
 
 # Local secrets
 .env.local

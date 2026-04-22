@@ -74,9 +74,14 @@ jobs:
           pip install pip-audit pyroma
 
       - name: pip-audit (CVE scan on runtime + extras deps)
+        # Split into two steps so a script failure (e.g. malformed
+        # allowlist entry exiting 2) fails the job. Bash `set -e` does
+        # not propagate errors out of $(...) without `inherit_errexit`,
+        # which would silently swallow a bad allowlist and run the
+        # audit with truncated flags.
         run: |
-          IGNORES=$(python scripts/pip_audit_ignores.py)
-          pip-audit --strict $IGNORES
+          python scripts/pip_audit_ignores.py > pip-audit-ignores.args
+          pip-audit --strict $(cat pip-audit-ignores.args)
 
       - name: pyroma (package metadata health, threshold 9/10)
         if: matrix.python-version == '3.12'
