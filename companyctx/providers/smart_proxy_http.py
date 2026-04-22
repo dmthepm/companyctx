@@ -210,6 +210,9 @@ def _read_capped_body(resp: requests.Response) -> bytes:
                     f"response_too_large: content-length {declared} exceeds {MAX_RESPONSE_BYTES}"
                 )
         except ValueError:
+            # Bogus / non-integer Content-Length header — ignore the declared
+            # size and fall through to the streaming cap, which enforces the
+            # same limit on actual bytes read.
             pass
     buf = bytearray()
     for chunk in resp.iter_content(chunk_size=8192):  # type: ignore[no-untyped-call]
