@@ -6,7 +6,7 @@ import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import ClassVar, Literal, cast
+from typing import Any, ClassVar, Literal, cast
 
 import pytest
 from typer.testing import CliRunner
@@ -119,10 +119,24 @@ class _MentionsOk:
 
 
 class _FakeResponse:
+    """Minimal stand-in for ``curl_cffi.requests.Response`` used by the
+    network-path tests. Matches the streaming + header API the hardened
+    ``_stealth_fetch`` relies on (see COX-23 / issue #53)."""
+
     status_code = 200
 
     def __init__(self, text: str) -> None:
+        self._body = text.encode("utf-8")
         self.text = text
+        self.headers: dict[str, str] = {}
+        self.encoding = "utf-8"
+
+    def iter_content(self, chunk_size: int = 8192) -> Any:
+        for i in range(0, len(self._body), chunk_size):
+            yield self._body[i : i + chunk_size]
+
+    def close(self) -> None:
+        return None
 
 
 def test_orchestrator_status_ok_when_all_providers_ok() -> None:

@@ -41,8 +41,11 @@ dependencies = [
   "pydantic-settings>=2.2",
   "platformdirs>=4.2",
   # Zero-key stealth fetcher. See decisions/2026-04-20-zero-key-stealth-strategy.md
-  # and research/2026-04-21-tls-impersonation-spike.md for the pick.
-  "curl_cffi>=0.15",
+  # and research/2026-04-21-tls-impersonation-spike.md for the pick. Pinned
+  # ``~=`` (compatibility release) so an accidental major bump with bundled
+  # libcurl changes is a deliberate version bump, not a silent pull. The
+  # supply-chain rationale lives in docs/THREAT-MODEL.md §5.
+  "curl_cffi~=0.15.0",
   "requests-cache>=1.2",
   "tenacity>=8.2",
   "beautifulsoup4>=4.12",
