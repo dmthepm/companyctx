@@ -27,7 +27,13 @@ from urllib.parse import urljoin, urlparse
 
 from curl_cffi import requests
 
-from companyctx.extract import detect_tech_stack, extract_body_text, extract_services
+from companyctx.extract import (
+    EMPTY_RESPONSE_ERROR,
+    detect_tech_stack,
+    extract_body_text,
+    extract_services,
+    is_empty_response,
+)
 from companyctx.providers.base import FetchContext
 from companyctx.robots import is_allowed
 from companyctx.schema import ProviderRunMetadata, SiteSignals
@@ -46,6 +52,9 @@ _VERSION = "0.1.0"
 # research/2026-04-21-tls-impersonation-spike.md.
 _IMPERSONATE: Literal["chrome146"] = "chrome146"
 _SAFE_FIXTURE_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+# The empty-response cutoff + gate live in ``companyctx.extract`` so the
+# zero-key provider and the smart-proxy recovery path share one source
+# of truth (see COX-44).
 
 
 class Provider:
@@ -74,6 +83,14 @@ class Provider:
             return None, _failed(str(exc), start, self.version, mock=ctx.mock)
         except Exception as exc:  # pragma: no cover — defensive boundary
             return None, _failed(f"unexpected: {exc!r}", start, self.version, mock=ctx.mock)
+
+        # Empty-response honesty check (COX-44): a successful fetch that
+        # yields effectively no extracted text is silent-success, not ok.
+        # Surface it as a structured failure so downstream agents branch on
+        # ``error.code == "empty_response"`` instead of seeing ``status: ok``
+        # with a zero-length homepage.
+        if is_empty_response(signals.homepage_text):
+            return None, _failed(EMPTY_RESPONSE_ERROR, start, self.version, mock=ctx.mock)
 
         # Mock mode has no real network latency; zero it so --mock runs are
         # byte-identical across invocations (the determinism contract).

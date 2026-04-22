@@ -41,12 +41,19 @@ EXPECTED_FILES = (
 # fixtures/README.md ("Failure-shape regressions").
 FM7_FIXTURE_SLUGS = ("fm7-js-redirect-root", "fm7-maintenance-page")
 FM7_FIXTURE_FILES = ("homepage.html", "expected.json")
+# Empty-response fixtures exercise the COX-44 honesty check: a successful
+# fetch whose extracted text is below ``EMPTY_RESPONSE_BYTES`` surfaces as
+# ``error.code == "empty_response"`` instead of a silent ``status: ok``
+# with zero-length ``homepage_text``. Same on-disk shape as the FM-7
+# fixtures (``homepage.html`` + ``expected.json``).
+EMPTY_RESPONSE_FIXTURE_SLUGS = ("empty-response",)
+EMPTY_RESPONSE_FIXTURE_FILES = ("homepage.html", "expected.json")
 # Block-style fixtures use the `fixture-block.txt` sentinel honored by
 # site_text_trafilatura._from_fixture (issue #40). They carry no
 # homepage.html — the sentinel raises before any HTML is read.
 BLOCK_FIXTURE_SLUGS = ("fm13-timeout-smb-01",)
 BLOCK_FIXTURE_FILES = ("fixture-block.txt", "expected.json")
-FAILURE_FIXTURE_SLUGS = FM7_FIXTURE_SLUGS + BLOCK_FIXTURE_SLUGS
+FAILURE_FIXTURE_SLUGS = FM7_FIXTURE_SLUGS + EMPTY_RESPONSE_FIXTURE_SLUGS + BLOCK_FIXTURE_SLUGS
 
 # Real-golden fixtures (issue #24) live alongside the 30 synthetic dirs but
 # are hand-curated, not generated. They carry a ``.hand-curated`` marker and
@@ -106,6 +113,11 @@ def test_failure_fixtures_have_minimum_files() -> None:
         site_dir = FIXTURES_DIR / slug
         assert site_dir.is_dir(), slug
         missing = [f for f in FM7_FIXTURE_FILES if not (site_dir / f).exists()]
+        assert not missing, f"{slug} missing {missing}"
+    for slug in EMPTY_RESPONSE_FIXTURE_SLUGS:
+        site_dir = FIXTURES_DIR / slug
+        assert site_dir.is_dir(), slug
+        missing = [f for f in EMPTY_RESPONSE_FIXTURE_FILES if not (site_dir / f).exists()]
         assert not missing, f"{slug} missing {missing}"
     for slug in BLOCK_FIXTURE_SLUGS:
         site_dir = FIXTURES_DIR / slug

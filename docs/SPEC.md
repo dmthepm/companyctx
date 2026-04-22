@@ -8,7 +8,7 @@
 >
 > Shape edits land upstream and flow back via a new handoff cycle. Shipped-vs-
 > deferred state (which commands / flags / providers are wired today) is
-> refreshed with each release — this file is current as of `v0.2.0`.
+> refreshed with each release — this file is current as of `v0.3.0`.
 
 ---
 
@@ -76,7 +76,7 @@ around a crash.
 
 ```
 {
-  "schema_version": "0.2.0",       // top-level shape discriminator
+  "schema_version": "0.3.0",       // top-level shape discriminator
   "status": "ok" | "partial" | "degraded",
   "data":   CompanyContext,        // the schema payload (always present, may
                                    //   have nullable fields on partial)
@@ -99,18 +99,61 @@ Status semantics:
 
 `EnvelopeError.code` is one of `ssrf_rejected | network_timeout |
 blocked_by_antibot | path_traversal_rejected | response_too_large |
-no_provider_succeeded | misconfigured_provider`. See `docs/SCHEMA.md` for the
-shape.
+no_provider_succeeded | misconfigured_provider | empty_response`. See
+`docs/SCHEMA.md` for the shape.
+
+#### `empty_response` (v0.3)
+
+Closes the silent-success-on-empty gap called out in v0.2.0 Known
+Limitations. When the zero-key `site_text` provider completes a fetch but
+the extracted homepage text is shorter than `EMPTY_RESPONSE_BYTES = 64`
+UTF-8 bytes (tunable in `companyctx/extract.py`), the provider row
+surfaces as `status: "failed"`, `error: "empty_response"`. The
+orchestrator maps that to top-level `error.code: "empty_response"` with
+an actionable suggestion (`"site returned HTTP 200 with effectively no
+content; try --ignore-robots or check with a browser"`).
+
+The 64-byte cutoff is stricter than FM-7's 1024-byte "thin extract"
+threshold in `docs/RISK-REGISTER.md`. FM-7 describes legitimate
+one-page / brochureware sites that extract to thin-but-real content —
+those stay `status: ok` with a short `homepage_text`. `empty_response`
+is the 0-to-64-byte UTF-8-byte case where the fetch worked but the
+site returned nothing useful (blank body, login-wall stub, JS-only
+landing with no SSR content). The gate measures **UTF-8 bytes**, not
+character count, so multibyte scripts (CJK, accented Latin, Cyrillic)
+don't false-positive as empty.
+
+The gate applies to **both waterfall attempts**: Attempt 1
+(`site_text_trafilatura`) and Attempt 2 (smart-proxy recovery) run the
+same check against the extracted homepage text. An effectively-empty
+recovery body surfaces on the proxy row as
+`status: "failed"`, `error: "empty_response"` so Attempt 2 can't launder
+a silent-success onto the envelope.
+
+When both attempts fail (e.g. Attempt 1 `blocked_by_antibot` →
+Attempt 2 `empty_response`), `error.code` at the envelope level
+reflects the **terminal** waterfall outcome, not the trigger. An
+`empty_response` on any row wins the top-level code: the antibot
+block was the reason to retry; the empty proxy body is what the
+pipeline actually ended on. Per-provider rows still carry their own
+error strings in `provenance[slug].error` for full traceability.
+
+Automatic proxy retry on an Attempt-1 `empty_response` failure is
+intentionally out of scope: the smart-proxy recovery path skips
+primary rows tagged `empty_response` (the zero-key fetch already
+worked — the site returned nothing, retrying through a proxy won't
+invent content). Agents decide whether to retry upstream.
 
 ### `schema_version`
 
-Every envelope carries a top-level `schema_version: Literal["0.2.0"]`.
+Every envelope carries a top-level `schema_version: Literal["0.3.0"]`.
 Agents branch on shape by reading this field directly — no substring-
 parsing an error string. Adding an optional envelope field is a PATCH (no
 `schema_version` bump); adding or renaming an `EnvelopeError.code` is a
-MINOR bump; changing or removing an existing field is a MAJOR bump. v0.1
-envelopes lack the `schema_version` field and fail validation under
-`extra="forbid"`.
+MINOR bump; changing or removing an existing field is a MAJOR bump.
+v0.3.0 adds the `empty_response` code to the closed set — a minor bump
+from v0.2.0. v0.1 envelopes lack the `schema_version` field and fail
+validation under `extra="forbid"`.
 
 ### `providers list` output shape
 

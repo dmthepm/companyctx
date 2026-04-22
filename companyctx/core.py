@@ -18,7 +18,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from companyctx import __version__
-from companyctx.extract import site_signals_from_homepage_bytes
+from companyctx.extract import (
+    EMPTY_RESPONSE_ERROR as _EMPTY_RESPONSE_ERROR,
+)
+from companyctx.extract import (
+    is_empty_response,
+    site_signals_from_homepage_bytes,
+)
 from companyctx.providers import discover
 from companyctx.providers.base import FetchContext, ProviderBase
 from companyctx.schema import (
@@ -59,6 +65,17 @@ _SMART_PROXY_CATEGORY = "smart_proxy"
 # The smart-proxy must not "recover" these — the user opted into robots
 # compliance by not passing ``--ignore-robots``.
 _ROBOTS_BLOCK_ERROR = "blocked_by_robots"
+# ``empty_response`` is the "HTTP 200 with effectively no body" honesty
+# check (COX-44). Automatic proxy-retry on empty is explicitly out of
+# scope — agents branching on ``error.code`` decide what to do. Skipping
+# the retry here keeps the provider's honest signal from being laundered
+# into a degraded-but-ok row by the waterfall. The error-string constant
+# itself lives in ``companyctx.extract`` so the provider, the orchestrator,
+# and the smart-proxy recovery path all reference one source of truth.
+EMPTY_RESPONSE_SUGGESTION = (
+    "site returned HTTP 200 with effectively no content; "
+    "try --ignore-robots or check with a browser"
+)
 
 
 def run(
@@ -143,6 +160,8 @@ def run(
                     continue
                 if meta.error == _ROBOTS_BLOCK_ERROR:
                     continue
+                if meta.error == _EMPTY_RESPONSE_ERROR:
+                    continue
                 recovered_signals = _attempt_smart_proxy_recovery(
                     site=site,
                     ctx=ctx,
@@ -218,10 +237,16 @@ def _attempt_smart_proxy_recovery(
 ) -> SiteSignals | None:
     """Try every registered smart-proxy provider in slug order.
 
-    The first one that returns bytes + ``ok`` metadata wins. Every attempt's
-    metadata is written into ``provenance`` so the user sees the trace. On
-    bytes the shared extractor turns them into a ``SiteSignals`` payload;
-    parse failures downgrade the proxy row to ``failed`` and move on.
+    The first one that returns bytes + ``ok`` metadata AND clears the
+    empty-response gate wins. Every attempt's metadata is written into
+    ``provenance`` so the user sees the trace. On bytes the shared
+    extractor turns them into a ``SiteSignals`` payload; parse failures
+    downgrade the proxy row to ``failed`` and move on. An effectively-
+    empty recovery body (extracted text below
+    :data:`EMPTY_RESPONSE_BYTES`) is tagged ``failed`` with
+    ``error="empty_response"`` so the Attempt-2 path cannot launder a
+    silent-success onto the envelope — parallel to the Attempt-1 gate
+    in ``site_text_trafilatura``.
     """
     for proxy_slug in sorted(smart_proxy_registry):
         proxy_cls = smart_proxy_registry[proxy_slug]
@@ -230,13 +255,22 @@ def _attempt_smart_proxy_recovery(
         if body is None or proxy_meta.status != "ok":
             continue
         try:
-            return site_signals_from_homepage_bytes(body)
+            recovered = site_signals_from_homepage_bytes(body)
         except Exception as exc:  # noqa: BLE001 - deliberate boundary
             provenance[proxy_slug] = _failed_metadata(
                 error=f"smart-proxy bytes extraction failed: {exc.__class__.__name__}: {exc}",
                 provider_version=proxy_meta.provider_version,
                 latency_ms=proxy_meta.latency_ms,
             )
+            continue
+        if is_empty_response(recovered.homepage_text):
+            provenance[proxy_slug] = _failed_metadata(
+                error=_EMPTY_RESPONSE_ERROR,
+                provider_version=proxy_meta.provider_version,
+                latency_ms=proxy_meta.latency_ms,
+            )
+            continue
+        return recovered
     return None
 
 
@@ -374,30 +408,53 @@ def _build_envelope_error(
     status: EnvelopeStatus,
     provenance: Mapping[str, ProviderRunMetadata],
 ) -> EnvelopeError | None:
-    """Map the first failing provenance row to a structured :class:`EnvelopeError`.
+    """Map the terminal failing provenance row to a structured :class:`EnvelopeError`.
 
-    Returns ``None`` when ``status == "ok"``. Otherwise picks the first
-    provider row with a non-``ok`` status and a populated error string,
-    classifies the string into one of the closed set of codes
-    (:data:`EnvelopeErrorCode`), and pairs it with a generic-but-actionable
-    suggestion. Callers should treat this as the orchestrator's one source of
-    truth for the top-level error — per-provider rows still carry their own
-    raw error strings in :attr:`ProviderRunMetadata.error`.
+    Returns ``None`` when ``status == "ok"``. Otherwise classifies one
+    provider row's error into the closed :data:`EnvelopeErrorCode` set and
+    pairs it with an actionable suggestion. Callers should treat this as
+    the orchestrator's one source of truth for the top-level error —
+    per-provider rows still carry their own raw error strings in
+    :attr:`ProviderRunMetadata.error`.
+
+    Selection rule: prefer ``empty_response`` when any row carries it
+    (COX-44 terminal signal — a proxy returning an empty body after an
+    ``blocked_by_antibot`` Attempt 1 means the terminal waterfall outcome
+    is "the site had nothing," not "blocked by antibot"). Otherwise fall
+    back to the first failing row in provenance order, which is the
+    Attempt-1 failure for runs without a smart-proxy.
     """
     if status == "ok":
         return None
-    failure_reason = None
-    failure_status: ProviderStatus | None = None
-    for meta in provenance.values():
-        if meta.status in ("failed", "not_configured", "degraded") and meta.error:
-            failure_reason = meta.error
-            failure_status = meta.status
-            break
+    failures = [
+        (meta.status, meta.error)
+        for meta in provenance.values()
+        if meta.status in ("failed", "not_configured", "degraded") and meta.error
+    ]
+    chosen = next(
+        (row for row in failures if row[1] == _EMPTY_RESPONSE_ERROR),
+        failures[0] if failures else None,
+    )
+    failure_status: ProviderStatus | None = chosen[0] if chosen else None
+    failure_reason: str | None = chosen[1] if chosen else None
     message = failure_reason or (
         "one or more providers failed" if status == "partial" else "no providers succeeded"
     )
     code = _classify_error_code(message, failure_status, status)
-    return EnvelopeError(code=code, message=message, suggestion=GENERIC_SUGGESTION)
+    return EnvelopeError(code=code, message=message, suggestion=_suggestion_for(code))
+
+
+def _suggestion_for(code: EnvelopeErrorCode) -> str:
+    """Per-code actionable suggestion.
+
+    Most codes share the generic "configure a smart-proxy or skip" fix.
+    ``empty_response`` gets its own line because smart-proxy retry is not
+    the right remediation — the fetch already worked, the site returned
+    nothing.
+    """
+    if code == "empty_response":
+        return EMPTY_RESPONSE_SUGGESTION
+    return GENERIC_SUGGESTION
 
 
 def _classify_error_code(
@@ -428,6 +485,8 @@ def _classify_error_code(
         return "network_timeout"
     if "blocked_by_antibot" in lower or "blocked_by_robots" in lower:
         return "blocked_by_antibot"
+    if "empty_response" in lower:
+        return "empty_response"
     # 401/403 without the canonical `blocked_by_antibot` prefix still read as
     # an access block; other 4xx/5xx codes fall through to the generic
     # no-provider-succeeded catch.
@@ -505,7 +564,7 @@ def _fallback_envelope(
         error = EnvelopeError(
             code="no_provider_succeeded",
             message="no providers succeeded",
-            suggestion=GENERIC_SUGGESTION,
+            suggestion=_suggestion_for("no_provider_succeeded"),
         )
     return Envelope(
         status=status,

@@ -126,3 +126,7 @@ def test_misconfigured_provider_code_from_not_configured_row() -> None:
 
 def test_no_provider_succeeded_code_for_unclassified_reason() -> None:
     assert _run_with_error("something we do not recognize") == "no_provider_succeeded"
+
+
+def test_empty_response_code_from_provider_error_string() -> None:
+    assert _run_with_error("empty_response") == "empty_response"

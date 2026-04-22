@@ -15,6 +15,29 @@ from bs4 import BeautifulSoup
 
 from companyctx.schema import SiteSignals
 
+# Empty-response honesty threshold (COX-44). The measure is UTF-8 byte
+# length, not ``len(text)`` — a 40-character CJK or accented homepage
+# that extracts to ~120 UTF-8 bytes should NOT be misclassified as
+# effectively empty. A legitimate one-page brochure site clears 64
+# bytes easily; below that the fetch worked but the site returned
+# nothing useful (blank body, login-wall stub, JS-only landing with no
+# SSR content). Both the zero-key provider and the smart-proxy recovery
+# path consult this gate so Attempt 1 and Attempt 2 enforce the same
+# contract.
+EMPTY_RESPONSE_BYTES = 64
+EMPTY_RESPONSE_ERROR = "empty_response"
+
+
+def is_empty_response(homepage_text: str) -> bool:
+    """Return True when the extracted text is below the empty-response cutoff.
+
+    Measures UTF-8 byte length so multibyte scripts don't false-positive
+    as empty. Called after extraction, not on raw response bytes — the
+    gate is about "was there anything useful to say" after trafilatura /
+    BS4 stripped chrome.
+    """
+    return len(homepage_text.encode("utf-8")) < EMPTY_RESPONSE_BYTES
+
 
 def extract_body_text(html: str) -> str:
     """Return the main-body text of one HTML document.
@@ -94,8 +117,11 @@ def site_signals_from_homepage_bytes(body: bytes) -> SiteSignals:
 
 
 __all__ = [
+    "EMPTY_RESPONSE_BYTES",
+    "EMPTY_RESPONSE_ERROR",
     "detect_tech_stack",
     "extract_body_text",
     "extract_services",
+    "is_empty_response",
     "site_signals_from_homepage_bytes",
 ]

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — envelope schema bump (v0.3)
+
+- **`schema_version` bumped to `"0.3.0"`.** Adding the `empty_response`
+  code to the closed `EnvelopeError.code` Literal is a minor schema
+  bump. v0.2.0 envelopes still validate under the old Literal but the
+  orchestrator now emits `"0.3.0"` on every run.
+- **New `empty_response` error code (COX-44 / #79).** Both waterfall
+  attempts now gate on extracted-text UTF-8 byte length against
+  `EMPTY_RESPONSE_BYTES = 64`. Zero-key `site_text_trafilatura`
+  (Attempt 1) and the smart-proxy recovery path (Attempt 2) share the
+  gate via `companyctx.extract.is_empty_response`, so a proxy that
+  returns an HTTP 200 with an empty body surfaces as
+  `status: "failed"`, `error: "empty_response"` on its provenance row
+  instead of laundering a silent-success onto the envelope. Measuring
+  UTF-8 bytes (not `len(text)`) keeps multibyte scripts from
+  false-positiving as empty. The orchestrator lands
+  `error.code: "empty_response"` at the envelope top level with an
+  actionable suggestion. Retires the "empty-body silent-success"
+  disclosure added to v0.2.0 Known Limitations. Automatic smart-proxy
+  retry on an Attempt-1 empty is intentionally out of scope — the
+  recovery path skips primary rows tagged `empty_response`.
+
 ### Added
 
 - **`companyctx providers list --json`** — registry introspection as a JSON

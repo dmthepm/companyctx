@@ -5,14 +5,11 @@ Every model sets ``extra="forbid"`` so schema drift is loud. See
 ``docs/SCHEMA.md`` for the contract walkthrough and ``docs/SPEC.md`` for the
 frozen spec snapshot.
 
-v0.2.0 is a schema-breaking release for the envelope:
-
-* New top-level ``schema_version: Literal["0.2.0"]`` lets consumers branch on
-  the envelope shape rather than substring-parsing error strings.
-* ``error`` changes from ``str | None`` to a structured :class:`EnvelopeError`
-  with machine-readable ``code`` + human-readable ``message`` + optional
-  ``suggestion``. The former top-level ``suggestion`` field moves into the
-  error model.
+v0.2.0 introduced the schema-locked envelope (top-level ``schema_version``
+plus structured :class:`EnvelopeError`). v0.3.0 adds one new error code —
+``empty_response`` — so agents can branch on "site returned HTTP 200 with
+effectively no content" instead of mistaking a silent-success for ok data.
+Per the closed-set rule, a new code is a minor schema bump.
 """
 
 from __future__ import annotations
@@ -22,7 +19,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-SCHEMA_VERSION = "0.2.0"
+SCHEMA_VERSION = "0.3.0"
 
 EnvelopeStatus = Literal["ok", "partial", "degraded"]
 ProviderStatus = Literal["ok", "degraded", "failed", "not_configured"]
@@ -35,6 +32,7 @@ EnvelopeErrorCode = Literal[
     "response_too_large",
     "no_provider_succeeded",
     "misconfigured_provider",
+    "empty_response",
 ]
 
 
@@ -158,7 +156,7 @@ class Envelope(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["0.2.0"] = "0.2.0"
+    schema_version: Literal["0.3.0"] = "0.3.0"
     status: EnvelopeStatus
     data: CompanyContext
     provenance: dict[str, ProviderRunMetadata] = Field(default_factory=dict)

@@ -365,9 +365,13 @@ def test_ignore_robots_bypasses_robots_check(monkeypatch: pytest.MonkeyPatch) ->
         "companyctx.providers.site_text_trafilatura.is_allowed",
         lambda url, user_agent: False,
     )
+    # Keep the body comfortably above ``EMPTY_RESPONSE_BYTES`` (COX-44)
+    # so this test stays about the robots-bypass path, not the
+    # empty-response honesty check.
+    body_text = "Hello from the ignore-robots smoke path — this is long enough to clear the cutoff."
     monkeypatch.setattr(
         "companyctx.providers.site_text_trafilatura.requests.get",
-        lambda *args, **kwargs: _FakeResponse("<html><body>Hello</body></html>"),
+        lambda *args, **kwargs: _FakeResponse(f"<html><body><p>{body_text}</p></body></html>"),
     )
     env = core.run(
         "https://example.com",
@@ -377,7 +381,7 @@ def test_ignore_robots_bypasses_robots_check(monkeypatch: pytest.MonkeyPatch) ->
     )
     assert env.status == "ok"
     assert env.data.pages is not None
-    assert env.data.pages.homepage_text == "Hello"
+    assert body_text in env.data.pages.homepage_text
 
 
 def test_provider_rejects_unsupported_scheme() -> None:
@@ -534,6 +538,206 @@ def test_cli_validate_rejects_extra_field(tmp_path: Path) -> None:
     runner = CliRunner()
     result = runner.invoke(app, ["validate", str(path)])
     assert result.exit_code == 1
+
+
+@pytest.mark.parametrize(
+    ("homepage_html", "expect_empty"),
+    [
+        # Zero visible body — trafilatura returns nothing, BS fallback also
+        # yields "". 0 < 64 → empty_response trips.
+        ("<!DOCTYPE html><html><head></head><body></body></html>", True),
+        # Login-wall stub shape: visible text is under the 64-byte cutoff.
+        ("<html><body><p>Please sign in</p></body></html>", True),
+        # Just above the cutoff: ~80 bytes of visible prose. Must NOT trip.
+        (
+            "<html><body><p>"
+            + ("We bake bread in Portland. We cater weddings and supply local cafes daily." * 1)
+            + "</p></body></html>",
+            False,
+        ),
+    ],
+)
+def test_empty_response_trips_honesty_check(
+    tmp_path: Path, homepage_html: str, expect_empty: bool
+) -> None:
+    """COX-44 — extracted text below EMPTY_RESPONSE_BYTES surfaces as
+    ``error.code == "empty_response"`` instead of a silent ``status: ok``.
+    Above the cutoff the envelope stays ``ok``. Regression guard on the
+    exact threshold behavior that retires the v0.2 Known Limitations
+    disclosure.
+    """
+    slug = "emptyprobe"
+    site_dir = tmp_path / slug
+    site_dir.mkdir()
+    (site_dir / "homepage.html").write_text(homepage_html, encoding="utf-8")
+
+    env = core.run(
+        f"{slug}.example",
+        mock=True,
+        fixtures_dir=tmp_path,
+        providers=_reg(site_text_trafilatura=TrafilaturaProvider),
+        fetched_at=FIXED_WHEN,
+    )
+    if expect_empty:
+        assert env.status == "degraded"
+        assert env.error is not None
+        assert env.error.code == "empty_response"
+        assert env.error.suggestion is not None
+        assert "HTTP 200" in env.error.suggestion
+        row = env.provenance["site_text_trafilatura"]
+        assert row.status == "failed"
+        assert row.error == "empty_response"
+        assert env.data.pages is None
+    else:
+        assert env.status == "ok"
+        assert env.error is None
+        assert env.data.pages is not None
+        assert env.data.pages.homepage_text
+
+
+def test_empty_response_applies_to_smart_proxy_recovery(tmp_path: Path) -> None:
+    """Attempt-2 must not launder silent-success past the honesty gate.
+
+    Primary zero-key provider fails with ``blocked_by_antibot`` — an error
+    that IS recoverable via smart-proxy per the waterfall. The proxy then
+    returns an HTTP 200 with an empty body. Before the fix this landed
+    ``status: "ok"`` with ``pages.homepage_text: ""``. After the fix the
+    recovery path treats the empty body as ``empty_response`` on the proxy
+    row, no recovery happens, and the envelope surfaces the honest shape.
+    """
+
+    class _BlockedPrimary:
+        slug: ClassVar[str] = "site_text_blocked"
+        category: ClassVar[Literal["site_text"]] = "site_text"
+        cost_hint: ClassVar[Literal["free"]] = "free"
+        version: ClassVar[str] = "0.1.0"
+
+        def fetch(
+            self, site: str, *, ctx: FetchContext
+        ) -> tuple[SiteSignals | None, ProviderRunMetadata]:
+            return None, ProviderRunMetadata(
+                status="failed",
+                latency_ms=0,
+                error="blocked_by_antibot (HTTP 403)",
+                provider_version=self.version,
+            )
+
+    class _EmptyBodyProxy:
+        slug: ClassVar[str] = "smart_proxy_empty"
+        category: ClassVar[Literal["smart_proxy"]] = "smart_proxy"
+        cost_hint: ClassVar[Literal["per-call"]] = "per-call"
+        version: ClassVar[str] = "0.1.0"
+
+        def fetch(self, url: str, *, ctx: FetchContext) -> tuple[bytes | None, ProviderRunMetadata]:
+            return b"<!DOCTYPE html><html><head></head><body></body></html>", (
+                ProviderRunMetadata(status="ok", latency_ms=1, provider_version=self.version)
+            )
+
+    env = core.run(
+        "any.example",
+        mock=True,
+        fixtures_dir=tmp_path,
+        providers=_reg(
+            site_text_blocked=_BlockedPrimary,
+            smart_proxy_empty=_EmptyBodyProxy,
+        ),
+        fetched_at=FIXED_WHEN,
+    )
+    proxy_row = env.provenance["smart_proxy_empty"]
+    assert proxy_row.status == "failed"
+    assert proxy_row.error == "empty_response"
+    assert env.data.pages is None
+    assert env.status in {"degraded", "partial"}
+    # Terminal-signal rule: the primary row carries
+    # ``blocked_by_antibot`` (the trigger for the proxy retry), but the
+    # waterfall's terminal failure is the proxy's empty body. Envelope-
+    # level ``error.code`` must reflect that, otherwise agents branching
+    # on the envelope see a stale antibot signal and the
+    # smart-proxy-based suggestion when the proxy was actually run.
+    assert env.error is not None
+    assert env.error.code == "empty_response"
+    assert env.error.suggestion is not None
+    assert "HTTP 200" in env.error.suggestion
+
+
+def test_empty_response_gate_measures_utf8_bytes_not_chars(tmp_path: Path) -> None:
+    """Multibyte prose must not false-positive as empty.
+
+    30 Japanese characters encode to 90 UTF-8 bytes — comfortably above
+    the 64-byte cutoff. Counting ``len(text)`` instead of
+    ``len(text.encode("utf-8"))`` would mis-flag this as empty_response.
+    """
+    slug = "cjkprobe"
+    site_dir = tmp_path / slug
+    site_dir.mkdir()
+    # 30 katakana chars = 90 UTF-8 bytes; extractor passes them through.
+    body_text = "カタカナ" * 8  # 32 chars, 96 bytes
+    (site_dir / "homepage.html").write_text(
+        f"<html><body><p>{body_text}</p></body></html>", encoding="utf-8"
+    )
+
+    env = core.run(
+        f"{slug}.example",
+        mock=True,
+        fixtures_dir=tmp_path,
+        providers=_reg(site_text_trafilatura=TrafilaturaProvider),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "ok", env.error
+    assert env.data.pages is not None
+    assert body_text in env.data.pages.homepage_text
+
+
+def test_empty_response_does_not_trigger_smart_proxy_retry() -> None:
+    """A failed site_text row with ``error == "empty_response"`` must not be
+    routed to the smart-proxy recovery path — the fetch already worked, the
+    site returned nothing. Automatic retry on empty is explicitly out of
+    scope for COX-44; agents decide what to do.
+    """
+
+    class _EmptyResponseProvider:
+        slug: ClassVar[str] = "site_text_empty"
+        category: ClassVar[Literal["site_text"]] = "site_text"
+        cost_hint: ClassVar[Literal["free"]] = "free"
+        version: ClassVar[str] = "0.1.0"
+
+        def fetch(
+            self, site: str, *, ctx: FetchContext
+        ) -> tuple[SiteSignals | None, ProviderRunMetadata]:
+            return None, ProviderRunMetadata(
+                status="failed",
+                latency_ms=0,
+                error="empty_response",
+                provider_version=self.version,
+            )
+
+    proxy_calls: list[str] = []
+
+    class _RecordingProxy:
+        slug: ClassVar[str] = "smart_proxy_record"
+        category: ClassVar[Literal["smart_proxy"]] = "smart_proxy"
+        cost_hint: ClassVar[Literal["per-call"]] = "per-call"
+        version: ClassVar[str] = "0.1.0"
+
+        def fetch(self, url: str, *, ctx: FetchContext) -> tuple[bytes | None, ProviderRunMetadata]:
+            proxy_calls.append(url)
+            return b"<html><body>recovered</body></html>", ProviderRunMetadata(
+                status="ok", latency_ms=1, provider_version=self.version
+            )
+
+    env = core.run(
+        "any.example",
+        mock=True,
+        providers=_reg(
+            site_text_empty=_EmptyResponseProvider,
+            smart_proxy_record=_RecordingProxy,
+        ),
+        fetched_at=FIXED_WHEN,
+    )
+    assert proxy_calls == []
+    assert env.status == "degraded"
+    assert env.error is not None
+    assert env.error.code == "empty_response"
 
 
 def test_cli_providers_list_shows_registered_provider() -> None:

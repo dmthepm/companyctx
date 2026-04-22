@@ -15,11 +15,11 @@ schema-locked JSON envelope out. Zero keys on the default path.
 
 - Companies only. Never extract people data.
 - Branch on `status` (`ok | partial | degraded`), not on try/except.
-- Every envelope carries `schema_version`. v0.2 is `"0.2.0"`.
+- Every envelope carries `schema_version`. v0.3 is `"0.3.0"`.
 - When `status != "ok"`, `error` is a structured `{code, message, suggestion}`;
   switch on `error.code` (one of `ssrf_rejected | network_timeout |
   blocked_by_antibot | path_traversal_rejected | response_too_large |
-  no_provider_succeeded | misconfigured_provider`).
+  no_provider_succeeded | misconfigured_provider | empty_response`).
 - Pipe stdout; don't parse logs. The JSON envelope is the contract.
 - The `data.site` field is the identifier; `data.pages` holds homepage-
   derived content (`homepage_text`, `about_text`, `services`, `tech_stack`).
@@ -56,7 +56,7 @@ schema-locked JSON envelope out. Zero keys on the default path.
       "status": "ok"
     }
   },
-  "schema_version": "0.2.0",
+  "schema_version": "0.3.0",
   "status": "ok"
 }
 ```
