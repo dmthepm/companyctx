@@ -1,0 +1,33 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
+    "pages": {
+      "about_text": "Cary Hormone 02 has served Cary, NC since 2012. Today we're a team of 29.\nSecond-generation leadership since 2018.\nContact: the Owner. Reach us at hello@example.test.",
+      "homepage_text": "Cary Hormone 02 is a bioidentical hormone replacement clinic in Cary, NC. Founded 2012. We're a team of 29.\nWhat we do\n- Pellet therapy\n- Hormone optimization consultation\n- Lab testing\n- Preventative health planning\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
+      "services": [
+        "Pellet therapy",
+        "Hormone optimization consultation",
+        "Lab testing",
+        "Preventative health planning"
+      ],
+      "tech_stack": []
+    },
+    "reviews": null,
+    "signals": null,
+    "site": "cary-hormone-02.example",
+    "social": null
+  },
+  "error": null,
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

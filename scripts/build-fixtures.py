@@ -55,6 +55,12 @@ if str(REPO_ROOT) not in sys.path:
 
 DEFAULT_OUT = REPO_ROOT / "fixtures"
 
+# Marker file dropped inside a fixture directory to opt it out of
+# regeneration. The real-golden corpus (issue #24) uses this so the
+# hand-curated oracles stay frozen — they represent raw observations captured
+# by the external B2B brief pipeline, not anything this script renders.
+HAND_CURATED_MARKER = ".hand-curated"
+
 # IANA-reserved TLD for documentation / examples; safe from real collisions.
 FIXTURE_TLD = "example"
 
@@ -575,8 +581,27 @@ def write_json(path: Path, payload: object) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+class HandCuratedFixtureError(RuntimeError):
+    """Raised when the script is asked to regenerate a hand-curated fixture."""
+
+
+def is_hand_curated(site_dir: Path) -> bool:
+    """Return True when ``site_dir`` opts out of regeneration.
+
+    The marker file (``.hand-curated``) is dropped into each real-golden
+    fixture (issue #24) to pin the oracle as the frozen capture from the
+    external brief pipeline. See ``fixtures/README.md``.
+    """
+    return (site_dir / HAND_CURATED_MARKER).exists()
+
+
 def write_prospect(p: Prospect, out_root: Path) -> None:
     site_dir = out_root / p.slug
+    if is_hand_curated(site_dir):
+        raise HandCuratedFixtureError(
+            f"refusing to overwrite hand-curated fixture {site_dir}; "
+            f"remove {HAND_CURATED_MARKER} to force regeneration"
+        )
     site_dir.mkdir(parents=True, exist_ok=True)
     (site_dir / "homepage.html").write_text(sanitize_text(render_homepage(p)), encoding="utf-8")
     (site_dir / "about.html").write_text(sanitize_text(render_about(p)), encoding="utf-8")

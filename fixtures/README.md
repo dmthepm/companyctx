@@ -17,6 +17,8 @@ fixtures/
     yelp.json             # API response for the Yelp Fusion provider
     youtube.json          # API response for the YouTube channels.list provider
     expected.json         # committed regression snapshot (real golden oracles are separate)
+    .hand-curated         # (real-golden fixtures only) marker that pins the oracle
+    SOURCE.md             # (real-golden fixtures only) citation to the external brief artifact
   seeds.csv               # one column "site", used by `companyctx batch`
 ```
 
@@ -97,6 +99,72 @@ includes them in the byte-diff regression suite via
 `tests/test_regression_corpus.py`.
 
 Scaling the regression suite past these seven is v0.2 scope.
+
+## Real golden corpus — 5 hand-curated oracles
+
+Five fixtures are **hand-curated** real-golden oracles built from raw
+observations captured by an external B2B brief pipeline (issue #24, v0.1.0
+release gate). They are the first test in this tree that breaks the
+circular "oracle == `core.run` output" loop of the regression corpus. The
+hand-curated slugs are:
+
+| Slug                           | Niche                                   | Artifact date | Artifact id       |
+| ------------------------------ | --------------------------------------- | ------------- | ----------------- |
+| `northarlington-pharmacy-01`   | Community compounding pharmacy          | `2026-04-10`  | `brief-b84ae44060b4` |
+| `cary-hormone-02`              | Bioidentical hormone replacement clinic | `2026-04-10`  | `brief-6a24fd6cb2dc` |
+| `hinsdale-derm-03`             | Dermatology clinic                      | `2026-04-11`  | `brief-29cc51c3333a` |
+| `birmingham-iv-04`             | IV therapy and cryotherapy clinic       | `2026-04-12`  | `brief-b2f68716f981` |
+| `charleston-medspa-05`         | Medical spa                             | `2026-04-11`  | `brief-28a610bddf4e` |
+
+The artifact id is an opaque sha256 prefix that the partner can reverse-map
+privately; the real brief path / subject name never appears in the public
+tree. Each fixture carries a `SOURCE.md` with the same citation plus a
+`.hand-curated` marker file. The
+marker tells `scripts/build-fixtures.py` to refuse regeneration (covered
+by `tests/test_real_golden_corpus.py::test_build_fixtures_refuses_to_overwrite_hand_curated`).
+
+### Why this is distinct from the regression corpus
+
+- **Regression corpus** (`tests/test_regression_corpus.py`): inputs are
+  synthetic, oracles are rendered by `core.run` itself. Guards against
+  byte-level drift inside companyctx — not against drift from the outside
+  world. This was flagged by Codex as HIGH severity on PR #19 because
+  "golden" implied an external oracle that did not exist.
+- **Real golden corpus** (`tests/test_real_golden_corpus.py`): inputs are
+  sanitized from real sites the external brief pipeline captured; oracles
+  are **hand-curated** from raw observations in the brief (homepage text,
+  about text, services list, tech stack). Any provider change that makes
+  companyctx's extraction disagree with the external pipeline trips this
+  test loudly.
+
+The oracle is the raw-observation subset of what the brief pipeline
+captured. Fields the external pipeline surfaces but companyctx v0.1 does
+not yet populate (e.g., review counts, social follower counts, rating
+aggregation) are preserved in the provider-JSON fixtures
+(`google_places.json`, `yelp.json`, `youtube.json`) so future provider
+wiring can read them, but they remain `null` in the envelope until the
+corresponding provider ships. When a review/social/signals provider lands,
+the oracle is re-curated by hand (not re-rendered) to capture the newly
+observable fields.
+
+### Sanitization rules for real-golden fixtures
+
+- Site identity is rewritten to a slug of the form `<city>-<niche>-<NN>`
+  (e.g., `charleston-medspa-05`). Client names never appear anywhere —
+  not in HTML, not in JSON, not in the SOURCE.md citation.
+- Contact PII is masked per the existing regex pipeline (emails →
+  `hello@example.test`, phones → `(555) 555-0100`, owner names →
+  `the Owner`).
+- Review counts, ratings, and social follower counts are **preserved
+  verbatim** — those are the raw signal the external pipeline captured
+  and the whole point of having an oracle.
+
+### Scaling
+
+Scaling past five is **out of scope** for v0.1. 100-site durability
+scoring is a different gate (see `durability-report-2026-04-21.md`).
+Rubric-based quality scoring (field coverage %, factual error count)
+is deferred to v0.2.
 
 ## Determinism rule
 

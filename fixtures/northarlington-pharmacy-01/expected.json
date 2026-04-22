@@ -1,0 +1,36 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
+    "pages": {
+      "about_text": "North Arlington Pharmacy has served North Arlington, NJ since 1964. Today we're a team of 18.\nThree generations of pharmacists operating under one roof.\nContact: the Owner. Reach us at hello@example.test.",
+      "homepage_text": "Northarlington Pharmacy 01 is a community compounding pharmacy in North Arlington, NJ. Founded 1964. We're a team of 18.\nWhat we do\n- Prescription compounding\n- Immunizations\n- Durable medical equipment\n- Home delivery\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
+      "services": [
+        "Prescription compounding",
+        "Immunizations",
+        "Durable medical equipment",
+        "Home delivery"
+      ],
+      "tech_stack": [
+        "WordPress",
+        "Elementor"
+      ]
+    },
+    "reviews": null,
+    "signals": null,
+    "site": "northarlington-pharmacy-01.example",
+    "social": null
+  },
+  "error": null,
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

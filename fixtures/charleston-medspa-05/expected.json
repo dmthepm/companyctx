@@ -1,0 +1,33 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
+    "pages": {
+      "about_text": "Charleston Medspa 05 has served Charleston, SC since 2005. Today we're a team of 5.\nTwenty-plus years in the Lowcountry market.\nContact: the Owner. Reach us at hello@example.test.",
+      "homepage_text": "Charleston Medspa 05 is a medical spa in Charleston, SC. Founded 2005. We're a team of 5.\nWhat we do\n- Morpheus 8 microneedling\n- HydraFacial\n- Laser resurfacing\n- Injectable treatments\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nCharleston Medspa 05 is a medical spa in Charleston, SC. Founded 2005. We're a team of 5.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
+      "services": [
+        "Morpheus 8 microneedling",
+        "HydraFacial",
+        "Laser resurfacing",
+        "Injectable treatments"
+      ],
+      "tech_stack": []
+    },
+    "reviews": null,
+    "signals": null,
+    "site": "charleston-medspa-05.example",
+    "social": null
+  },
+  "error": null,
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

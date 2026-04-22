@@ -1,0 +1,33 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
+    "pages": {
+      "about_text": "Birmingham IV 04 has served Birmingham, AL since 2016. Today we're a team of 30.\nFranchise-first standalone clinic model.\nContact: the Owner. Reach us at hello@example.test.",
+      "homepage_text": "Birmingham Iv 04 is a IV therapy and cryotherapy clinic in Birmingham, AL. Founded 2016. We're a team of 30.\nWhat we do\n- IV hydration therapy\n- Whole-body cryotherapy\n- Medical weight loss\n- Hormone replacement therapy\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
+      "services": [
+        "IV hydration therapy",
+        "Whole-body cryotherapy",
+        "Medical weight loss",
+        "Hormone replacement therapy"
+      ],
+      "tech_stack": []
+    },
+    "reviews": null,
+    "signals": null,
+    "site": "birmingham-iv-04.example",
+    "social": null
+  },
+  "error": null,
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

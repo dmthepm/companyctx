@@ -1,0 +1,33 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
+    "pages": {
+      "about_text": "Hinsdale Derm 03 has served Hinsdale, IL since 2000. Today we're a team of 6.\nPhysician-owned, two-location practice.\nContact: the Owner. Reach us at hello@example.test.",
+      "homepage_text": "Hinsdale Derm 03 is a dermatology clinic in Hinsdale, IL. Founded 2000. We're a team of 6.\nWhat we do\n- Medical dermatology\n- Mohs micrographic surgery\n- Cosmetic injectables\n- Body contouring\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nHinsdale Derm 03 is a dermatology clinic in Hinsdale, IL. Founded 2000. We're a team of 6.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
+      "services": [
+        "Medical dermatology",
+        "Mohs micrographic surgery",
+        "Cosmetic injectables",
+        "Body contouring"
+      ],
+      "tech_stack": []
+    },
+    "reviews": null,
+    "signals": null,
+    "site": "hinsdale-derm-03.example",
+    "social": null
+  },
+  "error": null,
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

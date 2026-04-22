@@ -1,0 +1,17 @@
+{
+  "categories": [
+    {
+      "alias": "derm",
+      "title": "Dermatology Clinic"
+    }
+  ],
+  "id": "yelp-hinsdale-derm-03",
+  "location": {
+    "city": "Hinsdale",
+    "country": "US",
+    "state": "IL"
+  },
+  "name": "Hinsdale Derm 03",
+  "review_count": 50,
+  "url": "https://yelp.com/biz/yelp-hinsdale-derm-03"
+}
