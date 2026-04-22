@@ -8,21 +8,22 @@ module pins that contract. See issue #56 and docs/OSS-HYGIENE.md §1.
 from __future__ import annotations
 
 import importlib.resources
+from typing import get_args
 
 from companyctx import (
     SCHEMA_VERSION,
     CompanyContext,
     Envelope,
     EnvelopeError,
-    EnvelopeErrorCode,  # noqa: F401 — typing Literal, importability is the test
-    EnvelopeStatus,  # noqa: F401 — typing Literal, importability is the test
+    EnvelopeErrorCode,
+    EnvelopeStatus,
     FundingRound,
     HeuristicSignals,
     MediaMention,
-    MentionKind,  # noqa: F401 — typing Literal, importability is the test
+    MentionKind,
     MentionsSignals,
     ProviderRunMetadata,
-    ProviderStatus,  # noqa: F401 — typing Literal, importability is the test
+    ProviderStatus,
     ReviewsSignals,
     SiteSignals,
     SocialSignals,
@@ -46,6 +47,28 @@ def test_top_level_reexports_are_importable() -> None:
         SocialSignals,
     ):
         assert hasattr(cls, "model_fields"), cls.__name__
+
+
+def test_top_level_literal_aliases_expose_expected_members() -> None:
+    """Lock the Literal alias membership so downstream consumers can branch on it."""
+    assert "ok" in get_args(EnvelopeStatus)
+    assert "partial" in get_args(EnvelopeStatus)
+    assert "degraded" in get_args(EnvelopeStatus)
+    assert "ok" in get_args(ProviderStatus)
+    assert "not_configured" in get_args(ProviderStatus)
+    assert "press" in get_args(MentionKind)
+    assert "award" in get_args(MentionKind)
+    # All 7 v0.2 error codes must stay re-exported.
+    for code in (
+        "ssrf_rejected",
+        "network_timeout",
+        "blocked_by_antibot",
+        "path_traversal_rejected",
+        "response_too_large",
+        "no_provider_succeeded",
+        "misconfigured_provider",
+    ):
+        assert code in get_args(EnvelopeErrorCode), code
 
 
 def test_package_version_is_020() -> None:
