@@ -59,11 +59,10 @@ zero-key path — the schema doesn't know which layer produced the bytes.
 extras after the measurement spike, but they're interchangeable — swap the
 entry-point line in `pyproject.toml` or override at runtime.
 
-> **v0.1 status.** Only the `SmartProxyProvider` Protocol
+> **v0.1.0 status.** Only the `SmartProxyProvider` Protocol
 > (`companyctx/providers/smart_proxy_base.py`) ships today. The first
-> concrete vendor implementation lands after the M2 zero-key provider
-> (issue #15) and the M2 vendor eval spike — no vendor is named here until
-> measurement is in.
+> concrete vendor implementation lands after the vendor eval spike — no
+> vendor is named here until measurement is in.
 
 ## Provider rules (non-negotiable)
 

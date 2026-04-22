@@ -36,7 +36,7 @@ Each failure mode gets:
 - **Waterfall layer** that should cover it (Attempt 1 zero-key stealth,
   Attempt 2 smart-proxy provider, Attempt 3 direct-API provider, or
   a cross-cutting concern).
-- **Envelope mapping** — proposed `ProviderRunMetadata.status`, top-level
+- **Envelope mapping** — `ProviderRunMetadata.status`, top-level
   envelope `status`, `error` template, `suggestion` template.
 - **Agent recovery observed** — what the D100 agent did, and whether it
   was the right thing for `companyctx` to do.

@@ -143,29 +143,21 @@ context means.
 
 ## Install
 
-Pre-release (name-reservation dev build — CLI commands are stubs that
-exit `2`; useful for pipeline wiring, not for real context yet):
+`v0.1.0` is live on PyPI (first working provider + real `fetch`):
 
 ```bash
 pipx install companyctx
 companyctx --version   # companyctx 0.1.0
-companyctx --help
+companyctx fetch example.com --mock --json
 ```
 
-From source (recommended while M2 is in flight):
+From source:
 
 ```bash
 git clone https://github.com/dmthepm/companyctx.git
 cd companyctx
 pip install -e ".[dev,extract,reviews,youtube]"
 companyctx --help
-```
-
-`v0.1.0` is shipped (first working provider + real `fetch`):
-
-```bash
-pipx install companyctx
-companyctx fetch example.com --mock --json
 ```
 
 ## Design invariants
