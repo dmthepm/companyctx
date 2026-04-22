@@ -408,25 +408,35 @@ def _build_envelope_error(
     status: EnvelopeStatus,
     provenance: Mapping[str, ProviderRunMetadata],
 ) -> EnvelopeError | None:
-    """Map the first failing provenance row to a structured :class:`EnvelopeError`.
+    """Map the terminal failing provenance row to a structured :class:`EnvelopeError`.
 
-    Returns ``None`` when ``status == "ok"``. Otherwise picks the first
-    provider row with a non-``ok`` status and a populated error string,
-    classifies the string into one of the closed set of codes
-    (:data:`EnvelopeErrorCode`), and pairs it with a generic-but-actionable
-    suggestion. Callers should treat this as the orchestrator's one source of
-    truth for the top-level error — per-provider rows still carry their own
-    raw error strings in :attr:`ProviderRunMetadata.error`.
+    Returns ``None`` when ``status == "ok"``. Otherwise classifies one
+    provider row's error into the closed :data:`EnvelopeErrorCode` set and
+    pairs it with an actionable suggestion. Callers should treat this as
+    the orchestrator's one source of truth for the top-level error —
+    per-provider rows still carry their own raw error strings in
+    :attr:`ProviderRunMetadata.error`.
+
+    Selection rule: prefer ``empty_response`` when any row carries it
+    (COX-44 terminal signal — a proxy returning an empty body after an
+    ``blocked_by_antibot`` Attempt 1 means the terminal waterfall outcome
+    is "the site had nothing," not "blocked by antibot"). Otherwise fall
+    back to the first failing row in provenance order, which is the
+    Attempt-1 failure for runs without a smart-proxy.
     """
     if status == "ok":
         return None
-    failure_reason = None
-    failure_status: ProviderStatus | None = None
-    for meta in provenance.values():
-        if meta.status in ("failed", "not_configured", "degraded") and meta.error:
-            failure_reason = meta.error
-            failure_status = meta.status
-            break
+    failures = [
+        (meta.status, meta.error)
+        for meta in provenance.values()
+        if meta.status in ("failed", "not_configured", "degraded") and meta.error
+    ]
+    chosen = next(
+        (row for row in failures if row[1] == _EMPTY_RESPONSE_ERROR),
+        failures[0] if failures else None,
+    )
+    failure_status: ProviderStatus | None = chosen[0] if chosen else None
+    failure_reason: str | None = chosen[1] if chosen else None
     message = failure_reason or (
         "one or more providers failed" if status == "partial" else "no providers succeeded"
     )

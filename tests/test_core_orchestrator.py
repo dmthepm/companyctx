@@ -648,7 +648,16 @@ def test_empty_response_applies_to_smart_proxy_recovery(tmp_path: Path) -> None:
     assert proxy_row.error == "empty_response"
     assert env.data.pages is None
     assert env.status in {"degraded", "partial"}
+    # Terminal-signal rule: the primary row carries
+    # ``blocked_by_antibot`` (the trigger for the proxy retry), but the
+    # waterfall's terminal failure is the proxy's empty body. Envelope-
+    # level ``error.code`` must reflect that, otherwise agents branching
+    # on the envelope see a stale antibot signal and the
+    # smart-proxy-based suggestion when the proxy was actually run.
     assert env.error is not None
+    assert env.error.code == "empty_response"
+    assert env.error.suggestion is not None
+    assert "HTTP 200" in env.error.suggestion
 
 
 def test_empty_response_gate_measures_utf8_bytes_not_chars(tmp_path: Path) -> None:

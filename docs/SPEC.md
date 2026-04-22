@@ -131,6 +131,14 @@ recovery body surfaces on the proxy row as
 `status: "failed"`, `error: "empty_response"` so Attempt 2 can't launder
 a silent-success onto the envelope.
 
+When both attempts fail (e.g. Attempt 1 `blocked_by_antibot` →
+Attempt 2 `empty_response`), `error.code` at the envelope level
+reflects the **terminal** waterfall outcome, not the trigger. An
+`empty_response` on any row wins the top-level code: the antibot
+block was the reason to retry; the empty proxy body is what the
+pipeline actually ended on. Per-provider rows still carry their own
+error strings in `provenance[slug].error` for full traceability.
+
 Automatic proxy retry on an Attempt-1 `empty_response` failure is
 intentionally out of scope: the smart-proxy recovery path skips
 primary rows tagged `empty_response` (the zero-key fetch already
