@@ -113,7 +113,14 @@ class _ProxyRecoversSite:
     category: ClassVar[Literal["smart_proxy"]] = "smart_proxy"
     cost_hint: ClassVar[Literal["per-call"]] = "per-call"
     version: ClassVar[str] = "0.1.0"
-    RECOVERED_HTML = b"<html><body><h1>Recovered Biz</h1><p>hello via proxy</p></body></html>"
+    # Keep the recovered prose above ``EMPTY_RESPONSE_BYTES`` (COX-44) so
+    # recovery tests stay about the waterfall wiring, not the empty-
+    # response gate on Attempt 2.
+    RECOVERED_HTML = (
+        b"<html><body><h1>Recovered Biz</h1>"
+        b"<p>hello via proxy -- this recovery body is long enough to clear the cutoff</p>"
+        b"</body></html>"
+    )
 
     def fetch(
         self,
@@ -313,7 +320,9 @@ def _blocked_fixture(tmp_path: Path, slug: str, *, with_homepage: bool) -> None:
     (site_dir / "fixture-block.txt").write_text("blocked_by_antibot (HTTP 403)", encoding="utf-8")
     if with_homepage:
         (site_dir / "homepage.html").write_bytes(
-            b"<html><body><h1>Recovered</h1><p>proxy win</p></body></html>"
+            b"<html><body><h1>Recovered</h1>"
+            b"<p>proxy win -- recovered body long enough to clear the empty-response cutoff</p>"
+            b"</body></html>"
         )
 
 

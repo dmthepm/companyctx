@@ -595,6 +595,90 @@ def test_empty_response_trips_honesty_check(
         assert env.data.pages.homepage_text
 
 
+def test_empty_response_applies_to_smart_proxy_recovery(tmp_path: Path) -> None:
+    """Attempt-2 must not launder silent-success past the honesty gate.
+
+    Primary zero-key provider fails with ``blocked_by_antibot`` — an error
+    that IS recoverable via smart-proxy per the waterfall. The proxy then
+    returns an HTTP 200 with an empty body. Before the fix this landed
+    ``status: "ok"`` with ``pages.homepage_text: ""``. After the fix the
+    recovery path treats the empty body as ``empty_response`` on the proxy
+    row, no recovery happens, and the envelope surfaces the honest shape.
+    """
+
+    class _BlockedPrimary:
+        slug: ClassVar[str] = "site_text_blocked"
+        category: ClassVar[Literal["site_text"]] = "site_text"
+        cost_hint: ClassVar[Literal["free"]] = "free"
+        version: ClassVar[str] = "0.1.0"
+
+        def fetch(
+            self, site: str, *, ctx: FetchContext
+        ) -> tuple[SiteSignals | None, ProviderRunMetadata]:
+            return None, ProviderRunMetadata(
+                status="failed",
+                latency_ms=0,
+                error="blocked_by_antibot (HTTP 403)",
+                provider_version=self.version,
+            )
+
+    class _EmptyBodyProxy:
+        slug: ClassVar[str] = "smart_proxy_empty"
+        category: ClassVar[Literal["smart_proxy"]] = "smart_proxy"
+        cost_hint: ClassVar[Literal["per-call"]] = "per-call"
+        version: ClassVar[str] = "0.1.0"
+
+        def fetch(self, url: str, *, ctx: FetchContext) -> tuple[bytes | None, ProviderRunMetadata]:
+            return b"<!DOCTYPE html><html><head></head><body></body></html>", (
+                ProviderRunMetadata(status="ok", latency_ms=1, provider_version=self.version)
+            )
+
+    env = core.run(
+        "any.example",
+        mock=True,
+        fixtures_dir=tmp_path,
+        providers=_reg(
+            site_text_blocked=_BlockedPrimary,
+            smart_proxy_empty=_EmptyBodyProxy,
+        ),
+        fetched_at=FIXED_WHEN,
+    )
+    proxy_row = env.provenance["smart_proxy_empty"]
+    assert proxy_row.status == "failed"
+    assert proxy_row.error == "empty_response"
+    assert env.data.pages is None
+    assert env.status in {"degraded", "partial"}
+    assert env.error is not None
+
+
+def test_empty_response_gate_measures_utf8_bytes_not_chars(tmp_path: Path) -> None:
+    """Multibyte prose must not false-positive as empty.
+
+    30 Japanese characters encode to 90 UTF-8 bytes — comfortably above
+    the 64-byte cutoff. Counting ``len(text)`` instead of
+    ``len(text.encode("utf-8"))`` would mis-flag this as empty_response.
+    """
+    slug = "cjkprobe"
+    site_dir = tmp_path / slug
+    site_dir.mkdir()
+    # 30 katakana chars = 90 UTF-8 bytes; extractor passes them through.
+    body_text = "カタカナ" * 8  # 32 chars, 96 bytes
+    (site_dir / "homepage.html").write_text(
+        f"<html><body><p>{body_text}</p></body></html>", encoding="utf-8"
+    )
+
+    env = core.run(
+        f"{slug}.example",
+        mock=True,
+        fixtures_dir=tmp_path,
+        providers=_reg(site_text_trafilatura=TrafilaturaProvider),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "ok", env.error
+    assert env.data.pages is not None
+    assert body_text in env.data.pages.homepage_text
+
+
 def test_empty_response_does_not_trigger_smart_proxy_retry() -> None:
     """A failed site_text row with ``error == "empty_response"`` must not be
     routed to the smart-proxy recovery path — the fetch already worked, the
