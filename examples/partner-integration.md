@@ -54,7 +54,8 @@ if envelope["status"] == "ok":
     context = envelope["data"]
 elif envelope["status"] == "partial":
     context = envelope["data"]                       # still safe — schema-locked partial
-    log(f"{domain}: {envelope['error']} → {envelope['suggestion']}")
+    err = envelope["error"]                          # {code, message, suggestion}
+    log(f"{domain}: {err['code']} — {err['message']} → {err.get('suggestion')}")
 else:
     context = None
     log(f"{domain}: degraded — skipping")
@@ -104,11 +105,12 @@ zero-key path may return `status: "partial"` with
 a fatal error:
 
 ```python
-if envelope["status"] == "partial" and envelope.get("error") == "blocked_by_antibot":
+err = envelope.get("error") or {}
+if envelope["status"] == "partial" and err.get("code") == "blocked_by_antibot":
     # We still have provenance, we still have whatever did work
     # (e.g., direct-API reviews if a key was configured). Continue.
     context = envelope["data"]
-    reason = envelope["suggestion"]   # e.g. "configure a smart-proxy provider key"
+    reason = err.get("suggestion")   # e.g. "configure a smart-proxy provider key"
     route_to_queue(domain, reason=reason)
 ```
 

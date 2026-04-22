@@ -125,9 +125,10 @@ def main() -> None:
     if envelope.status != "ok":
         print(f"⚠️  skipping diff — envelope status: {envelope.status}")
         if envelope.error:
-            print(f"    error:      {envelope.error}")
-        if envelope.suggestion:
-            print(f"    suggestion: {envelope.suggestion}")
+            print(f"    code:       {envelope.error.code}")
+            print(f"    message:    {envelope.error.message}")
+            if envelope.error.suggestion:
+                print(f"    suggestion: {envelope.error.suggestion}")
         return
 
     current = envelope.data.model_dump(mode="json")

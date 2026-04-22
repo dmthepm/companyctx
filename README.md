@@ -7,12 +7,13 @@
 **Deterministic B2B context router. Zero keys. Schema-locked JSON your agent pipelines can actually trust.**
 
 ```bash
-pipx install companyctx   # v0.1.0 on PyPI — first working release
+pipx install companyctx   # v0.2.0 on PyPI — schema_version field + structured errors
 companyctx fetch acme-bakery.com --json
 ```
 
 ```json
 {
+  "schema_version": "0.2.0",
   "status": "ok",
   "data": {
     "site": "acme-bakery.com",
@@ -23,9 +24,10 @@ companyctx fetch acme-bakery.com --json
     "signals": { "copyright_year": 2024, "last_blog_post_at": "2026-02-11T00:00:00Z", "team_size_claim": "team of 6" }
   },
   "provenance": {
-    "site_text_trafilatura": { "status": "ok",            "latency_ms": 412, "error": null,                       "provider_version": "0.1.0" },
+    "site_text_trafilatura": { "status": "ok",            "latency_ms": 412, "error": null,                       "provider_version": "0.2.0" },
     "reviews_google_places": { "status": "not_configured","latency_ms": 0,   "error": "GOOGLE_PLACES_API_KEY not set", "provider_version": "0.1.0" }
-  }
+  },
+  "error": null
 }
 ```
 
@@ -94,11 +96,15 @@ On full block with no Attempt-2/3 providers configured:
 
 ```json
 {
+  "schema_version": "0.2.0",
   "status": "partial",
   "data": { "site": "example.com", "fetched_at": "...", "pages": null, "reviews": null, ... },
   "provenance": { "site_text_trafilatura": { "status": "failed", "error": "blocked_by_antibot (HTTP 403)", ... } },
-  "error": "blocked_by_antibot",
-  "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  "error": {
+    "code": "blocked_by_antibot",
+    "message": "blocked_by_antibot (HTTP 403)",
+    "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  }
 }
 ```
 
@@ -134,7 +140,8 @@ companyctx fetch acme-bakery.com --json \
 import json, subprocess
 ctx = json.loads(subprocess.check_output(["companyctx", "fetch", "acme-bakery.com", "--json"]))
 if ctx["status"] == "partial":
-    print(f"heads up: {ctx['error']} — {ctx['suggestion']}")
+    err = ctx["error"]
+    print(f"heads up: {err['code']} — {err['message']} → {err.get('suggestion')}")
 brief = synthesize(ctx["data"])   # your synthesis call, your prompts, your weights
 ```
 

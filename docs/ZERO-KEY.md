@@ -60,6 +60,7 @@ When zero-key can't fully succeed, `companyctx` does not crash, does not
 
 ```json
 {
+  "schema_version": "0.2.0",
   "status": "partial",
   "data": {
     "site": "example.com",
@@ -74,7 +75,7 @@ When zero-key can't fully succeed, `companyctx` does not crash, does not
       "status": "failed",
       "latency_ms": 2100,
       "error": "blocked_by_antibot (HTTP 403)",
-      "provider_version": "0.1.0"
+      "provider_version": "0.2.0"
     },
     "site_meta_extruct": {
       "status": "ok",
@@ -83,8 +84,11 @@ When zero-key can't fully succeed, `companyctx` does not crash, does not
       "provider_version": "0.1.0"
     }
   },
-  "error": "blocked_by_antibot",
-  "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  "error": {
+    "code": "blocked_by_antibot",
+    "message": "blocked_by_antibot (HTTP 403)",
+    "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  }
 }
 ```
 
@@ -95,7 +99,8 @@ ctx = fetch_companyctx(site)
 if ctx["status"] == "ok":
     synthesize(ctx["data"])
 elif ctx["status"] == "partial":
-    log.warning("partial: %s — %s", ctx["error"], ctx["suggestion"])
+    err = ctx["error"]          # {code, message, suggestion?}
+    log.warning("partial: %s — %s", err["code"], err.get("suggestion"))
     synthesize_with_caveat(ctx["data"])   # pipeline-safe, not a skip
 else:  # degraded (nothing usable succeeded)
     synthesize(ctx["data"])               # or route to a fallback/skip path

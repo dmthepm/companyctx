@@ -115,7 +115,8 @@ Or from Python:
 import json, subprocess
 ctx = json.loads(subprocess.check_output(["companyctx", "fetch", "acme-bakery.com", "--json"]))
 if ctx["status"] == "partial":
-    print(f"heads up: {ctx['error']} — {ctx['suggestion']}")
+    err = ctx["error"]  # {code, message, suggestion?}
+    print(f"heads up: {err['code']} — {err['message']} → {err.get('suggestion')}")
 brief = synthesize(ctx["data"])  # your synthesis call, your prompts
 ```
 

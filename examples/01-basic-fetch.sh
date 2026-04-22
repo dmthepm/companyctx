@@ -24,8 +24,9 @@ else
   companyctx fetch "$SITE" --mock --json
 fi
 
-# --- EXPECTED OUTPUT (abbreviated) ---
+# --- EXPECTED OUTPUT (abbreviated, v0.2 envelope) ---
 # {
+#   "schema_version": "0.2.0",
 #   "status": "ok",
 #   "data": {
 #     "site": "acme-bakery",
@@ -42,9 +43,8 @@ fi
 #     "mentions": null
 #   },
 #   "provenance": {
-#     "site_text_trafilatura":  { "status": "ok", "latency_ms": 0,   "error": null, "provider_version": "0.1.0" },
+#     "site_text_trafilatura":  { "status": "ok", "latency_ms": 0,   "error": null, "provider_version": "0.2.0" },
 #     "reviews_google_places":  { "status": "ok", "latency_ms": 312, "error": null, "provider_version": "0.1.0" }
 #   },
-#   "error": null,
-#   "suggestion": null
+#   "error": null
 # }

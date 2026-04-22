@@ -3,8 +3,16 @@
 The Pydantic v2 shape `companyctx` emits. The schema is the product — providers
 are replaceable, the contract is not.
 
-The envelope below is the v0.1.0 shape. Adding a new optional field is
-backwards-compatible; removing or renaming a field is a schema-version bump.
+The envelope below is the v0.2.0 shape. Adding a new optional field is
+backwards-compatible; removing or renaming a field — or changing the shape of
+an existing one — is a schema-version bump. Always branch on the top-level
+`schema_version` field to detect envelope evolution.
+
+Consumers can pull the live JSON Schema with:
+
+```bash
+companyctx schema   # Draft 2020-12 JSON Schema, no flags
+```
 
 ## The envelope
 
@@ -12,11 +20,11 @@ Every `companyctx fetch` invocation returns one wrapper around the payload:
 
 ```python
 class Envelope(BaseModel):
+    schema_version: Literal["0.2.0"] = "0.2.0"
     status: Literal["ok", "partial", "degraded"]
     data: CompanyContext
     provenance: dict[str, ProviderRunMetadata]
-    error: str | None = None
-    suggestion: str | None = None
+    error: EnvelopeError | None = None
 ```
 
 Status semantics:
@@ -24,12 +32,50 @@ Status semantics:
 | `status`    | When |
 |-------------|------|
 | `ok`        | Every required provider succeeded; no per-field fallback fired. |
-| `partial`   | One or more providers degraded (anti-bot, missing key, timeout). `data` is still schema-conformant; `error` + `suggestion` name the cause and fix. |
-| `degraded`  | No provider succeeded. `error` names the primary failure and `suggestion` gives the next action. |
+| `partial`   | One or more providers degraded (anti-bot, missing key, timeout). `data` is still schema-conformant; `error.code` names the cause and `error.suggestion` names the fix. |
+| `degraded`  | No provider succeeded. `error.code` names the primary failure and `error.suggestion` gives the next action. |
 
-`error` and `suggestion` are required when `status != "ok"` and absent when
-`status == "ok"`. `suggestion` is *actionable*: `"configure a smart-proxy
-provider key"`, `"skip this prospect"`.
+`error` is required when `status != "ok"` and absent when `status == "ok"`.
+
+## `EnvelopeError`
+
+```python
+class EnvelopeError(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: Literal[
+        "ssrf_rejected",
+        "network_timeout",
+        "blocked_by_antibot",
+        "path_traversal_rejected",
+        "response_too_large",
+        "no_provider_succeeded",
+        "misconfigured_provider",
+    ]
+    message: str                     # human-readable — logs / UI
+    suggestion: str | None = None    # actionable next step
+```
+
+Agents should branch on `error.code`; humans read `error.message`.
+`suggestion` is *actionable*: `"configure a smart-proxy provider key"`,
+`"skip this prospect"`. Additional codes are added in minor releases and bump
+`schema_version`; removing or renaming a code is a major bump.
+
+### Example (partial)
+
+```json
+{
+  "schema_version": "0.2.0",
+  "status": "partial",
+  "data": { "site": "example.com", "fetched_at": "...", "pages": null, ... },
+  "provenance": { "site_text_trafilatura": { "status": "failed", ... } },
+  "error": {
+    "code": "blocked_by_antibot",
+    "message": "blocked_by_antibot (HTTP 403)",
+    "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  }
+}
+```
 
 ## `CompanyContext`
 
@@ -137,9 +183,11 @@ class ProviderRunMetadata(BaseModel):
   `"not_configured"`; the field stays null.
 - **`extra="forbid"`.** Unknown fields raise on construct — keeps drift
   loud.
-- **Versioned.** Schema version lives alongside `__version__`; bumps follow
-  SemVer. Adding an optional field is a PATCH; adding a required field or
-  renaming is a MINOR (pre-1.0) / MAJOR (post-1.0).
+- **Versioned.** The top-level `schema_version` field lives alongside
+  `__version__`; bumps follow SemVer. Adding an optional field is a PATCH;
+  adding a required field, renaming a field, or changing an existing field's
+  shape is a MINOR (pre-1.0) / MAJOR (post-1.0). The v0.1→v0.2 `error`-shape
+  change is the archetypal minor-release bump.
 
 ## Validation
 

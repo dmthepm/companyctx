@@ -53,10 +53,12 @@ def handle_inbound_lead(event: dict[str, Any], *, mock: bool = False) -> dict[st
     envelope = run(domain, mock=mock, fixtures_dir=fixtures_dir)
 
     if envelope.status != "ok":
+        error = envelope.error
         return {
             "status": "degraded",
-            "reason": envelope.error or "envelope not ok",
-            "suggestion": envelope.suggestion,
+            "reason_code": error.code if error else "unknown",
+            "reason": error.message if error else "envelope not ok",
+            "suggestion": error.suggestion if error else None,
             "domain": domain,
         }
 
