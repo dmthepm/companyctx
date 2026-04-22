@@ -5,6 +5,37 @@ All notable changes to `companyctx` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`companyctx providers list --json`** — registry introspection as a JSON
+  array (one dict per provider). Columns: `slug`, `tier`
+  (`zero-key` / `smart-proxy` / `direct-api`), `category`, `cost_hint`,
+  `status` (`ready` / `not_configured`), `reason`. Text-mode output gains
+  the same columns. Closes #68 Part B.
+- **Optional `required_env` class var** on providers. `smart_proxy_http`
+  declares `COMPANYCTX_SMART_PROXY_URL`; the CLI surfaces missing entries
+  as `not_configured` + a human-readable reason.
+
+### Changed
+
+- **Docs honesty pass (post-v0.2-tag).** README hero envelope, status
+  block, provider tables, `docs/SPEC.md`, `docs/SCHEMA.md`, `SKILL.md`,
+  and every file in `examples/` now describe the actual shipped v0.2
+  surface (zero-key + smart-proxy + `schema_version` + structured
+  `EnvelopeError`). Reserved-but-deferred features (SQLite cache,
+  `--from-cache` / `--refresh`, `batch`, direct-API providers,
+  `signals_site_heuristic`, `--markdown`) are labelled with tracking
+  issues. Every example's expected-output block and bash / Python
+  script runs clean against `v0.2.0`. Closes #67.
+- **`fetch --markdown` help text** explicitly labels the flag
+  experimental + not implemented in v0.2 (already rejects at runtime).
+- **Examples now resolve `fixtures/` relative to the script** instead of
+  `Path("fixtures")` so `06-competitor-monitor.py`,
+  `07-inbound-webhook-enrichment/main.py`, and `08-support-ticket-context.py`
+  run clean from any CWD.
+
 ## [0.2.0] — 2026-04-22
 
 ### Changed — BREAKING (envelope schema)
@@ -39,8 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `--from-cache` / `--refresh` / `--no-cache` / `--config` previously were
   accepted silently and ignored. They now raise `typer.BadParameter` with a
-  link to the tracking issue (#37). No silent-pass behavior for contracts
-  the tool does not honour.
+  link to the tracking issue (#9 — SQLite cache schema + migrations; the
+  v0.2.0 messages originally named a phantom tracking number, corrected in
+  the Unreleased block below). No silent-pass behavior for contracts the
+  tool does not honour.
 - `batch` / `cache list` / `cache clear` previously exited 2 with no output.
   They now print `<command> is not implemented in v0.2.0 — see #N` to
   stderr before exiting non-zero.

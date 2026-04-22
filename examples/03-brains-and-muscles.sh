@@ -38,13 +38,18 @@ company. The payload is your only source of truth about the prospect.
 Read the JSON. Pay special attention to:
   - data.pages.services       (what they sell)
   - data.pages.tech_stack     (how they operate)
-  - data.reviews              (market reputation)
-  - data.signals              (copyright year, team size, cadence)
+  - data.pages.homepage_text  (their positioning)
+  - data.reviews              (market reputation — null in v0.2 until a
+                               direct-API provider is configured)
+  - data.signals              (copyright year, team size, cadence — null
+                               in v0.2 until the site-heuristic provider
+                               ships)
 
 Write a 3-sentence cold email pitching our generic AI-automation
 services. Reference exactly one specific piece of their tech stack or
 one specific service they offer to prove you did your research. Do
-not invent facts that aren't in the payload. Output only the email
+not invent facts that aren't in the payload (including: if a field is
+null, treat it as unknown, not as 'no reviews'). Output only the email
 body — no subject line, no sign-off.
 "
 

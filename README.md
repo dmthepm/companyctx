@@ -13,39 +13,99 @@ companyctx fetch acme-bakery.com --json
 
 ```json
 {
-  "schema_version": "0.2.0",
-  "status": "ok",
   "data": {
+    "fetched_at": "2026-04-22T18:35:02.767112Z",
+    "mentions": null,
+    "pages": {
+      "about_text": "Acme Bakery has served Portland, OR since 2010. ...",
+      "homepage_text": "Acme Bakery is a bakery in Portland, OR. Founded 2010. We're a team of 3. ...",
+      "services": ["Custom cakes", "Catering", "Wholesale bread", "Pastry boxes"],
+      "tech_stack": ["WordPress", "Elementor"]
+    },
+    "reviews": null,
+    "signals": null,
     "site": "acme-bakery.com",
-    "fetched_at": "2026-04-20T18:42:11Z",
-    "pages":   { "homepage_text": "...", "services": ["cakes", "catering"], "tech_stack": ["WordPress", "Elementor"] },
-    "reviews": { "count": 142, "rating": 4.6, "source": "reviews_google_places" },
-    "social":  { "handles": { "instagram": "@acmebakery" }, "follower_counts": {} },
-    "signals": { "copyright_year": 2024, "last_blog_post_at": "2026-02-11T00:00:00Z", "team_size_claim": "team of 6" }
+    "social": null
   },
+  "error": null,
   "provenance": {
-    "site_text_trafilatura": { "status": "ok",            "latency_ms": 412, "error": null,                       "provider_version": "0.1.0" },
-    "reviews_google_places": { "status": "not_configured","latency_ms": 0,   "error": "GOOGLE_PLACES_API_KEY not set", "provider_version": "0.1.0" }
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": null,
+      "latency_ms": 412,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
   },
-  "error": null
+  "schema_version": "0.2.0",
+  "status": "ok"
 }
 ```
 
 One site in. One schema-locked JSON object out. No API keys for the
-zero-key path. Graceful partials on anti-bot blocks. A local SQLite cache
-that compounds into a queryable B2B dataset over time.
+zero-key path. Graceful partials on anti-bot blocks. The envelope is
+versioned via a top-level `schema_version` field so agents can branch on
+shape without substring-parsing.
 
-> **Status:** `v0.2.0` is the current release (schema-breaking envelope bump:
-> structured `EnvelopeError` + top-level `schema_version`; see
-> [`CHANGELOG.md`](CHANGELOG.md)). The zero-key provider
-> (`site_text_trafilatura`) is wired end-to-end: `companyctx fetch <site> --json`
-> returns a schema-locked `Envelope` with `pages.homepage_text` / `about_text` /
-> `services`. Measured 97% envelope-`ok` rate on a 100-site real-world sample
-> (v0.1.0 baseline; re-measurement lands with the post-v0.2 docs pass).
-> Schema + CLI surface in [`docs/SPEC.md`](docs/SPEC.md) and
-> [`docs/SCHEMA.md`](docs/SCHEMA.md); architecture in
-> [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); release-readiness ADR in
-> [`decisions/2026-04-21-v0.1.0-release-readiness.md`](decisions/2026-04-21-v0.1.0-release-readiness.md).
+`reviews` / `social` / `signals` / `mentions` are reserved in the
+`CompanyContext` schema; the providers that populate them (Google Places,
+YouTube Data, the site-heuristic provider) are roadmap work — see
+[Status](#status) below. Today a real run returns `pages.*` plus nulls,
+which is what the `--mock` fixture tree reproduces byte-for-byte.
+
+## Status
+
+`v0.2.0` is the current release. What's shipped:
+
+- **Envelope contract** — `{schema_version, status, data, provenance, error?}`
+  with `status ∈ {ok, partial, degraded}` and a structured `EnvelopeError`
+  (`{code, message, suggestion}`) on non-`ok` runs. `extra="forbid"` on every
+  model. See [`docs/SCHEMA.md`](docs/SCHEMA.md).
+- **Zero-key Attempt 1** — `site_text_trafilatura` (TLS-impersonated fetch
+  via `curl_cffi` + trafilatura extraction). Populates `data.pages.*`
+  (`homepage_text`, `about_text`, `services`, `tech_stack`). 20/20 envelope-`ok`
+  on a shape-balanced zero-key probe at a fresh Chrome fingerprint; see
+  [`docs/ZERO-KEY.md`](docs/ZERO-KEY.md).
+- **Smart-proxy Attempt 2** — `smart_proxy_http` (vendor-agnostic URL-style
+  proxy). User supplies `COMPANYCTX_SMART_PROXY_URL`; env-unset surfaces as
+  `not_configured` with an actionable suggestion rather than a crash. Named-
+  vendor adapter lands after the smart-proxy vendor eval (tracking: #63).
+- **CLI verbs** — `fetch`, `schema` (emits Draft 2020-12 JSON Schema),
+  `validate`, `providers list` (with `--json`, waterfall tier, config
+  status, reason).
+- **`py.typed` marker + public-API re-exports** — `from companyctx import
+  Envelope, EnvelopeError, CompanyContext, ...` works straight off the
+  package root; downstream `mypy` sees concrete types.
+
+What's **not** shipped yet and is explicitly deferred (the CLI surface
+rejects these flags with a tracking-issue pointer rather than silently
+accepting them):
+
+- **SQLite fetch cache** (`--from-cache` / `--refresh` / `--no-cache` /
+  `--config`) — tracked in #9.
+- **`batch <csv>`** — stub, prints an error and exits non-zero.
+- **Direct-API (Attempt 3) providers** — Google Places (tracking: #7),
+  Yelp Fusion, YouTube Data, Brave Search (mentions tracking: #58). None
+  registered in v0.2; `data.reviews` / `data.social` / `data.mentions`
+  stay null on live runs until a direct-API provider lands.
+- **Site-heuristic `signals` provider** — planned alongside the direct-API
+  slate; populates `data.signals.copyright_year`, `last_blog_post_at`,
+  `team_size_claim`.
+- **`companyctx fetch --markdown`** — experimental flag labelled in help
+  text; runs fail fast. Markdown output belongs in a downstream synthesis
+  step, not here (tracking: #68).
+
+Measured 97% envelope-`ok` rate on a 100-site real-world sample on the
+v0.1 zero-key baseline; post-v0.2 re-measurement tracks under the durability
+rerun (#61). Full breakdown in
+[`research/2026-04-21-tls-impersonation-spike.md`](research/2026-04-21-tls-impersonation-spike.md)
+and [`docs/ZERO-KEY.md`](docs/ZERO-KEY.md).
+
+Schema + CLI surface in [`docs/SPEC.md`](docs/SPEC.md) and
+[`docs/SCHEMA.md`](docs/SCHEMA.md); architecture in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md);
+release-readiness ADR in
+[`decisions/2026-04-21-v0.1.0-release-readiness.md`](decisions/2026-04-21-v0.1.0-release-readiness.md).
 
 ## What this is (and isn't)
 
@@ -56,10 +116,12 @@ that compounds into a queryable B2B dataset over time.
 - **A Deterministic Waterfall.** Zero-key stealth fetch first →
   smart-proxy provider (if configured) → direct-API provider (if
   configured). Every attempt returns the same shape.
-- **A local-first memory layer.** The SQLite cache is not just speed — it
-  compounds into a queryable local B2B dataset as a byproduct of normal use.
 - **A narrow muscle in the brains-and-muscles pattern.** Your frontier
   model is the brain; `companyctx` is one of many CLIs it pipes through.
+- **A local-first memory layer — by design, landing later.** The SQLite
+  cache is scoped as Vertical Memory: a queryable local B2B dataset that
+  compounds as a byproduct of normal use. It is **not wired in v0.2** —
+  `--from-cache` / `--refresh` are deferred to #9.
 
 ### ISN'T
 
@@ -99,15 +161,15 @@ On full block with no Attempt-2/3 providers configured:
 
 ```json
 {
-  "schema_version": "0.2.0",
-  "status": "partial",
-  "data": { "site": "example.com", "fetched_at": "...", "pages": null, "reviews": null, ... },
-  "provenance": { "site_text_trafilatura": { "status": "failed", "error": "blocked_by_antibot (HTTP 403)", ... } },
+  "data": { "fetched_at": "...", "mentions": null, "pages": null, "reviews": null, "signals": null, "site": "example.com", "social": null },
   "error": {
     "code": "blocked_by_antibot",
     "message": "blocked_by_antibot (HTTP 403)",
     "suggestion": "configure a smart-proxy provider key or skip this prospect"
-  }
+  },
+  "provenance": { "site_text_trafilatura": { "cost_incurred": 0, "error": "blocked_by_antibot (HTTP 403)", "latency_ms": 842, "provider_version": "0.1.0", "status": "failed" } },
+  "schema_version": "0.2.0",
+  "status": "partial"
 }
 ```
 
@@ -135,18 +197,21 @@ Numbers come from measurement, not marketing.
 
 ```bash
 companyctx fetch acme-bakery.com --json \
-  | jq '.data | {site, signals, reviews}' \
+  | jq '.data.pages | {services, tech_stack, homepage: .homepage_text[:280]}' \
   | claude -p "write a 6-section outreach brief from this context"
 ```
 
 ```python
 import json, subprocess
 ctx = json.loads(subprocess.check_output(["companyctx", "fetch", "acme-bakery.com", "--json"]))
-if ctx["status"] == "partial":
-    err = ctx["error"]
-    print(f"heads up: {err['code']} — {err['message']} → {err.get('suggestion')}")
+if ctx["status"] != "ok":
+    err = ctx["error"] or {}
+    print(f"heads up: {err.get('code')} — {err.get('message')} → {err.get('suggestion')}")
 brief = synthesize(ctx["data"])   # your synthesis call, your prompts, your weights
 ```
+
+Branch on `status` (not on try/except). Branch on `error.code` (closed
+enum), not on substring-matching `error.message`.
 
 `companyctx` never calls an LLM. The brain upstream decides what the
 context means.
@@ -178,34 +243,46 @@ companyctx --help
 - **Graceful-partial always.** Providers never raise uncaught. Every
   failure maps to `ProviderRunMetadata.status` per provider and the
   top-level `status` on the envelope.
-- **Vertical Memory.** Every run persists the full normalized payload to
-  SQLite under [XDG paths](https://specifications.freedesktop.org/basedir-spec/).
-  `--refresh` forces a re-fetch; `--from-cache` is a cache-only read.
-  A `companyctx query ...` DSL on the cache is v0.2 scope, not v0.1.
+- **Vertical Memory (design invariant, not yet wired).** The SQLite cache
+  is designed to compound into a queryable local B2B dataset under
+  [XDG paths](https://specifications.freedesktop.org/basedir-spec/); the
+  schema-versioned migrations and `--refresh` / `--from-cache` flags are
+  reserved in the CLI surface but not implemented in v0.2 — they reject
+  with a tracking-issue pointer (#9).
 - **Provider pluggability.** Every deterministic call class is discovered
-  via Python entry points (`companyctx.providers`). Day-one providers
-  include bus-factor fallbacks (`trafilatura` + `readability-lxml` both
-  wired for site text). See [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
+  via Python entry points (`companyctx.providers`). v0.2 ships
+  `site_text_trafilatura` (zero-key) and `smart_proxy_http` (user-keyed,
+  vendor-agnostic). Direct-API providers (Google Places, Yelp, YouTube,
+  Brave) and the `readability-lxml` bus-factor fallback are scaffolded for
+  later milestones. See [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
 - **robots.txt respected by default.** `--ignore-robots` is an explicit
   CLI-only flag; never settable via TOML or env.
 - **Deterministic mocks.** `fixtures/<site>/` drives `--mock`; re-runs
   produce byte-identical output modulo `fetched_at`.
 
-## Providers (committed for v0.1)
+## Providers
 
-| Slug | Layer | Category | Key | Cost |
+Shipped in v0.2 (run `companyctx providers list` to introspect):
+
+| Slug | Tier | Category | Key | Cost |
 |---|---|---|---|---|
-| `site_text_trafilatura` | Zero-key | site_text | — | free |
-| `site_text_readability` | Zero-key | site_text (fallback) | — | free |
-| `site_meta_extruct` | Zero-key | site_meta | — | free |
-| `social_discovery_site` | Zero-key | social_discovery | — | free |
-| `signals_site_heuristic` | Zero-key | signals | — | free |
-| `reviews_google_places` | Direct-API | reviews | `GOOGLE_PLACES_API_KEY` | per-1k |
-| `reviews_yelp_fusion` | Direct-API | reviews | `YELP_API_KEY` | per-call |
-| `social_counts_youtube` | Direct-API | social_counts | `YOUTUBE_API_KEY` | free w/ quota |
-| `mentions_brave_stub` | Direct-API | mentions | `BRAVE_SEARCH_API_KEY` | per-call |
+| `site_text_trafilatura` | zero-key | site_text | — | free |
+| `smart_proxy_http` | smart-proxy | smart_proxy | `COMPANYCTX_SMART_PROXY_URL` | per-call |
 
-Full table + `SmartProxyProvider` interface in
+Scaffolded / deferred (roadmap):
+
+| Slug | Tier | Category | Tracking |
+|---|---|---|---|
+| `site_text_readability` | zero-key | site_text (fallback) | bus-factor fallback, lands alongside fallback wiring |
+| `site_meta_extruct` | zero-key | site_meta | future milestone |
+| `social_discovery_site` | zero-key | social_discovery | future milestone |
+| `signals_site_heuristic` | zero-key | signals | future milestone |
+| `reviews_google_places` | direct-api | reviews | #7 |
+| `reviews_yelp_fusion` | direct-api | reviews | future milestone |
+| `social_counts_youtube` | direct-api | social_counts | future milestone |
+| `mentions_brave_stub` | direct-api | mentions | #58 |
+
+Full rationale + the `SmartProxyProvider` interface in
 [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
 
 ## Layout
@@ -213,17 +290,21 @@ Full table + `SmartProxyProvider` interface in
 ```
 companyctx/            # package
   cli.py               # Typer app
+  core.py              # Deterministic Waterfall orchestrator (Attempt 1 + 2)
   schema.py            # pydantic v2 models — the JSON contract
-  config.py            # pydantic-settings + TOML, XDG-compliant paths
-  cache.py             # SQLite fetch cache (Vertical Memory)
-  http.py              # stealth fetcher foundation
+  extract.py           # HTML → SiteSignals extractor shared by zero-key + smart-proxy
+  http.py              # stealth fetcher helpers
   robots.py            # robots.txt enforcement
+  security.py          # SSRF + response-cap + redirect guardrails
   providers/
     __init__.py        # plugin loader (importlib.metadata.entry_points)
-    base.py            # ProviderBase, ProviderError, ProviderRunMetadata
+    base.py            # ProviderBase protocol + FetchContext + Literal category enum
+    site_text_trafilatura.py    # Attempt 1 — zero-key homepage extraction
+    smart_proxy_http.py         # Attempt 2 — vendor-agnostic smart proxy
+    smart_proxy_base.py         # shared helpers for smart-proxy providers
 SKILL.md               # ~150-token agent-discovery surface (not MCP)
 docs/
-  SPEC.md              # frozen v0.1 spec snapshot
+  SPEC.md              # frozen spec snapshot (v0.2 envelope)
   SCHEMA.md            # Pydantic envelope in detail
   ARCHITECTURE.md      # brains-and-muscles + Deterministic Waterfall + Vertical Memory
   ZERO-KEY.md          # honest anti-bot coverage + graceful-partial contract
@@ -231,7 +312,7 @@ docs/
   VALIDATION.md        # two-phase acceptance protocol
   REFERENCES.md        # upstream OSS deps
 decisions/             # in-repo ADRs (walks-the-walk for OSS readers)
-fixtures/              # per-site raw HTML + API responses + expected.json
+fixtures/              # per-site raw HTML + expected.json (drives --mock)
 tests/                 # pytest, hypothesis where useful
 ```
 

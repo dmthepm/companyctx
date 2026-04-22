@@ -46,7 +46,9 @@ def generate_support_context(
         }
 
     domain = customer_email.split("@", 1)[1]
-    fixtures_dir = Path("fixtures") if mock else None
+    # Resolve fixtures/ relative to this script so the recipe runs from
+    # anywhere (including `cd examples && python 08-...`).
+    fixtures_dir = (Path(__file__).resolve().parent.parent / "fixtures") if mock else None
     envelope = run(domain, mock=mock, fixtures_dir=fixtures_dir)
 
     if envelope.status != "ok":
@@ -129,14 +131,12 @@ if __name__ == "__main__":
     main()
 
 
-# --- EXPECTED OUTPUT (demo ticket, --mock) ---
+# --- EXPECTED OUTPUT (v0.2, demo ticket, --mock) ---
 # ### Internal note (paste into Zendesk / Intercom / Freshdesk):
 # --- AUTOMATED CUSTOMER CONTEXT ---
 # Domain:           acme-bakery
 # What they sell:   Custom cakes, Catering, Wholesale bread, Pastry boxes
 # Their tech stack: WordPress, Elementor
-# Team size claim:  team of 3
-# Social:           instagram: @acmebakery
 # Ticket excerpt:   Our online orders stopped syncing to the kitchen printer yesterday. ...
 # Suggested action: tailor the reply to their tech stack; avoid generic boilerplate.
 # ----------------------------------
@@ -145,7 +145,12 @@ if __name__ == "__main__":
 # {
 #   "customer_domain": "acme-bakery",
 #   "customer_services": ["Custom cakes", "Catering", "Wholesale bread", "Pastry boxes"],
-#   "customer_social_handles": {"instagram": "@acmebakery"},
-#   "customer_team_size_claim": "team of 3",
+#   "customer_social_handles": {},
+#   "customer_team_size_claim": null,
 #   "customer_tech_stack": ["WordPress", "Elementor"]
 # }
+#
+# Note: "Team size claim" / "Social:" don't appear in the note when
+# data.signals / data.social are null (v0.2 default). Once a
+# site-heuristic / social-discovery provider registers, those lines
+# appear automatically — no script change.

@@ -4,6 +4,23 @@ This folder is a curated, zero-to-hero progression. Each file is a
 self-contained recipe that solves a real business problem using
 `companyctx`'s schema-locked JSON envelope.
 
+## Prerequisites
+
+Install `companyctx` first — **every recipe in this gallery assumes the
+CLI and package are on the Python path**:
+
+```bash
+# From a clean checkout, either:
+pipx install companyctx            # CLI on PATH; enough for bash recipes
+# or, for the .py recipes that `from companyctx.core import run`:
+pip install -e ".[dev,extract,reviews,youtube]"
+```
+
+Without one of those, the `.sh` scripts fail at the first `companyctx`
+invocation and the `.py` scripts fail at import.
+
+## The primitive
+
 Every example assumes the same primitive:
 
 ```bash
@@ -13,6 +30,20 @@ companyctx fetch <domain> --json
 …and shows a different downstream shape — `jq` filter, LLM synthesis,
 CRM payload, diff-and-alert, agent-prompt injection. The muscle is
 always the same; the orchestration around it is what changes.
+
+### What to expect on v0.2
+
+v0.2 ships the zero-key Attempt 1 (`site_text_trafilatura`) and the
+user-keyed smart-proxy Attempt 2 (`smart_proxy_http`). That means live
+and `--mock` runs populate `data.pages.*` and leave
+`data.reviews` / `data.social` / `data.signals` / `data.mentions` as
+`null` until the direct-API and site-heuristic providers register
+(roadmap — see [`../docs/SPEC.md`](../docs/SPEC.md)). Every recipe in
+this gallery is coded against the stable envelope shape with
+fallbacks for the null slots; nothing breaks when a provider
+registers, it just starts populating the field. A recipe's "expected
+output" block flags which lines are v0.2 reality vs. what will start
+appearing once direct-API providers ship.
 
 ## How this folder is built
 

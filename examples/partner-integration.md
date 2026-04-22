@@ -79,23 +79,28 @@ deterministic version of the same thing.
   shows `reviews` went from populated to null, `provenance.reviews_*`
   tells you whether the direct-API provider lost its key, hit a
   quota, or wasn't configured.
-- **Cache is built in.** The second run against the same domain
-  (within the TTL window) hits SQLite and skips the network
-  entirely. No rate-limit worries in a 100-domain batch.
+- **Local SQLite cache (design invariant, deferred).** The Vertical
+  Memory layer — a local SQLite cache that compounds into a queryable
+  B2B dataset — is the post-v0.2 direction. Not wired today: v0.2
+  rejects `--from-cache` / `--refresh` / `--no-cache` / `--config`
+  with a pointer to the tracking issue (#9). For rate-limit control
+  today, do your own domain-level throttling outside the pipe.
 
 ## The zero-key default
 
 The default fetch path is zero-key — no API credentials required for
-the homepage-derived fields (`data.pages.*`) or the heuristic signals
-(`data.signals.copyright_year`, `.last_blog_post_at`, etc.). The
-pipeline can run the muscle against an entire batch without any
-credentials setup.
+the homepage-derived fields (`data.pages.*`). The pipeline can run
+the muscle against an entire batch without any credentials setup.
 
-For `data.reviews`, `data.social.follower_counts`, and the media
-mentions fields, configure the direct-API providers your ICP needs
-(Google Places for local-biz reviews, YouTube Data API for social
-counts, Brave Search API for press mentions). See
-[`../docs/PROVIDERS.md`](../docs/PROVIDERS.md).
+`data.reviews`, `data.social`, `data.signals`, and `data.mentions` are
+reserved in the schema but null in v0.2 — the providers that populate
+them (Google Places for local-biz reviews, the site-heuristic provider
+for signals, YouTube Data for social counts, Brave Search for mentions)
+are roadmap work (tracked under #7 / #58 and a future milestone).
+See [`../docs/PROVIDERS.md`](../docs/PROVIDERS.md) and
+[`../docs/SPEC.md`](../docs/SPEC.md) for the full shipped-vs-deferred
+table. Pipeline code should already be tolerant of these null slots —
+the schema contract does not change when providers register later.
 
 ## Graceful-partial — handling antibot blocks
 
@@ -119,19 +124,22 @@ This is the whole point of the envelope — your pipeline branches on
 
 ## Batch pattern
 
-For a 100-domain batch:
+For a 100-domain batch today, drive `fetch` from your own loop:
 
 ```bash
-# Fan out the muscle. --refresh bypasses the cache for a fresh run;
-# drop it on subsequent passes to reuse cached payloads.
+mkdir -p out
 while IFS= read -r domain; do
-  companyctx fetch "$domain" --json --refresh > "out/${domain}.json"
+  companyctx fetch "$domain" --json > "out/${domain}.json"
 done < prospects-batch.csv
 
 # Then in your Python pipeline, iterate the envelopes.
 ```
 
-Or, when it lands, `companyctx batch prospects-batch.csv --out-dir out/`.
+`companyctx batch <csv>` is reserved in the CLI surface but **not
+wired** in v0.2 — it exits non-zero with a tracking-issue pointer so
+you don't build on a contract we don't honour. When it lands
+alongside the SQLite cache (#9), this wrapper becomes
+`companyctx batch prospects-batch.csv --out out/`.
 
 ## Related recipes in this gallery
 

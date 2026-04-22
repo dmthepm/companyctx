@@ -83,7 +83,7 @@ echo "💡 Rep tip: mention one specific item above in the first"
 echo "   90 seconds of the call to prove you did your homework."
 echo "======================================================"
 
-# --- EXPECTED OUTPUT ---
+# --- EXPECTED OUTPUT (v0.2 — pages populated, other slots null) ---
 # ======================================================
 #   SALES CHEAT SHEET — acme-bakery
 # ======================================================
@@ -94,17 +94,21 @@ echo "======================================================"
 #     tech stack: WordPress, Elementor
 #
 # 👥 TEAM + CADENCE
-#     team:           team of 3
-#     copyright:      2024
-#     last blog post: 2026-01-01T00:00:00
+#     team:           not stated
+#     copyright:      not stated
+#     last blog post: not stated
 #
 # ⭐ MARKET REPUTATION
-#     4.6★ across 142 reviews (source: reviews_google_places)
-#
-# 🔗 SOCIAL
-#     instagram: @acmebakery
+#     no review data available
 #
 # ======================================================
 # 💡 Rep tip: mention one specific item above in the first
 #    90 seconds of the call to prove you did your homework.
 # ======================================================
+#
+# Note: "not stated" and "no review data available" reflect v0.2
+# reality — data.signals / data.reviews / data.social stay null until
+# the site-heuristic and direct-API providers register. The jq
+# fallbacks in this script (// "not stated", // "n/a") are the exact
+# shape a production pipeline should use; they start filling in as
+# each provider ships without any script change.

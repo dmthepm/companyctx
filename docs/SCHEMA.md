@@ -61,19 +61,82 @@ Agents should branch on `error.code`; humans read `error.message`.
 `"skip this prospect"`. Additional codes are added in minor releases and bump
 `schema_version`; removing or renaming a code is a major bump.
 
-### Example (partial)
+### Example — `ok`
+
+Zero-key Attempt 1 (`site_text_trafilatura`) populates `pages`; the other
+slots are reserved for providers that register later (see
+`docs/SPEC.md` — shipped-vs-deferred).
+
+Keys are shown in the alphabetical order the CLI emits
+(`json.dumps(..., sort_keys=True)`) so the block is copy-paste reproducible.
 
 ```json
 {
+  "data": {
+    "fetched_at": "2026-04-22T18:35:02.767112Z",
+    "mentions": null,
+    "pages": {
+      "about_text": "Acme Bakery has served Portland, OR since 2010. ...",
+      "homepage_text": "Acme Bakery is a bakery in Portland, OR. ...",
+      "services": ["Custom cakes", "Catering", "Wholesale bread", "Pastry boxes"],
+      "tech_stack": ["WordPress", "Elementor"]
+    },
+    "reviews": null,
+    "signals": null,
+    "site": "acme-bakery.com",
+    "social": null
+  },
+  "error": null,
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": null,
+      "latency_ms": 412,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
   "schema_version": "0.2.0",
-  "status": "partial",
-  "data": { "site": "example.com", "fetched_at": "...", "pages": null, ... },
-  "provenance": { "site_text_trafilatura": { "status": "failed", ... } },
+  "status": "ok"
+}
+```
+
+### Example — `partial` (zero-key blocked, smart-proxy unset)
+
+```json
+{
+  "data": {
+    "fetched_at": "2026-04-22T18:35:14.928144Z",
+    "mentions": null,
+    "pages": null,
+    "reviews": null,
+    "signals": null,
+    "site": "walled-garden.example",
+    "social": null
+  },
   "error": {
     "code": "blocked_by_antibot",
     "message": "blocked_by_antibot (HTTP 403)",
     "suggestion": "configure a smart-proxy provider key or skip this prospect"
-  }
+  },
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": "blocked_by_antibot (HTTP 403)",
+      "latency_ms": 842,
+      "provider_version": "0.1.0",
+      "status": "failed"
+    },
+    "smart_proxy_http": {
+      "cost_incurred": 0,
+      "error": "missing env var: COMPANYCTX_SMART_PROXY_URL — export COMPANYCTX_SMART_PROXY_URL='http://user:pass@host:port' to wire your residential-proxy vendor",
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "not_configured"
+    }
+  },
+  "schema_version": "0.2.0",
+  "status": "partial"
 }
 ```
 
@@ -95,9 +158,14 @@ class CompanyContext(BaseModel):
     signals: HeuristicSignals | None = None
 ```
 
-Nothing else goes at the top level in v0.1. People-data fields (contact,
+Nothing else goes at the top level. People-data fields (contact,
 decision-maker, enrichment) are out of scope — that enrichment belongs
 upstream (Apollo / Clearbit / manual research).
+
+In v0.2, only `pages` populates on a live zero-key or smart-proxy run.
+`reviews` / `social` / `signals` / `mentions` stay `null` until their
+providers register (see `docs/SPEC.md` for the deferred-provider table
+and tracking issues).
 
 ## Sub-models
 

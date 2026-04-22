@@ -24,27 +24,37 @@ else
   companyctx fetch "$SITE" --mock --json
 fi
 
-# --- EXPECTED OUTPUT (abbreviated, v0.2 envelope) ---
+# --- EXPECTED OUTPUT (v0.2 envelope, keys sorted by the CLI) ---
 # {
-#   "schema_version": "0.2.0",
-#   "status": "ok",
 #   "data": {
-#     "site": "acme-bakery",
-#     "fetched_at": "2026-04-21T14:44:59.314842Z",
+#     "fetched_at": "2026-04-22T18:44:05.810816Z",
+#     "mentions": null,
 #     "pages": {
-#       "homepage_text": "Acme Bakery is a bakery in Portland, OR. ...",
 #       "about_text": "Acme Bakery has served Portland, OR since 2010. ...",
+#       "homepage_text": "Acme Bakery is a bakery in Portland, OR. ...",
 #       "services": ["Custom cakes", "Catering", "Wholesale bread", "Pastry boxes"],
 #       "tech_stack": ["WordPress", "Elementor"]
 #     },
-#     "reviews": { "count": 142, "rating": 4.6, "source": "reviews_google_places" },
-#     "social": { "handles": { "instagram": "@acmebakery" }, "follower_counts": {} },
-#     "signals": { "copyright_year": 2024, "team_size_claim": "team of 3" },
-#     "mentions": null
+#     "reviews": null,
+#     "signals": null,
+#     "site": "acme-bakery",
+#     "social": null
 #   },
+#   "error": null,
 #   "provenance": {
-#     "site_text_trafilatura":  { "status": "ok", "latency_ms": 0,   "error": null, "provider_version": "0.1.0" },
-#     "reviews_google_places":  { "status": "ok", "latency_ms": 312, "error": null, "provider_version": "0.1.0" }
+#     "site_text_trafilatura": {
+#       "cost_incurred": 0,
+#       "error": null,
+#       "latency_ms": 0,
+#       "provider_version": "0.1.0",
+#       "status": "ok"
+#     }
 #   },
-#   "error": null
+#   "schema_version": "0.2.0",
+#   "status": "ok"
 # }
+#
+# Note: v0.2 ships one Attempt-1 provider (site_text_trafilatura), so
+# `data.reviews` / `data.social` / `data.signals` / `data.mentions` are
+# reserved in the schema but return null. Direct-API providers that
+# populate those slots are on the roadmap — see docs/SPEC.md.
