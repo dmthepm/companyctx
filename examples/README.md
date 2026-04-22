@@ -14,6 +14,20 @@ companyctx fetch <domain> --json
 CRM payload, diff-and-alert, agent-prompt injection. The muscle is
 always the same; the orchestration around it is what changes.
 
+### What to expect on v0.2
+
+v0.2 ships the zero-key Attempt 1 (`site_text_trafilatura`) and the
+user-keyed smart-proxy Attempt 2 (`smart_proxy_http`). That means live
+and `--mock` runs populate `data.pages.*` and leave
+`data.reviews` / `data.social` / `data.signals` / `data.mentions` as
+`null` until the direct-API and site-heuristic providers register
+(roadmap — see [`../docs/SPEC.md`](../docs/SPEC.md)). Every recipe in
+this gallery is coded against the stable envelope shape with
+fallbacks for the null slots; nothing breaks when a provider
+registers, it just starts populating the field. A recipe's "expected
+output" block flags which lines are v0.2 reality vs. what will start
+appearing once direct-API providers ship.
+
 ## How this folder is built
 
 1. **Zero to hero.** Files are numbered. Start at `01`, work up. Each

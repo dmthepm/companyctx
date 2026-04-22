@@ -49,7 +49,10 @@ def handle_inbound_lead(event: dict[str, Any], *, mock: bool = False) -> dict[st
     if domain in FREE_EMAIL_DOMAINS:
         return {"status": "ignored", "reason": "free email provider"}
 
-    fixtures_dir = Path("fixtures") if mock else None
+    # Resolve fixtures/ relative to this script so the recipe runs from any
+    # CWD (including `cd examples/07-inbound-webhook-enrichment && python
+    # main.py`). In real use (no --mock) fixtures_dir stays None.
+    fixtures_dir = (Path(__file__).resolve().parent.parent.parent / "fixtures") if mock else None
     envelope = run(domain, mock=mock, fixtures_dir=fixtures_dir)
 
     if envelope.status != "ok":
@@ -111,20 +114,28 @@ if __name__ == "__main__":
     main()
 
 
-# --- EXPECTED OUTPUT (demo event with --mock) ---
+# --- EXPECTED OUTPUT (v0.2, demo event with --mock) ---
 # {
 #   "crm_payload": {
 #     "company_domain": "acme-bakery",
-#     "context_fetched_at": "2026-04-21T14:44:59.314842Z",
-#     "copyright_year": 2024,
+#     "context_fetched_at": "2026-04-22T18:46:29.655450+00:00",
+#     "copyright_year": null,
 #     "primary_services": ["Custom cakes", "Catering", "Wholesale bread", "Pastry boxes"],
-#     "review_count": 142,
-#     "review_rating": 4.6,
-#     "review_source": "reviews_google_places",
-#     "social_handles": {"instagram": "@acmebakery"},
-#     "team_size_claim": "team of 3",
+#     "review_count": null,
+#     "review_rating": null,
+#     "review_source": null,
+#     "social_handles": {},
+#     "team_size_claim": null,
 #     "tech_stack_detected": ["WordPress", "Elementor"]
 #   },
 #   "domain": "acme-bakery",
 #   "status": "enriched"
 # }
+#
+# Note: primary_services + tech_stack_detected come from the shipped
+# zero-key provider. review_* / social_handles / team_size_claim /
+# copyright_year are null in v0.2 because the direct-API and
+# site-heuristic providers that populate them aren't registered yet
+# (see docs/SPEC.md — Google Places is tracked under #7). The CRM
+# payload's field map is deliberately stable; when a provider ships,
+# the null fields start filling in without any code change.

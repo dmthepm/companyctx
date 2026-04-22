@@ -17,6 +17,15 @@
 #
 # Tune the thresholds for your thesis; the shape is what matters.
 #
+# NOTE for v0.2: this thesis reads `data.reviews` and `data.signals`,
+# which are null in v0.2 until the direct-API and site-heuristic
+# providers register (see docs/SPEC.md — reviews_google_places is
+# tracked under #7). Against the shipped zero-key provider the
+# screener will return 0 candidates today. The shape is deliberately
+# preserved — once a review provider is configured (export
+# GOOGLE_PLACES_API_KEY and drop --mock), the same filter starts
+# producing hits without any change to this script.
+#
 # Requires: jq
 # Usage:    ./05-pe-rollup-screener.sh          # uses embedded demo list
 #           ./05-pe-rollup-screener.sh my-list.txt
@@ -81,14 +90,20 @@ echo "Done. $HITS candidate(s) matched the thesis."
 echo "Next: hand the hits to a human analyst for diligence, or pipe into"
 echo "      a brief-generation step (see 03-brains-and-muscles.sh)."
 
-# --- EXPECTED OUTPUT (illustrative — numbers vary per fixture) ---
+# --- EXPECTED OUTPUT (v0.2, --mock) ---
 # 🔍 Screening for rollup candidates
 #    thesis: rating ≥ 4.5, ≥ 75 reviews, WordPress, copyright ≤ 2023
 # --------------------------------------------------------------------
-# ✅ acme-bakery         | 4.6★ × 142 reviews | stack: WordPress,Elementor | copyright 2023
-# ✅ cornerstone-bakery  | 4.7★ ×  96 reviews | stack: WordPress,WooCommerce | copyright 2022
-# ✅ hilltop-contractor  | 4.8★ × 210 reviews | stack: WordPress           | copyright 2021
 # --------------------------------------------------------------------
-# Done. 3 candidate(s) matched the thesis.
+# Done. 0 candidate(s) matched the thesis.
 # Next: hand the hits to a human analyst for diligence, or pipe into
 #       a brief-generation step (see 03-brains-and-muscles.sh).
+#
+# Reason: the thesis filters on data.reviews.* and data.signals.*,
+# which are null in v0.2 (see header note). Once a review provider is
+# registered + configured the filter starts producing hits against
+# the fixture corpus:
+#
+# ✅ acme-bakery         | 4.6★ × 142 reviews | stack: WordPress,Elementor | copyright 2023
+# ✅ cornerstone-bakery  | 4.7★ ×  96 reviews | stack: WordPress,WooCommerce | copyright 2022
+# ✅ hilltop-contractor  | 4.8★ × 210 reviews | stack: WordPress            | copyright 2021

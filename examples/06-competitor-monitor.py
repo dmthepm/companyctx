@@ -116,10 +116,12 @@ def main() -> None:
     state_path = Path.cwd() / f".competitor-state-{args.site.replace('/', '_')}.json"
 
     print(f"🕵️  Monitoring {args.site}...")
-    # When --mock is on, the fixtures tree is alongside the package's canonical
-    # `fixtures/` dir; in real use (without --mock) the CLI / library hits the
-    # network via the zero-key stealth fetcher.
-    fixtures_dir = Path("fixtures") if args.mock else None
+    # `fixtures/` lives at the repo root alongside `examples/`. We resolve it
+    # relative to this script so the recipe runs from anywhere (including
+    # `cd examples && python 06-...`). In real use (no --mock), the library
+    # hits the network via the zero-key stealth fetcher and fixtures_dir is
+    # None.
+    fixtures_dir = (Path(__file__).resolve().parent.parent / "fixtures") if args.mock else None
     envelope = run(args.site, mock=args.mock, fixtures_dir=fixtures_dir)
 
     if envelope.status != "ok":
@@ -155,15 +157,25 @@ if __name__ == "__main__":
     main()
 
 
-# --- EXPECTED OUTPUT (first run) ---
-# 🕵️  Monitoring rival-startup.com...
-# 📌 baseline saved to .competitor-state-rival-startup.com.json.
-# Re-run tomorrow to see the first diff.
+# --- EXPECTED OUTPUT (first run against fixture corpus, --mock) ---
+# 🕵️  Monitoring acme-bakery...
+# 📌 baseline saved to .competitor-state-acme-bakery.json. Re-run tomorrow to see the first diff.
 #
-# --- EXPECTED OUTPUT (subsequent run, after a competitor actually changed) ---
+# --- EXPECTED OUTPUT (subsequent run, no change) ---
+# 🕵️  Monitoring acme-bakery...
+# ✅ no meaningful changes since last run.
+# 💾 baseline refreshed (2026-04-22T18:46:24.247102+00:00)
+#
+# --- EXPECTED OUTPUT (illustrative — live run against a competitor that actually changed) ---
 # 🕵️  Monitoring rival-startup.com...
-# 🚨 3 change(s) detected on rival-startup.com:
+# 🚨 2 change(s) detected on rival-startup.com:
 #    🆕 services added: ['AI consulting']
 #    🛠  tech added: ['Next.js', 'Datadog']
-#    📈 review count +18 (now 160)
 # 💾 baseline refreshed (2026-04-22T09:15:02.184210+00:00)
+#
+# Note: review-count diffs, copyright-year diffs, and social-handle
+# diffs rely on data.reviews / data.signals / data.social — all null
+# in v0.2 until the direct-API and site-heuristic providers register.
+# Until then, the script diffs pages.services + pages.tech_stack only;
+# the other branches are no-ops that wake up automatically once a
+# provider fills the relevant slot.

@@ -2,7 +2,7 @@
 
 ## Problem
 
-An inbound lead submits only an email (`josh@acme-logistics.example.test`) via
+An inbound lead submits only an email (`josh@acme-bakery.example.test`) via
 a demo-request form. The RevOps team needs the company's services,
 tech stack, review footprint, and rough size on the CRM record
 *before* the first sales reply. Standing options:
@@ -23,6 +23,13 @@ only part that differs per integration).
 **What you save:** the enrichment-vendor line item.
 **What you get:** a deterministic, schema-locked JSON envelope you
 can version and diff, rather than a vendor's opaque result set.
+
+In v0.2 the CRM payload fills in `primary_services` +
+`tech_stack_detected` from the shipped zero-key provider; `review_*`,
+`social_handles`, `team_size_claim`, and `copyright_year` arrive null
+until the direct-API and site-heuristic providers register (see
+[`../../docs/SPEC.md`](../../docs/SPEC.md)). The payload shape is
+stable; nothing downstream changes when those slots start filling in.
 
 ## How to run it
 
