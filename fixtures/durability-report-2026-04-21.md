@@ -1,4 +1,4 @@
-# Durability report — 100-site D100 run
+# Durability report — 100-site external-seed-list run
 
 **Run date:** 2026-04-21.
 **Related issue:** [#22](https://github.com/dmthepm/companyctx/issues/22) /
@@ -46,15 +46,15 @@ issue `#22` kickoff comment.
 
 ## Methodology
 
-- **Seed source.** @joel-req's D100 prospect lists at
-  `new-signal-studio/research/*-prospect-list.md` — 12 niche files with
-  explicit `**Website:**` fields.
+- **Seed source.** @joel-req's external prospect lists in a private partner
+  repo (12 niche files with explicit `**Website:**` fields). The raw lists
+  never touch this repo.
 - **Sampling.** Stratified stride sample — 10 hosts per niche × 10
   niches = 100. Stride sampling picks evenly-spaced positions within
   each niche's eligible list, avoiding the alphabetical-first-N the
   TLS spike drew. Deterministic for a given seed list.
 - **TLS-spike overlap.** The TLS spike drew from the
-  `d100-*-instantly.csv` series with a local-only slug-to-URL map
+  partner `*-instantly.csv` series with a local-only slug-to-URL map
   (`research/.slug-map.local.csv`) not present on this machine. We
   dropped the alphabetical-first-2-or-3 per niche (matching the
   spike's first-N rule) before stride-sampling. Exact-URL exclusion is

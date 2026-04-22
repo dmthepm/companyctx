@@ -95,8 +95,8 @@ external readers only ever see the new name.
 
 Internal references:
 
-- Joel's skill files (the downstream consumer's private workspace) will
-  update as part of the D100 integration handoff, not before. The
+- The downstream consumer's private workspace will update as part of the
+  external cold-outreach pipeline integration handoff, not before. The
   integration hasn't happened yet — the integration-ready artifact uses
   the new name from day one.
 - The upstream design workspace has been amended (PR #80 on
