@@ -149,7 +149,6 @@ def test_orchestrator_status_ok_when_all_providers_ok() -> None:
     )
     assert env.status == "ok"
     assert env.error is None
-    assert env.suggestion is None
     assert env.provenance["always_ok"].status == "ok"
 
 
@@ -163,7 +162,8 @@ def test_orchestrator_status_partial_when_some_fail() -> None:
     )
     assert env.status == "partial"
     assert env.error is not None
-    assert env.suggestion is not None
+    assert env.error.code == "blocked_by_antibot"
+    assert env.error.suggestion is not None
     assert env.provenance["always_ok"].status == "ok"
     assert env.provenance["always_fail"].status == "failed"
 
@@ -178,7 +178,7 @@ def test_orchestrator_status_degraded_when_all_fail() -> None:
     )
     assert env.status == "degraded"
     assert env.error is not None
-    assert env.suggestion is not None
+    assert env.error.code == "blocked_by_antibot"
 
 
 def test_orchestrator_never_raises_when_provider_explodes() -> None:
@@ -239,6 +239,7 @@ def test_orchestrator_graceful_partial_on_missing_fixture() -> None:
     provider_error = env.provenance["site_text_trafilatura"].error
     assert provider_error is not None
     assert "fixture" in provider_error
+    assert env.error.code in {"no_provider_succeeded", "path_traversal_rejected"}
 
 
 @pytest.mark.parametrize(
@@ -272,7 +273,8 @@ def test_fixture_block_sentinel_round_trips_as_degraded(reason: str, tmp_path: P
     row = env.provenance["site_text_trafilatura"]
     assert row.status == "failed"
     assert row.error == reason
-    assert env.error == reason
+    assert env.error is not None
+    assert env.error.message == reason
     assert env.data.pages is None
 
 
@@ -470,7 +472,7 @@ def test_cli_fetch_partial_exits_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     env = Envelope.model_validate(payload)
     assert env.status == "partial"
     assert env.error is not None
-    assert env.suggestion is not None
+    assert env.error.suggestion is not None
 
 
 def test_cli_fetch_partial_exits_zero_on_missing_fixture() -> None:
@@ -498,7 +500,7 @@ def test_cli_fetch_partial_exits_zero_on_missing_fixture() -> None:
     env = Envelope.model_validate(payload)
     assert env.status == "partial"
     assert env.error is not None
-    assert env.suggestion is not None
+    assert env.error.suggestion is not None
 
 
 def test_cli_validate_accepts_round_tripped_envelope(tmp_path: Path) -> None:

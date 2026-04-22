@@ -2,6 +2,43 @@
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+from companyctx.schema import (
+    SCHEMA_VERSION,
+    CompanyContext,
+    Envelope,
+    EnvelopeError,
+    EnvelopeErrorCode,
+    EnvelopeStatus,
+    FundingRound,
+    HeuristicSignals,
+    MediaMention,
+    MentionKind,
+    MentionsSignals,
+    ProviderRunMetadata,
+    ProviderStatus,
+    ReviewsSignals,
+    SiteSignals,
+    SocialSignals,
+)
 
-__all__ = ["__version__"]
+__version__ = "0.2.0"
+
+__all__ = [
+    "SCHEMA_VERSION",
+    "CompanyContext",
+    "Envelope",
+    "EnvelopeError",
+    "EnvelopeErrorCode",
+    "EnvelopeStatus",
+    "FundingRound",
+    "HeuristicSignals",
+    "MediaMention",
+    "MentionKind",
+    "MentionsSignals",
+    "ProviderRunMetadata",
+    "ProviderStatus",
+    "ReviewsSignals",
+    "SiteSignals",
+    "SocialSignals",
+    "__version__",
+]

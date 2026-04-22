@@ -3,7 +3,16 @@
 The envelope is the product. Providers are replaceable; this shape is not.
 Every model sets ``extra="forbid"`` so schema drift is loud. See
 ``docs/SCHEMA.md`` for the contract walkthrough and ``docs/SPEC.md`` for the
-frozen v0.1 snapshot.
+frozen spec snapshot.
+
+v0.2.0 is a schema-breaking release for the envelope:
+
+* New top-level ``schema_version: Literal["0.2.0"]`` lets consumers branch on
+  the envelope shape rather than substring-parsing error strings.
+* ``error`` changes from ``str | None`` to a structured :class:`EnvelopeError`
+  with machine-readable ``code`` + human-readable ``message`` + optional
+  ``suggestion``. The former top-level ``suggestion`` field moves into the
+  error model.
 """
 
 from __future__ import annotations
@@ -13,9 +22,20 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+SCHEMA_VERSION = "0.2.0"
+
 EnvelopeStatus = Literal["ok", "partial", "degraded"]
 ProviderStatus = Literal["ok", "degraded", "failed", "not_configured"]
 MentionKind = Literal["press", "podcast", "award", "mention"]
+EnvelopeErrorCode = Literal[
+    "ssrf_rejected",
+    "network_timeout",
+    "blocked_by_antibot",
+    "path_traversal_rejected",
+    "response_too_large",
+    "no_provider_succeeded",
+    "misconfigured_provider",
+]
 
 
 class SiteSignals(BaseModel):
@@ -116,33 +136,52 @@ class CompanyContext(BaseModel):
     mentions: MentionsSignals | None = None
 
 
+class EnvelopeError(BaseModel):
+    """Structured envelope error — machine-readable code + human-readable message.
+
+    Agents branch on :attr:`code`; humans read :attr:`message`. :attr:`suggestion`
+    is an actionable next step (e.g. "configure COMPANYCTX_SMART_PROXY_URL").
+
+    Codes are a closed set. New codes are added in minor releases and bump
+    :data:`SCHEMA_VERSION`; removing or renaming a code is a major bump.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: EnvelopeErrorCode
+    message: str
+    suggestion: str | None = None
+
+
 class Envelope(BaseModel):
     """Top-level JSON contract. Every ``fetch`` run emits exactly one of these."""
 
     model_config = ConfigDict(extra="forbid")
 
+    schema_version: Literal["0.2.0"] = "0.2.0"
     status: EnvelopeStatus
     data: CompanyContext
     provenance: dict[str, ProviderRunMetadata] = Field(default_factory=dict)
-    error: str | None = None
-    suggestion: str | None = None
+    error: EnvelopeError | None = None
 
     @model_validator(mode="after")
     def validate_status_fields(self) -> Envelope:
         """Keep the top-level narrative honest and machine-checkable."""
         if self.status == "ok":
-            if self.error is not None or self.suggestion is not None:
-                raise ValueError('status="ok" must not include error or suggestion')
+            if self.error is not None:
+                raise ValueError('status="ok" must not include an error')
             return self
-
-        if self.error is None or self.suggestion is None:
-            raise ValueError('status!="ok" requires both error and suggestion')
+        if self.error is None:
+            raise ValueError('status!="ok" requires a structured error')
         return self
 
 
 __all__ = [
+    "SCHEMA_VERSION",
     "CompanyContext",
     "Envelope",
+    "EnvelopeError",
+    "EnvelopeErrorCode",
     "EnvelopeStatus",
     "FundingRound",
     "HeuristicSignals",

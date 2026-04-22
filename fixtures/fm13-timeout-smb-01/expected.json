@@ -8,7 +8,11 @@
     "site": "fm13-timeout-smb-01.example",
     "social": null
   },
-  "error": "network error: Timeout",
+  "error": {
+    "code": "network_timeout",
+    "message": "network error: Timeout",
+    "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  },
   "provenance": {
     "site_text_trafilatura": {
       "cost_incurred": 0,
@@ -25,6 +29,6 @@
       "status": "not_configured"
     }
   },
-  "status": "partial",
-  "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  "schema_version": "0.2.0",
+  "status": "partial"
 }
