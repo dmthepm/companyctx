@@ -3,10 +3,14 @@
 The Pydantic v2 shape `companyctx` emits. The schema is the product — providers
 are replaceable, the contract is not.
 
-The envelope below is the v0.2.0 shape. Adding a new optional field is
+The envelope below is the v0.3.0 shape. Adding a new optional field is
 backwards-compatible; removing or renaming a field — or changing the shape of
 an existing one — is a schema-version bump. Always branch on the top-level
 `schema_version` field to detect envelope evolution.
+
+v0.3.0 adds the `empty_response` error code to the closed `EnvelopeError.code`
+Literal — a minor bump from v0.2.0. See `docs/SPEC.md` §empty_response for
+the threshold and semantics.
 
 Consumers can pull the live JSON Schema with:
 
@@ -20,7 +24,7 @@ Every `companyctx fetch` invocation returns one wrapper around the payload:
 
 ```python
 class Envelope(BaseModel):
-    schema_version: Literal["0.2.0"] = "0.2.0"
+    schema_version: Literal["0.3.0"] = "0.3.0"
     status: Literal["ok", "partial", "degraded"]
     data: CompanyContext
     provenance: dict[str, ProviderRunMetadata]
@@ -51,6 +55,7 @@ class EnvelopeError(BaseModel):
         "response_too_large",
         "no_provider_succeeded",
         "misconfigured_provider",
+        "empty_response",
     ]
     message: str                     # human-readable — logs / UI
     suggestion: str | None = None    # actionable next step
@@ -96,7 +101,7 @@ Keys are shown in the alphabetical order the CLI emits
       "status": "ok"
     }
   },
-  "schema_version": "0.2.0",
+  "schema_version": "0.3.0",
   "status": "ok"
 }
 ```
@@ -135,7 +140,7 @@ Keys are shown in the alphabetical order the CLI emits
       "status": "not_configured"
     }
   },
-  "schema_version": "0.2.0",
+  "schema_version": "0.3.0",
   "status": "partial"
 }
 ```

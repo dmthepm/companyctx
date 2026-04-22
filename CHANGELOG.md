@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — envelope schema bump (v0.3)
+
+- **`schema_version` bumped to `"0.3.0"`.** Adding the `empty_response`
+  code to the closed `EnvelopeError.code` Literal is a minor schema
+  bump. v0.2.0 envelopes still validate under the old Literal but the
+  orchestrator now emits `"0.3.0"` on every run.
+- **New `empty_response` error code (COX-44 / #79).** Zero-key
+  `site_text_trafilatura` now checks the extracted homepage text
+  against `EMPTY_RESPONSE_BYTES = 64`; below that, the provider
+  surfaces `status: "failed"`, `error: "empty_response"`, and the
+  orchestrator lands `error.code: "empty_response"` at the envelope
+  top level with an actionable suggestion. Retires the
+  "empty-body silent-success" disclosure added to v0.2.0 Known
+  Limitations. Automatic smart-proxy retry on empty is intentionally
+  out of scope — the recovery path skips `empty_response` rows.
+
 ### Added
 
 - **`companyctx providers list --json`** — registry introspection as a JSON
