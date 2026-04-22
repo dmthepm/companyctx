@@ -54,10 +54,12 @@ against Joel's D100 brief artifacts is a separate v0.1.0 release gate.
 
 But *byte-equal* regression testing would be overkill on all 30 — and would
 slow PR review every time the extractor gains a whitespace tweak. Instead,
-five fixtures are pinned as **regression cases** and exercised under
-`tests/test_regression_corpus.py` with an exact byte-diff assertion
-(modulo `fetched_at`). The other 25 remain under the looser shape checks in
-`tests/test_fixtures_corpus.py`.
+five synthetic-corpus fixtures are pinned as **regression cases** and
+exercised under `tests/test_regression_corpus.py` with an exact byte-diff
+assertion (modulo `fetched_at`). The other 25 remain under the looser shape
+checks in `tests/test_fixtures_corpus.py`. The failure-shape and network-
+failure fixtures documented below are also pinned in the byte-diff suite,
+which brings the full `REGRESSION_SLUGS` total above the synthetic five.
 
 The five were picked to force every detectable tech-stack code path plus
 one explicit "no stack markers" case, across three distinct niches:
