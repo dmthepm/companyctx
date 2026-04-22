@@ -1,0 +1,35 @@
+{
+  "artifact": {
+    "date": "2026-04-11",
+    "id": "brief-29cc51c3333a",
+    "note": "Opaque sha256 prefix. Reverse-maps to a specific brief in the partner's private pipeline repository; not committed here."
+  },
+  "display": "Hinsdale Derm 03",
+  "proof_notes": [
+    "Board-certified dermatologist, Mohs specialist",
+    "Two-location suburban practice",
+    "Physician-owned"
+  ],
+  "reviews": {
+    "facebook": {
+      "recommend_pct": null,
+      "review_count": null
+    },
+    "google": {
+      "rating": 4.9,
+      "review_count": 787
+    },
+    "yelp": {
+      "rating": null,
+      "review_count": 50
+    }
+  },
+  "slug": "hinsdale-derm-03",
+  "social": {
+    "instagram_followers": 1175,
+    "youtube": {
+      "channel_exists": false,
+      "subscribers": null
+    }
+  }
+}

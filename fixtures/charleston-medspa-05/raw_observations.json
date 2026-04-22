@@ -1,0 +1,35 @@
+{
+  "artifact": {
+    "date": "2026-04-11",
+    "id": "brief-28a610bddf4e",
+    "note": "Opaque sha256 prefix. Reverse-maps to a specific brief in the partner's private pipeline repository; not committed here."
+  },
+  "display": "Charleston Medspa 05",
+  "proof_notes": [
+    "Twenty-plus years in market (founded 2005)",
+    "ThreeBestRated perfect 10, 5+ years listed",
+    "Board-certified EM physician as Medical Director"
+  ],
+  "reviews": {
+    "facebook": {
+      "recommend_pct": 90,
+      "review_count": 41
+    },
+    "google": {
+      "rating": 4.8,
+      "review_count": 285
+    },
+    "yelp": {
+      "rating": null,
+      "review_count": 51
+    }
+  },
+  "slug": "charleston-medspa-05",
+  "social": {
+    "instagram_followers": 13000,
+    "youtube": {
+      "channel_exists": false,
+      "subscribers": null
+    }
+  }
+}

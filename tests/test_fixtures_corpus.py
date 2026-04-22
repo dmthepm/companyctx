@@ -48,10 +48,23 @@ BLOCK_FIXTURE_SLUGS = ("fm13-timeout-smb-01",)
 BLOCK_FIXTURE_FILES = ("fixture-block.txt", "expected.json")
 FAILURE_FIXTURE_SLUGS = FM7_FIXTURE_SLUGS + BLOCK_FIXTURE_SLUGS
 
+# Real-golden fixtures (issue #24) live alongside the 30 synthetic dirs but
+# are hand-curated, not generated. They carry a ``.hand-curated`` marker and
+# are excluded from the synthetic-only invariants checked below.
+REAL_GOLDEN_FIXTURE_SLUGS = (
+    "northarlington-pharmacy-01",
+    "cary-hormone-02",
+    "hinsdale-derm-03",
+    "birmingham-iv-04",
+    "charleston-medspa-05",
+)
+
+_NON_SYNTHETIC_SLUGS = frozenset(FAILURE_FIXTURE_SLUGS) | frozenset(REAL_GOLDEN_FIXTURE_SLUGS)
+
 
 def _synthetic_dirs() -> list[Path]:
     return sorted(
-        p for p in FIXTURES_DIR.iterdir() if p.is_dir() and p.name not in FAILURE_FIXTURE_SLUGS
+        p for p in FIXTURES_DIR.iterdir() if p.is_dir() and p.name not in _NON_SYNTHETIC_SLUGS
     )
 
 

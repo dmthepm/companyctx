@@ -1,0 +1,17 @@
+{
+  "categories": [
+    {
+      "alias": "health",
+      "title": "Health"
+    }
+  ],
+  "id": "yelp-hinsdale-derm-03",
+  "location": {
+    "city": "<city>",
+    "country": "US",
+    "state": "<region>"
+  },
+  "name": "Hinsdale Derm 03",
+  "review_count": 50,
+  "url": "https://yelp.com/biz/yelp-hinsdale-derm-03"
+}

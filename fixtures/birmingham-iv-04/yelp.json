@@ -1,0 +1,17 @@
+{
+  "categories": [
+    {
+      "alias": "health",
+      "title": "Health"
+    }
+  ],
+  "id": "yelp-birmingham-iv-04",
+  "location": {
+    "city": "<city>",
+    "country": "US",
+    "state": "<region>"
+  },
+  "name": "Birmingham Iv 04",
+  "review_count": 17,
+  "url": "https://yelp.com/biz/yelp-birmingham-iv-04"
+}

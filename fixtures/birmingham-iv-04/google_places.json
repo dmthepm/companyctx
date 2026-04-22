@@ -1,0 +1,13 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, <city>, <region> 00000, USA",
+    "name": "Birmingham Iv 04",
+    "place_id": "ChIJ-realgolden-birmingham-iv-04",
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "website": "https://birmingham-iv-04.example"
+  },
+  "status": "OK"
+}

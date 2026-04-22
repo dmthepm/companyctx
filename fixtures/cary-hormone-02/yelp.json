@@ -1,0 +1,16 @@
+{
+  "categories": [
+    {
+      "alias": "health",
+      "title": "Health"
+    }
+  ],
+  "id": "yelp-cary-hormone-02",
+  "location": {
+    "city": "<city>",
+    "country": "US",
+    "state": "<region>"
+  },
+  "name": "Cary Hormone 02",
+  "url": "https://yelp.com/biz/yelp-cary-hormone-02"
+}

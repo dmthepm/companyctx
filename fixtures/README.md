@@ -17,6 +17,9 @@ fixtures/
     yelp.json             # API response for the Yelp Fusion provider
     youtube.json          # API response for the YouTube channels.list provider
     expected.json         # committed regression snapshot (real golden oracles are separate)
+    .hand-curated         # (real-golden fixtures only) marker that pins the oracle
+    SOURCE.md             # (real-golden fixtures only) citation to the external brief artifact
+    raw_observations.json # (real-golden fixtures only) non-envelope half of the oracle
   seeds.csv               # one column "site", used by `companyctx batch`
 ```
 
@@ -134,6 +137,121 @@ until a second provider lands. Block-style fixtures are wired through
 the byte-diff regression suite via `tests/test_regression_corpus.py`.
 
 Scaling the regression suite past these eight is v0.2 scope.
+
+## Real golden corpus — 5 hand-curated oracles
+
+Five fixtures break the circular "oracle == `core.run` output" loop of the
+regression corpus. Their HTML is a **sanitized snapshot of a real site**
+the external D100 brief pipeline processed, and the oracle is
+**hand-curated** from what that pipeline observed (issue #24, v0.1.0
+release gate). The five slugs:
+
+| Slug                           | Niche                                   | Artifact date | Artifact id       |
+| ------------------------------ | --------------------------------------- | ------------- | ----------------- |
+| `northarlington-pharmacy-01`   | Community compounding pharmacy          | `2026-04-10`  | `brief-b84ae44060b4` |
+| `cary-hormone-02`              | Bioidentical hormone replacement clinic | `2026-04-10`  | `brief-6a24fd6cb2dc` |
+| `hinsdale-derm-03`             | Dermatology clinic                      | `2026-04-11`  | `brief-29cc51c3333a` |
+| `birmingham-iv-04`             | IV therapy and cryotherapy clinic       | `2026-04-12`  | `brief-b2f68716f981` |
+| `charleston-medspa-05`         | Medical spa                             | `2026-04-11`  | `brief-28a610bddf4e` |
+
+The artifact id is an opaque sha256 prefix that the partner reverse-maps
+privately; the real brief path / subject name never appears in the public
+tree. Each fixture carries a `SOURCE.md` with the same citation plus a
+`.hand-curated` marker file. The marker tells `scripts/build-fixtures.py`
+to refuse regeneration
+(`tests/test_real_golden_corpus.py::test_build_fixtures_refuses_to_overwrite_hand_curated`).
+
+### Inputs — sanitized real HTML, not synthetic templates
+
+For each fixture, `homepage.html` / `about.html` / `services.html` is the
+real site's markup after:
+
+1. Fetching with a chrome146-impersonating `curl_cffi` request.
+2. Stripping every non-content tag: scripts, styles, iframes, svgs,
+   forms, navs, footers, trackers.
+3. Walking the body and keeping only `h1..h6` / `p` / `li` / `blockquote`
+   with their real text content.
+4. Rewriting identity tokens to the fixture slug (real domain →
+   `<slug>.example`, real business name variants → humanized slug, real
+   personal names → "the Owner", calendly/booking subpaths masked) and
+   masking contact PII through the same regex pipeline used by
+   `scripts/build-fixtures.py` (emails → `hello@example.test`, phones →
+   `(555) 555-0100`, ZIP codes → `00000`).
+
+Where the site returned 404 for /about or /services, the stub page
+explicitly says the external pipeline did not capture that URL — the
+extractor sees no phantom content for pages that never existed.
+
+### Oracle — two halves
+
+- `expected.json` — the envelope shape companyctx must emit when it runs
+  against the sanitized HTML. This half guards extractor / tech-stack /
+  envelope-serializer behavior against real-world markup.
+- `raw_observations.json` — the **non-envelope** half: review counts,
+  ratings, and social follower counts the brief pipeline recorded
+  verbatim. These fields cannot live in the envelope today because
+  v0.1 only wires `site_text_trafilatura`; the observations file keeps
+  them visible and unit-testable while the review/social providers are
+  still on the v0.2 roadmap.
+
+### Distinct from the regression corpus
+
+- **Regression corpus** (`tests/test_regression_corpus.py`): inputs are
+  synthetic templates, oracles are rendered by `core.run` itself. Guards
+  against byte-level drift *inside* companyctx but proves consistency,
+  not correctness. Codex flagged this as HIGH severity on PR #19
+  because "golden" implied an external oracle that did not exist.
+- **Real golden corpus** (`tests/test_real_golden_corpus.py`): inputs
+  are sanitized *real-site* markup the external brief pipeline actually
+  observed; oracles are hand-curated and cross-checked. An extractor
+  change that disagrees with sanitized real markup trips this suite
+  loudly — that is the "same-input external validation" release gate
+  for v0.1.0.
+
+### What each test enforces
+
+1. **Envelope shape drift.** `companyctx fetch <slug>.example --mock
+   --json` must byte-equal `expected.json` modulo `fetched_at`.
+2. **Observation / provider-fixture parity.** Review counts and ratings
+   in `raw_observations.json` must match the values encoded in the
+   sibling `google_places.json` / `yelp.json` / `youtube.json`. Any
+   silent edit to either side is caught.
+3. **Marker integrity.** Every real-golden fixture carries
+   `.hand-curated`, and `scripts/build-fixtures.py` refuses to
+   regenerate anything that does.
+4. **Artifact-id consistency.** `raw_observations.json`, `SOURCE.md`,
+   and this README all quote the same opaque artifact id + date so the
+   three references never drift.
+
+### When a review/social provider ships
+
+1. Wire the provider and update `core.run` so the envelope gains the
+   new fields.
+2. Regenerate each `expected.json` **by hand** from the new envelope
+   shape — do not switch the oracle onto a script-driven render path.
+3. Cross-check the new envelope fields against `raw_observations.json`;
+   the fixture and the observation must agree.
+4. The envelope-diff test then guards the new fields automatically, and
+   the observation-parity test remains a second independent invariant.
+
+### Sanitization invariants
+
+- Site identity is rewritten to a slug of the form `<city>-<niche>-<NN>`
+  (e.g., `charleston-medspa-05`). Client names never appear in any
+  committed file.
+- Contact PII is masked per the existing regex pipeline (emails →
+  `hello@example.test`, phones → `(555) 555-0100`, owner names →
+  `the Owner`).
+- Review counts, ratings, and social follower counts are **preserved
+  verbatim** in `raw_observations.json` — they are the raw signal the
+  external pipeline captured and the whole point of having an oracle.
+
+### Scaling
+
+Scaling past five is **out of scope** for v0.1. 100-site durability
+scoring is a different gate (see `durability-report-2026-04-21.md`).
+Rubric-based quality scoring (field coverage %, factual error count)
+is deferred to v0.2.
 
 ## Determinism rule
 

@@ -1,0 +1,35 @@
+{
+  "artifact": {
+    "date": "2026-04-12",
+    "id": "brief-b2f68716f981",
+    "note": "Opaque sha256 prefix. Reverse-maps to a specific brief in the partner's private pipeline repository; not committed here."
+  },
+  "display": "Birmingham Iv 04",
+  "proof_notes": [
+    "$2.2M growth equity raise (June 2024)",
+    "Multi-state franchise footprint (AL + GA)",
+    "Franchise average sales ~$629K"
+  ],
+  "reviews": {
+    "facebook": {
+      "recommend_pct": null,
+      "review_count": null
+    },
+    "google": {
+      "rating": null,
+      "review_count": null
+    },
+    "yelp": {
+      "rating": null,
+      "review_count": 17
+    }
+  },
+  "slug": "birmingham-iv-04",
+  "social": {
+    "instagram_followers": null,
+    "youtube": {
+      "channel_exists": false,
+      "subscribers": null
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "categories": [
+    {
+      "alias": "health",
+      "title": "Health"
+    }
+  ],
+  "id": "yelp-northarlington-pharmacy-01",
+  "location": {
+    "city": "<city>",
+    "country": "US",
+    "state": "<region>"
+  },
+  "name": "Northarlington Pharmacy 01",
+  "review_count": 13,
+  "url": "https://yelp.com/biz/yelp-northarlington-pharmacy-01"
+}

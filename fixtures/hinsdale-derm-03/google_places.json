@@ -1,0 +1,15 @@
+{
+  "result": {
+    "formatted_address": "100 Main St, <city>, <region> 00000, USA",
+    "name": "Hinsdale Derm 03",
+    "place_id": "ChIJ-realgolden-hinsdale-derm-03",
+    "rating": 4.9,
+    "types": [
+      "establishment",
+      "point_of_interest"
+    ],
+    "user_ratings_total": 787,
+    "website": "https://hinsdale-derm-03.example"
+  },
+  "status": "OK"
+}

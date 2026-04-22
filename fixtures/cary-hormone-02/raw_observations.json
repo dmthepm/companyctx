@@ -1,0 +1,35 @@
+{
+  "artifact": {
+    "date": "2026-04-10",
+    "id": "brief-6a24fd6cb2dc",
+    "note": "Opaque sha256 prefix. Reverse-maps to a specific brief in the partner's private pipeline repository; not committed here."
+  },
+  "display": "Cary Hormone 02",
+  "proof_notes": [
+    "9 locations across NC, SC, VA, FL, TX",
+    "97% patient retention",
+    "Founder FACOG, 30-year OB/GYN"
+  ],
+  "reviews": {
+    "facebook": {
+      "recommend_pct": 98,
+      "review_count": 74
+    },
+    "google": {
+      "rating": 4.9,
+      "review_count": null
+    },
+    "yelp": {
+      "rating": null,
+      "review_count": null
+    }
+  },
+  "slug": "cary-hormone-02",
+  "social": {
+    "instagram_followers": 9574,
+    "youtube": {
+      "channel_exists": true,
+      "subscribers": null
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
+    "pages": {
+      "about_text": "- Providers\n- Clinic Policies\n- Services Medical Services Cosmetic Services\n- Specials\n- Patient Portal New Patient Existing Patient\n- Shop Online Skinbetter Epionce Colorscience\n- Testimonials\n- Contact\n- Blog\nClinic\nSPECIALIZING IN A MORE NATURALLY BEAUTIFUL, HEALTHY YOU.\n- Privacy\n- Terms & Conditions\n- Accessibility\n- Contact Us\nMedical Websites Powered by TEBRA",
+      "homepage_text": "- Providers\n- Clinic Policies\n- Services Medical Services Cosmetic Services\n- Specials\n- Patient Portal New Patient Existing Patient\n- Shop Online Skinbetter Epionce Colorscience\n- Testimonials\n- Contact\n- Blog\nWelcome to Hinsdale Derm 03\nCosmetic & Medical Dermatology\nAbout Hinsdale Derm 03\nAt Hinsdale Derm 03, the Owner, MD, the Owner, MD, and the compassionate team provide cosmetic and medical skin care to patients suffering from skin ailments or are looking for a more beautiful and healthy appearance. With offices conveniently located in Hinsdale and Downers Grove, Illinois, Hinsdale Derm 03 serves the western and southwestern suburbs of Chicago.\nThe team at Hinsdale Derm 03 is dedicated to providing a wide range of products, minimally and non-invasive procedures, and state of the art technology to treat a multitude of skin ailments. Each provider is committed to quality and personalized dermatologic patient care.\nHinsdale Derm 03 treats skin conditions such as acne, eczema, psoriasis, rosacea, rashes, hair loss, and much more. The caring and experienced team members also offer specialized and individualized treatment options like microdermabrasion, Fractora\u2122, Exilis\u2122, Botox\u00ae, Ultherapy\u00ae, Mohs surgery, CoolSculpting\u00ae, and Kybella\u00ae.\nTo achieve more naturally beautiful and healthy skin, schedule a consultation at Hinsdale Derm 03 online or by phone today.\nWhat We Offer\nAviClear Laser\nBotox\nLaser Hair Removal\nMicroneedling\nCoolSculpting\nInjectables\nHair Loss\nSkin Resurfacing\nLaseMD\nDermalinfusion\nGenius Laser\nMedical Spa\nIPL Photofacial\nUltherapy Prime\nWhat We Offer\nHair Loss\nMohs Surgery\nAcne Scar Treatment\nPsoriasis\nDermatology\nRashes & Eczema\nOur Locations\nHinsdale\nDowners Grove\n- Privacy\n- Terms & Conditions\n- Accessibility\n- Contact Us\nMedical Websites Powered by TEBRA",
+      "services": [
+        "Providers",
+        "Clinic Policies",
+        "Services Medical Services Cosmetic Services",
+        "Specials",
+        "Patient Portal New Patient Existing Patient",
+        "Shop Online Skinbetter Epionce Colorscience",
+        "Testimonials",
+        "Contact",
+        "Blog",
+        "Privacy",
+        "Terms & Conditions",
+        "Accessibility",
+        "Contact Us"
+      ],
+      "tech_stack": []
+    },
+    "reviews": null,
+    "signals": null,
+    "site": "hinsdale-derm-03.example",
+    "social": null
+  },
+  "error": null,
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": null,
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
+  },
+  "status": "ok",
+  "suggestion": null
+}

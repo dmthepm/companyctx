@@ -1,0 +1,35 @@
+{
+  "artifact": {
+    "date": "2026-04-10",
+    "id": "brief-b84ae44060b4",
+    "note": "Opaque sha256 prefix. Reverse-maps to a specific brief in the partner's private pipeline repository; not committed here."
+  },
+  "display": "Northarlington Pharmacy 01",
+  "proof_notes": [
+    "2024 Good Neighbor Pharmacy of the Year",
+    "NJ Independent Pharmacist of the Year (2017)",
+    "PCCA member since 1997"
+  ],
+  "reviews": {
+    "facebook": {
+      "recommend_pct": 94,
+      "review_count": 38
+    },
+    "google": {
+      "rating": null,
+      "review_count": null
+    },
+    "yelp": {
+      "rating": null,
+      "review_count": 13
+    }
+  },
+  "slug": "northarlington-pharmacy-01",
+  "social": {
+    "instagram_followers": 916,
+    "youtube": {
+      "channel_exists": false,
+      "subscribers": null
+    }
+  }
+}
