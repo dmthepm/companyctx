@@ -1,12 +1,13 @@
 """Deterministic Waterfall orchestrator.
 
-One site in → one ``Envelope`` out. Runs every registered provider, assembles
-the envelope, aggregates per-provider status into the top-level
-``ok | partial | degraded``, and attaches an actionable ``suggestion`` on
-non-ok. Never raises at the boundary.
+One site in → one ``Envelope`` out. Runs every registered primary provider,
+assembles the envelope, and — when a ``site_text`` provider returned
+``failed`` and a ``smart_proxy`` provider is registered — re-fetches via the
+user's smart proxy as Attempt 2. The recovered bytes flow through the same
+extraction chain and populate the ``pages`` slot; top-level status is
+aggregated with recovery awareness. Never raises at the boundary.
 
-See ``docs/ARCHITECTURE.md`` for the three-attempt waterfall shape. M2 ships
-only Attempt 1 (zero-key stealth); Attempts 2 & 3 are lined up for follow-ups.
+See ``docs/ARCHITECTURE.md`` for the three-attempt waterfall shape.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from companyctx import __version__
+from companyctx.extract import site_signals_from_homepage_bytes
 from companyctx.providers import discover
 from companyctx.providers.base import FetchContext, ProviderBase
 from companyctx.schema import (
@@ -41,6 +43,9 @@ CORE_PROVIDER_VERSION = __version__
 DISCOVERY_PROVIDER_SLUG = "_provider_discovery"
 ORCHESTRATOR_PROVIDER_SLUG = "_orchestrator"
 GENERIC_SUGGESTION = "configure a smart-proxy provider key or skip this prospect"
+
+_RECOVERABLE_CATEGORIES = frozenset({"site_text", "site_meta"})
+_SMART_PROXY_CATEGORY = "smart_proxy"
 
 
 def run(
@@ -82,24 +87,59 @@ def run(
                     provider_version=CORE_PROVIDER_VERSION,
                 )
             },
+            registry={},
         )
+
+    primary_registry = {
+        slug: cls
+        for slug, cls in registry.items()
+        if getattr(cls, "category", None) != _SMART_PROXY_CATEGORY
+    }
+    smart_proxy_registry = {
+        slug: cls
+        for slug, cls in registry.items()
+        if getattr(cls, "category", None) == _SMART_PROXY_CATEGORY
+    }
 
     results: list[tuple[str, object | None, ProviderRunMetadata]] = []
     try:
         # Deterministic order — slug alphabetical so two --mock runs produce
         # byte-identical output.
-        for slug in sorted(registry):
-            cls = registry[slug]
+        for slug in sorted(primary_registry):
+            cls = primary_registry[slug]
             signals, meta = _invoke(slug, cls, site=site, ctx=ctx)
             results.append((slug, signals, meta))
 
-        provenance = {slug: meta for slug, _, meta in results}
+        provenance: dict[str, ProviderRunMetadata] = {slug: meta for slug, _, meta in results}
+
+        # Waterfall Attempt 2: on a failed site_text / site_meta row, let a
+        # registered smart-proxy try to recover the pages slot. Only the
+        # first failure gets a retry — the smart-proxy is a fallback fetcher
+        # for the page, not a sibling provider, so one success is enough.
+        if smart_proxy_registry:
+            for index, (slug, _signals, meta) in enumerate(list(results)):
+                primary_cls = primary_registry.get(slug)
+                category = getattr(primary_cls, "category", None) if primary_cls else None
+                if category not in _RECOVERABLE_CATEGORIES:
+                    continue
+                if meta.status != "failed":
+                    continue
+                recovered_signals = _attempt_smart_proxy_recovery(
+                    site=site,
+                    ctx=ctx,
+                    smart_proxy_registry=smart_proxy_registry,
+                    provenance=provenance,
+                )
+                if recovered_signals is not None:
+                    results[index] = (slug, recovered_signals, meta)
+                break
+
         data = CompanyContext(
             site=site,
             fetched_at=when,
             **_merge_signals(results),
         )
-        status = _aggregate_status(provenance.values())
+        status = _aggregate_status(provenance, registry)
         error, suggestion = _envelope_narrative(status, provenance)
         return Envelope(
             status=status,
@@ -114,7 +154,7 @@ def run(
             error=f"orchestrator failed: {exc.__class__.__name__}: {exc}",
             provider_version=CORE_PROVIDER_VERSION,
         )
-        return _fallback_envelope(site=site, when=when, provenance=provenance)
+        return _fallback_envelope(site=site, when=when, provenance=provenance, registry=registry)
 
 
 def _invoke(
@@ -148,6 +188,90 @@ def _invoke(
         provider_version=version,
         latency_ms=_elapsed_ms(start),
     )
+
+
+def _attempt_smart_proxy_recovery(
+    *,
+    site: str,
+    ctx: FetchContext,
+    smart_proxy_registry: Mapping[str, type[ProviderBase]],
+    provenance: dict[str, ProviderRunMetadata],
+) -> SiteSignals | None:
+    """Try every registered smart-proxy provider in slug order.
+
+    The first one that returns bytes + ``ok`` metadata wins. Every attempt's
+    metadata is written into ``provenance`` so the user sees the trace. On
+    bytes the shared extractor turns them into a ``SiteSignals`` payload;
+    parse failures downgrade the proxy row to ``failed`` and move on.
+    """
+    for proxy_slug in sorted(smart_proxy_registry):
+        proxy_cls = smart_proxy_registry[proxy_slug]
+        body, proxy_meta = _invoke_smart_proxy(proxy_slug, proxy_cls, url=site, ctx=ctx)
+        provenance[proxy_slug] = proxy_meta
+        if body is None or proxy_meta.status != "ok":
+            continue
+        try:
+            return site_signals_from_homepage_bytes(body)
+        except Exception as exc:  # noqa: BLE001 - deliberate boundary
+            provenance[proxy_slug] = _failed_metadata(
+                error=f"smart-proxy bytes extraction failed: {exc.__class__.__name__}: {exc}",
+                provider_version=proxy_meta.provider_version,
+                latency_ms=proxy_meta.latency_ms,
+            )
+    return None
+
+
+def _invoke_smart_proxy(
+    slug: str,
+    cls: type[ProviderBase],
+    *,
+    url: str,
+    ctx: FetchContext,
+) -> tuple[bytes | None, ProviderRunMetadata]:
+    """Call a smart-proxy's ``fetch``, catching any escaped exception.
+
+    Smart-proxies return ``(bytes | None, ProviderRunMetadata)`` — a different
+    shape from primary providers — so the normalisation rules are distinct.
+    """
+    version = getattr(cls, "version", "unknown")
+    start = time.monotonic()
+    try:
+        provider = cls()
+        result = provider.fetch(url, ctx=ctx)
+    except Exception as exc:  # noqa: BLE001 — deliberate boundary
+        return None, ProviderRunMetadata(
+            status="failed",
+            latency_ms=_elapsed_ms(start),
+            error=f"smart-proxy raised: {exc.__class__.__name__}: {exc}",
+            provider_version=version,
+            cost_incurred=0,
+        )
+    if not isinstance(result, tuple) or len(result) != 2:
+        return None, _failed_metadata(
+            error=f"{slug} returned invalid result: expected (bytes|None, metadata)",
+            provider_version=version,
+            latency_ms=_elapsed_ms(start),
+        )
+    body, raw_meta = result
+    try:
+        meta = (
+            raw_meta
+            if isinstance(raw_meta, ProviderRunMetadata)
+            else ProviderRunMetadata.model_validate(raw_meta)
+        )
+    except Exception as exc:  # noqa: BLE001 - deliberate boundary
+        return None, _failed_metadata(
+            error=f"{slug} returned invalid metadata: {exc.__class__.__name__}: {exc}",
+            provider_version=version,
+            latency_ms=_elapsed_ms(start),
+        )
+    if body is not None and not isinstance(body, (bytes, bytearray)):
+        return None, _failed_metadata(
+            error=f"{slug} returned non-bytes body: {type(body).__name__}",
+            provider_version=meta.provider_version,
+            latency_ms=meta.latency_ms,
+        )
+    return (bytes(body) if body is not None else None), meta
 
 
 _SIGNAL_ASSIGN: dict[type, str] = {
@@ -189,18 +313,47 @@ def _merge_signals(
 
 
 def _aggregate_status(
-    provenance: Iterable[ProviderRunMetadata],
+    provenance: Mapping[str, ProviderRunMetadata],
+    registry: Mapping[str, type[ProviderBase]],
 ) -> EnvelopeStatus:
-    rows = list(provenance)
+    """Waterfall-aware status rollup.
+
+    A failed site_text/site_meta row is ``recovered`` when a smart-proxy row
+    in the same run is ``ok`` — recovery rows stay in provenance for
+    traceability but don't count as top-level failures. When no ``ok`` rows
+    exist and any row is ``not_configured``, the envelope reports
+    ``partial`` with a config-based suggestion rather than ``degraded``,
+    matching the shape documented in ``docs/EXTRACTION-STRATEGY.md``.
+    """
+    rows = list(provenance.items())
     if not rows:
-        # No providers registered — emit degraded so downstream branches on it
-        # rather than interpreting an empty run as success.
         return "degraded"
-    any_ok = any(row.status == "ok" for row in rows)
-    any_fail = any(row.status in ("failed", "not_configured", "degraded") for row in rows)
+
+    recovered_slugs: set[str] = set()
+    smart_proxy_recovered = any(
+        meta.status == "ok"
+        and getattr(registry.get(slug), "category", None) == _SMART_PROXY_CATEGORY
+        for slug, meta in rows
+    )
+    if smart_proxy_recovered:
+        for slug, meta in rows:
+            cls = registry.get(slug)
+            if cls is None:
+                continue
+            category = getattr(cls, "category", None)
+            if category in _RECOVERABLE_CATEGORIES and meta.status == "failed":
+                recovered_slugs.add(slug)
+
+    effective = [(slug, meta) for slug, meta in rows if slug not in recovered_slugs]
+    any_ok = any(meta.status == "ok" for _slug, meta in effective)
+    any_fail = any(
+        meta.status in ("failed", "not_configured", "degraded") for _slug, meta in effective
+    )
     if any_ok and not any_fail:
         return "ok"
     if any_ok and any_fail:
+        return "partial"
+    if any(meta.status == "not_configured" for _slug, meta in rows):
         return "partial"
     return "degraded"
 
@@ -289,8 +442,9 @@ def _fallback_envelope(
     site: str,
     when: datetime,
     provenance: Mapping[str, ProviderRunMetadata],
+    registry: Mapping[str, type[ProviderBase]],
 ) -> Envelope:
-    status = _aggregate_status(provenance.values())
+    status = _aggregate_status(provenance, registry)
     error, suggestion = _envelope_narrative(status, provenance)
     if error is None:
         error = "no providers succeeded"

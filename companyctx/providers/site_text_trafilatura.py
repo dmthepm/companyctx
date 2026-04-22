@@ -25,9 +25,9 @@ from pathlib import Path
 from typing import ClassVar, Literal
 from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup
 from curl_cffi import requests
 
+from companyctx.extract import detect_tech_stack, extract_body_text, extract_services
 from companyctx.providers.base import FetchContext
 from companyctx.robots import is_allowed
 from companyctx.schema import ProviderRunMetadata, SiteSignals
@@ -121,16 +121,16 @@ def _from_fixture(site: str, fixtures_dir: str | None) -> SiteSignals:
     if not homepage.exists():
         raise _MissingFixtureError(f"fixture not found: {homepage}")
     homepage_html = homepage.read_text(encoding="utf-8")
-    homepage_text = _extract_body_text(homepage_html)
+    homepage_text = extract_body_text(homepage_html)
     about = root / "about.html"
-    about_text = _extract_body_text(about.read_text(encoding="utf-8")) if about.exists() else None
+    about_text = extract_body_text(about.read_text(encoding="utf-8")) if about.exists() else None
     services_path = root / "services.html"
     services = (
-        _extract_services(services_path.read_text(encoding="utf-8"))
+        extract_services(services_path.read_text(encoding="utf-8"))
         if services_path.exists()
         else []
     )
-    tech_stack = _detect_tech_stack(homepage_html)
+    tech_stack = detect_tech_stack(homepage_html)
     return SiteSignals(
         homepage_text=homepage_text,
         about_text=about_text,
@@ -142,12 +142,12 @@ def _from_fixture(site: str, fixtures_dir: str | None) -> SiteSignals:
 def _from_network(site: str, ctx: FetchContext) -> SiteSignals:
     base = _normalize_base_url(site)
     homepage_html = _stealth_fetch(base, ctx)
-    homepage_text = _extract_body_text(homepage_html)
+    homepage_text = extract_body_text(homepage_html)
     about_html = _try_fetch(f"{base}/about", ctx)
-    about_text = _extract_body_text(about_html) if about_html else None
+    about_text = extract_body_text(about_html) if about_html else None
     services_html = _try_fetch(f"{base}/services", ctx)
-    services = _extract_services(services_html) if services_html else []
-    tech_stack = _detect_tech_stack(homepage_html)
+    services = extract_services(services_html) if services_html else []
+    tech_stack = detect_tech_stack(homepage_html)
     return SiteSignals(
         homepage_text=homepage_text,
         about_text=about_text,
@@ -207,59 +207,6 @@ def _slug_for(site: str) -> str:
     if not slug or not _SAFE_FIXTURE_SLUG_RE.fullmatch(slug):
         raise _MissingFixtureError(f"invalid fixture slug: {slug or host!r}")
     return slug
-
-
-def _extract_body_text(html: str) -> str:
-    # Local import so the provider module itself doesn't pay the trafilatura
-    # import cost when only consumers of the schema touch this file.
-    import trafilatura  # noqa: PLC0415
-
-    extracted = trafilatura.extract(html, include_comments=False, include_tables=False)
-    if extracted:
-        return extracted.strip()
-    # Fallback: raw body text, stripped. Trafilatura returns None on empty or
-    # JS-only pages; we still want a deterministic non-null string.
-    soup = BeautifulSoup(html, "lxml")
-    body = soup.body
-    return body.get_text(separator="\n", strip=True) if body else ""
-
-
-def _extract_services(html: str) -> list[str]:
-    soup = BeautifulSoup(html, "lxml")
-    items: list[str] = []
-    for li in soup.select("ul li"):
-        strong = li.find("strong")
-        raw = strong.get_text(strip=True) if strong else li.get_text(" ", strip=True)
-        cleaned = raw.rstrip(". ").strip()
-        if cleaned:
-            items.append(cleaned)
-    return items
-
-
-def _detect_tech_stack(html: str) -> list[str]:
-    """Minimal, deterministic tech fingerprinting from the HTML surface."""
-    hits: list[str] = []
-    lowered = html.lower()
-    if "wp-content" in lowered or "wordpress" in lowered or "wp-elementor" in lowered:
-        hits.append("WordPress")
-    if "elementor" in lowered:
-        hits.append("Elementor")
-    if "shopify" in lowered:
-        hits.append("Shopify")
-    if "squarespace" in lowered or "sqs-site" in lowered:
-        hits.append("Squarespace")
-    if "wix-site" in lowered or "wixsite" in lowered:
-        hits.append("Wix")
-    if "webflow" in lowered:
-        hits.append("Webflow")
-    # Deduplicate while preserving first-seen order.
-    seen: set[str] = set()
-    out: list[str] = []
-    for tech in hits:
-        if tech not in seen:
-            seen.add(tech)
-            out.append(tech)
-    return out
 
 
 __all__ = ["Provider"]

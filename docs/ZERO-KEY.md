@@ -107,14 +107,17 @@ nothing. The envelope is always well-formed.
 ## What to do when zero-key isn't enough
 
 **Option A — configure a smart-proxy provider.** `companyctx` ships a
-`SmartProxyProvider` interface, vendor-agnostic. You supply your own
-residential-proxy / headless-browser credentials from a provider you already
-use. We route the anti-bot-blocked fetches through it. We do not ship a
-specific vendor; we ship the contract.
+vendor-agnostic URL-style implementation (`smart_proxy_http`). Set
+`COMPANYCTX_SMART_PROXY_URL=http://user:pass@host:port` to the full URL
+your residential-proxy vendor gave you — anti-bot-blocked fetches route
+through it as Attempt 2, and the envelope's top-level status flips from
+`partial` to `ok` for that prospect. If your vendor requires a custom CA,
+set `COMPANYCTX_SMART_PROXY_VERIFY=/path/to/ca.pem` as well.
 
-> **Pending measurement.** Candidate smart-proxy vendors remain in the
-> proposed ADR and stay out of accepted docs until the measurement spike
-> lands.
+> **Pending measurement.** A **named reference adapter** over a specific
+> vendor — shipped as an optional extra — lands after the smart-proxy
+> vendor eval spike. No vendor is named in these docs until that
+> measurement is in.
 
 **Option B — configure direct-API providers.** For review counts / ratings /
 social follower counts, the right path is the platform's own API, not
