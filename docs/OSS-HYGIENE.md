@@ -164,6 +164,92 @@ from `pyproject.toml` and a few sibling files. They rot quickly.*
 
 ---
 
+## Automated gates
+
+Four automated gates run on every PR to catch OSS health drift that
+human review misses at scale. Human review (the eight sections above)
+stays authoritative — the gates are a safety net, not a substitute.
+
+### What runs
+
+| Gate         | Where                           | Trigger                           | Blocks CI? |
+|--------------|---------------------------------|-----------------------------------|------------|
+| `pip-audit`  | `.github/workflows/ci.yml`      | push to `main`, PR                | Yes        |
+| `pyroma`     | `.github/workflows/ci.yml`      | push to `main`, PR                | Yes        |
+| CodeQL       | `.github/workflows/codeql.yml`  | push to `main`, PR, weekly cron   | No\*       |
+| Dependabot   | `.github/dependabot.yml`        | weekly sweep                      | No\*\*     |
+
+\* CodeQL findings surface as Security alerts on the repo. They don't
+fail CI today; branch protection can promote them to blocking in a
+separate repo-settings change (not code).
+
+\*\* Dependabot opens PRs; the same ruff / mypy / pytest / pip-audit /
+pyroma gates then gate those PRs just like any human PR.
+
+### `pip-audit` — CVE scan on direct + transitive deps
+
+Runs in the `supply-chain` job alongside ruff / mypy / pytest. Uses the
+`--strict` flag so any advisory against any installed package fails the
+build. Allowlist is `.pip-audit.toml` at repo root.
+
+To dismiss a false positive:
+
+1. Reproduce locally: `pip-audit $(python scripts/pip_audit_ignores.py)`.
+2. Confirm the vulnerable code path is not reachable from any provider
+   or CLI entry point. If it is reachable, the answer is "upgrade the
+   dep" or "vendor around it", not allowlist.
+3. Add an entry to `.pip-audit.toml`:
+
+   ```toml
+   [[ignore]]
+   id = "GHSA-xxxx-xxxx-xxxx"
+   reason = "vuln in <package>.<symbol>; companyctx calls <other_symbol> only."
+   ```
+
+4. Cite the advisory ID in your PR description. Reviewers verify the
+   unreachable claim before approving.
+
+When the upstream package ships a fix, delete the allowlist entry. Do
+not leave stale entries.
+
+### `pyroma` — package metadata health
+
+Runs with `-n 9` so any score below 9/10 fails CI. Current baseline is
+10/10. A drop usually means a missing classifier, a broken
+`project.urls` entry, or a `long_description` that stopped rendering.
+The fix is always in `pyproject.toml`, not in an allowlist — there is
+no allowlist for pyroma by design.
+
+### CodeQL — static analysis
+
+GitHub's default CodeQL, two languages:
+
+- `python` — catches the library code itself (injection, unsafe
+  deserialization, etc.).
+- `actions` — catches workflow files (expression injection, script
+  injection via untrusted input).
+
+Findings appear on the Security tab. Triage weekly; file an issue for
+anything we can't fix same-day.
+
+### Dependabot — weekly dep sweep
+
+Weekly on Monday 09:00 America/Los_Angeles. Two ecosystems: `pip` and
+`github-actions`. Minor and patch updates group into one PR per
+ecosystem; major updates open individually so a human can judge breakage
+risk. All Dependabot PRs target `main` and pass through the full CI
+gate stack before merge.
+
+### Philosophy
+
+Gates catch drift, not design. Prefer fixing the underlying issue
+(upgrade the dep, fix the metadata, rewrite the vulnerable code path)
+over allowlisting. Allowlist entries cost review attention every time
+someone audits this file — that cost is the point, and it should bias
+us toward real fixes.
+
+---
+
 ## Test case — how PR #19 would have scored
 
 PR [dmthepm/companyctx#19](https://github.com/dmthepm/companyctx/pull/19)
