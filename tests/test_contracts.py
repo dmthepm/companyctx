@@ -81,18 +81,28 @@ def test_robots_disallow_is_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
         def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
             self.close()
 
+    class _Opener:
+        def open(self, request: object, timeout: int = 10) -> _Response:
+            return _Response(robots_txt)
+
     monkeypatch.setattr(
-        "companyctx.robots.urlopen",
-        lambda request, timeout=10: _Response(robots_txt),
+        "companyctx.security.socket.getaddrinfo",
+        lambda host, *a, **kw: [(2, 1, 6, "", ("93.184.216.34", 0))],
     )
+    monkeypatch.setattr("companyctx.robots.build_opener", lambda *h: _Opener())
     assert is_allowed("https://example.com/private", user_agent=DEFAULT_USER_AGENT) is False
 
 
 def test_robots_fetch_failure_falls_open(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _boom(request: object, timeout: int = 10) -> object:
-        raise OSError("network down")
+    class _Opener:
+        def open(self, request: object, timeout: int = 10) -> object:
+            raise OSError("network down")
 
-    monkeypatch.setattr("companyctx.robots.urlopen", _boom)
+    monkeypatch.setattr(
+        "companyctx.security.socket.getaddrinfo",
+        lambda host, *a, **kw: [(2, 1, 6, "", ("93.184.216.34", 0))],
+    )
+    monkeypatch.setattr("companyctx.robots.build_opener", lambda *h: _Opener())
     assert is_allowed("https://example.com/private", user_agent=DEFAULT_USER_AGENT) is True
 
 

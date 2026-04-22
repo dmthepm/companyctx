@@ -74,6 +74,14 @@ validator up front, disables curl_cffi's auto-redirects
 `Location` hop is re-validated before the next request is issued. Up to
 `MAX_REDIRECTS=5` hops.
 
+The robots.txt fetch path (`companyctx/robots.py::is_allowed`) has the
+same exposure — a public host can 302 its `/robots.txt` into a private
+destination — and applies the same guardrails:
+`validate_public_http_url` on the robots URL, a `_NoRedirectHandler`
+urllib handler that raises on every 3xx, and a bounded `response.read`.
+Any failure here falls open (robots treated as unreachable); the primary
+fetch is still SSRF-validated separately.
+
 **Remediation status.** Closed.
 
 **Residual risk — time-of-use DNS rebinding.** An attacker can flip the
@@ -88,6 +96,8 @@ layer. Tracked as an accepted residual.
 `test_non_public_address_rejected`, `test_metadata_hostname_rejected_without_dns`,
 `test_stealth_fetch_rejects_ssrf_before_network`, `test_dns_rebinding_is_caught_on_resolve`.
 `tests/test_security_fetch.py::test_redirect_to_private_ip_rejected`.
+`tests/test_security_robots.py::test_robots_redirect_refused_without_following`,
+`test_robots_unsafe_url_falls_open_without_fetching`.
 
 ---
 
@@ -97,7 +107,7 @@ layer. Tracked as an accepted residual.
 (`../../../etc/passwd`, absolute paths, dotted paths) or a symlink planted
 inside `fixtures/<slug>/` could read files outside the fixture tree.
 
-**Current behaviour.** Two independent guardrails:
+**Current behaviour.** Three independent guardrails:
 
 1. `_slug_for` derives the slug from `urlparse(site).netloc`, then requires
    it to match `^[a-z0-9][a-z0-9_-]*$`. Dots, slashes, backslashes,
@@ -106,6 +116,11 @@ inside `fixtures/<slug>/` could read files outside the fixture tree.
    `fixtures_dir / slug` with `Path.resolve(strict=False)` and verifies
    containment via `Path.relative_to`. A symlink pointing outside the
    fixture tree is refused.
+3. `_safe_child` applies the same resolve + `relative_to` check to every
+   file read inside the site directory (`homepage.html`, `about.html`,
+   `services.html`, `fixture-block.txt`). This catches the
+   file-level escape a dir-level check misses: a legitimate
+   `fixtures/acme/` that contains `homepage.html -> /etc/passwd`.
 
 **Remediation status.** Closed.
 
@@ -116,6 +131,7 @@ collapses symlinks before the comparison.
 **Tests.** `tests/test_security_url.py::test_slug_for_rejects_traversal_and_unsafe`,
 `test_safe_fixture_root_rejects_symlink_escape`,
 `test_from_fixture_rejects_symlinked_escape`,
+`test_from_fixture_rejects_symlinked_file_inside_legit_dir`,
 `test_safe_fixture_root_accepts_normal_subdir`.
 
 ---
@@ -141,6 +157,10 @@ parse. Any of these consumes memory, CPU, or wall-clock time.
     lying `Content-Length` headers and decompression bombs (since
     `iter_content` yields already-decompressed bytes when
     `Content-Encoding: gzip` is present).
+- **robots.txt size cap.** `companyctx/robots.py::MAX_ROBOTS_BYTES =
+  512 * 1024` (512 KiB). Enforced by `response.read(MAX_ROBOTS_BYTES+1)`
+  plus a post-read length check — a robots.txt that ships more than 512
+  KiB cannot inflate memory before the main fetch runs.
 - **Parse blow-ups.** Not currently bounded beyond the size cap.
   `trafilatura.extract` and `BeautifulSoup('lxml')` are both external.
   Capping the input at 10 MiB is the proxy bound.
@@ -152,6 +172,8 @@ in practice, and no real target we care about approaches it.
 **Tests.** `tests/test_security_fetch.py::test_content_length_over_cap_rejected`,
 `test_streamed_body_over_cap_rejected`, `test_redirect_loop_capped`,
 `test_redirect_without_location_header_rejected`, `test_under_cap_succeeds`.
+`tests/test_security_robots.py::test_robots_oversize_body_refused`,
+`test_robots_under_cap_parses_normally`.
 
 ---
 
@@ -285,3 +307,14 @@ added to lock it in.
   added, fetch path hardened (size + redirect caps, per-hop re-validation),
   fixture path boundary + symlink check added, `curl_cffi` pinned to
   `~=0.15.0`. See PR for COX-23.
+- **2026-04-22 — review follow-up.** Three gaps from the review closed in
+  the same PR:
+  (1) robots.txt no longer follows redirects (they were an SSRF bypass —
+  a public host could 302 into a private destination before `_stealth_fetch`
+  ran);
+  (2) robots.txt response read is capped at `MAX_ROBOTS_BYTES = 512 KiB`
+  (an unbounded `response.read()` previously meant a hostile robots could
+  inflate memory);
+  (3) fixture file reads go through `_safe_child`, catching the
+  `fixtures/<slug>/homepage.html -> /etc/passwd` escape the directory-level
+  check missed.

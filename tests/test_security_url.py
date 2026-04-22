@@ -208,6 +208,29 @@ def test_from_fixture_rejects_symlinked_escape(tmp_path: Path) -> None:
         _from_fixture("https://acme.com/", str(fixtures))
 
 
+def test_from_fixture_rejects_symlinked_file_inside_legit_dir(tmp_path: Path) -> None:
+    """A normal ``fixtures/<slug>/`` containing a file-level symlink must
+    still be refused.
+
+    Regression: the initial COX-23 fix only boundary-checked the slug
+    directory; individual files inside it were read with
+    ``Path.read_text`` which follows symlinks silently. A planted
+    ``fixtures/acme/homepage.html -> /etc/passwd`` would have leaked the
+    linked content via ``_from_fixture``.
+    """
+    fixtures = tmp_path / "fixtures"
+    site_dir = fixtures / "acme"
+    site_dir.mkdir(parents=True)
+
+    secret = tmp_path / "secret.html"
+    secret.write_text("<html><body>SECRET</body></html>")
+
+    (site_dir / "homepage.html").symlink_to(secret)
+
+    with pytest.raises(_MissingFixtureError, match="escapes"):
+        _from_fixture("https://acme.com/", str(fixtures))
+
+
 # ---------------------------------------------------------------------------
 # §6 robots.txt bypass — --ignore-robots must stay CLI-only
 # ---------------------------------------------------------------------------

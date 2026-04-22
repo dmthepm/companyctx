@@ -119,18 +119,18 @@ def _from_fixture(site: str, fixtures_dir: str | None) -> SiteSignals:
     # become the BlockedError reason verbatim, which the orchestrator surfaces
     # as `provenance[slug].error`. See fixtures/README.md ("Network-failure
     # regressions") and the rationale in issue #40.
-    block = root / "fixture-block.txt"
+    block = _safe_child(root, "fixture-block.txt")
     if block.exists():
         reason = block.read_text(encoding="utf-8").strip()
         raise _BlockedError(reason or "blocked")
-    homepage = root / "homepage.html"
+    homepage = _safe_child(root, "homepage.html")
     if not homepage.exists():
         raise _MissingFixtureError(f"fixture not found: {homepage}")
     homepage_html = homepage.read_text(encoding="utf-8")
     homepage_text = _extract_body_text(homepage_html)
-    about = root / "about.html"
+    about = _safe_child(root, "about.html")
     about_text = _extract_body_text(about.read_text(encoding="utf-8")) if about.exists() else None
-    services_path = root / "services.html"
+    services_path = _safe_child(root, "services.html")
     services = (
         _extract_services(services_path.read_text(encoding="utf-8"))
         if services_path.exists()
@@ -293,6 +293,24 @@ def _safe_fixture_root(fixtures_dir: str, slug: str) -> Path:
         candidate.relative_to(base)
     except ValueError as exc:
         raise _MissingFixtureError(f"fixture path escapes fixtures_dir: {candidate}") from exc
+    return candidate
+
+
+def _safe_child(root: Path, name: str) -> Path:
+    """Resolve ``root / name`` and refuse if the result escapes ``root``.
+
+    ``_safe_fixture_root`` protects the per-site directory, but individual
+    files inside a legitimate directory can still be symlinks pointing
+    elsewhere (e.g., ``fixtures/acme/homepage.html -> /etc/passwd``).
+    ``Path.resolve`` follows the symlink; ``relative_to`` then refuses the
+    escape. ``root`` must already be a resolved path (as returned by
+    :func:`_safe_fixture_root`).
+    """
+    candidate = (root / name).resolve(strict=False)
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:
+        raise _MissingFixtureError(f"fixture file escapes fixtures_dir: {candidate}") from exc
     return candidate
 
 
