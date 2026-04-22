@@ -32,32 +32,32 @@ schema-locked JSON envelope out. Zero keys on the default path.
 
 ```json
 {
-  "schema_version": "0.2.0",
-  "status": "ok",
   "data": {
-    "site": "acme-bakery.com",
     "fetched_at": "2026-04-22T18:35:02.767112Z",
+    "mentions": null,
     "pages": {
-      "homepage_text": "...",
       "about_text": "...",
+      "homepage_text": "...",
       "services": ["..."],
       "tech_stack": ["..."]
     },
     "reviews": null,
-    "social": null,
     "signals": null,
-    "mentions": null
+    "site": "acme-bakery.com",
+    "social": null
   },
+  "error": null,
   "provenance": {
     "site_text_trafilatura": {
-      "status": "ok",
-      "latency_ms": 412,
+      "cost_incurred": 0,
       "error": null,
+      "latency_ms": 412,
       "provider_version": "0.1.0",
-      "cost_incurred": 0
+      "status": "ok"
     }
   },
-  "error": null
+  "schema_version": "0.2.0",
+  "status": "ok"
 }
 ```
 

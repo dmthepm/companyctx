@@ -67,34 +67,37 @@ Zero-key Attempt 1 (`site_text_trafilatura`) populates `pages`; the other
 slots are reserved for providers that register later (see
 `docs/SPEC.md` — shipped-vs-deferred).
 
+Keys are shown in the alphabetical order the CLI emits
+(`json.dumps(..., sort_keys=True)`) so the block is copy-paste reproducible.
+
 ```json
 {
-  "schema_version": "0.2.0",
-  "status": "ok",
   "data": {
-    "site": "acme-bakery.com",
     "fetched_at": "2026-04-22T18:35:02.767112Z",
+    "mentions": null,
     "pages": {
-      "homepage_text": "Acme Bakery is a bakery in Portland, OR. ...",
       "about_text": "Acme Bakery has served Portland, OR since 2010. ...",
+      "homepage_text": "Acme Bakery is a bakery in Portland, OR. ...",
       "services": ["Custom cakes", "Catering", "Wholesale bread", "Pastry boxes"],
       "tech_stack": ["WordPress", "Elementor"]
     },
     "reviews": null,
-    "social": null,
     "signals": null,
-    "mentions": null
+    "site": "acme-bakery.com",
+    "social": null
   },
+  "error": null,
   "provenance": {
     "site_text_trafilatura": {
-      "status": "ok",
-      "latency_ms": 412,
+      "cost_incurred": 0,
       "error": null,
+      "latency_ms": 412,
       "provider_version": "0.1.0",
-      "cost_incurred": 0
+      "status": "ok"
     }
   },
-  "error": null
+  "schema_version": "0.2.0",
+  "status": "ok"
 }
 ```
 
@@ -102,38 +105,38 @@ slots are reserved for providers that register later (see
 
 ```json
 {
-  "schema_version": "0.2.0",
-  "status": "partial",
   "data": {
-    "site": "walled-garden.example",
     "fetched_at": "2026-04-22T18:35:14.928144Z",
+    "mentions": null,
     "pages": null,
     "reviews": null,
-    "social": null,
     "signals": null,
-    "mentions": null
-  },
-  "provenance": {
-    "site_text_trafilatura": {
-      "status": "failed",
-      "latency_ms": 842,
-      "error": "blocked_by_antibot (HTTP 403)",
-      "provider_version": "0.1.0",
-      "cost_incurred": 0
-    },
-    "smart_proxy_http": {
-      "status": "not_configured",
-      "latency_ms": 0,
-      "error": "missing env var: COMPANYCTX_SMART_PROXY_URL — export COMPANYCTX_SMART_PROXY_URL='http://user:pass@host:port' to wire your residential-proxy vendor",
-      "provider_version": "0.1.0",
-      "cost_incurred": 0
-    }
+    "site": "walled-garden.example",
+    "social": null
   },
   "error": {
     "code": "blocked_by_antibot",
     "message": "blocked_by_antibot (HTTP 403)",
     "suggestion": "configure a smart-proxy provider key or skip this prospect"
-  }
+  },
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": "blocked_by_antibot (HTTP 403)",
+      "latency_ms": 842,
+      "provider_version": "0.1.0",
+      "status": "failed"
+    },
+    "smart_proxy_http": {
+      "cost_incurred": 0,
+      "error": "missing env var: COMPANYCTX_SMART_PROXY_URL — export COMPANYCTX_SMART_PROXY_URL='http://user:pass@host:port' to wire your residential-proxy vendor",
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "not_configured"
+    }
+  },
+  "schema_version": "0.2.0",
+  "status": "partial"
 }
 ```
 

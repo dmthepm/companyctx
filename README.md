@@ -13,26 +13,32 @@ companyctx fetch acme-bakery.com --json
 
 ```json
 {
-  "schema_version": "0.2.0",
-  "status": "ok",
   "data": {
-    "site": "acme-bakery.com",
     "fetched_at": "2026-04-22T18:35:02.767112Z",
+    "mentions": null,
     "pages": {
-      "homepage_text": "Acme Bakery is a bakery in Portland, OR. Founded 2010. We're a team of 3. ...",
       "about_text": "Acme Bakery has served Portland, OR since 2010. ...",
+      "homepage_text": "Acme Bakery is a bakery in Portland, OR. Founded 2010. We're a team of 3. ...",
       "services": ["Custom cakes", "Catering", "Wholesale bread", "Pastry boxes"],
       "tech_stack": ["WordPress", "Elementor"]
     },
     "reviews": null,
-    "social": null,
     "signals": null,
-    "mentions": null
+    "site": "acme-bakery.com",
+    "social": null
   },
+  "error": null,
   "provenance": {
-    "site_text_trafilatura": { "status": "ok", "latency_ms": 412, "error": null, "provider_version": "0.1.0", "cost_incurred": 0 }
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": null,
+      "latency_ms": 412,
+      "provider_version": "0.1.0",
+      "status": "ok"
+    }
   },
-  "error": null
+  "schema_version": "0.2.0",
+  "status": "ok"
 }
 ```
 
@@ -155,15 +161,15 @@ On full block with no Attempt-2/3 providers configured:
 
 ```json
 {
-  "schema_version": "0.2.0",
-  "status": "partial",
-  "data": { "site": "example.com", "fetched_at": "...", "pages": null, "reviews": null, ... },
-  "provenance": { "site_text_trafilatura": { "status": "failed", "error": "blocked_by_antibot (HTTP 403)", ... } },
+  "data": { "fetched_at": "...", "mentions": null, "pages": null, "reviews": null, "signals": null, "site": "example.com", "social": null },
   "error": {
     "code": "blocked_by_antibot",
     "message": "blocked_by_antibot (HTTP 403)",
     "suggestion": "configure a smart-proxy provider key or skip this prospect"
-  }
+  },
+  "provenance": { "site_text_trafilatura": { "cost_incurred": 0, "error": "blocked_by_antibot (HTTP 403)", "latency_ms": 842, "provider_version": "0.1.0", "status": "failed" } },
+  "schema_version": "0.2.0",
+  "status": "partial"
 }
 ```
 
