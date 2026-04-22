@@ -193,8 +193,11 @@ that owns ruff / mypy / pytest). Uses the `--strict` flag so any
 advisory against any installed package fails the build. The job
 installs `.[all,dev]` so every provider extra
 (`extract`, `reviews`, `youtube`) is audited, not just the default
-runtime deps. The job also matrixes across Python 3.10 / 3.11 / 3.12 so
-interpreter-pinned deps (e.g. `tomli` on 3.10) are actually covered.
+runtime deps. The job runs on a single Python version (3.12) because
+`pip-audit` and `pyroma` inspect package metadata — output agrees
+across supported interpreters in practice. The one gap is
+interpreter-conditional deps (e.g. `tomli` on 3.10 only); if a CVE ever
+surfaces in one of those, re-matrix the job.
 
 Allowlist is `.pip-audit.toml` at repo root. To dismiss a false
 positive:

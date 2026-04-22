@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
+    name: codeql (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
       security-events: write
