@@ -31,9 +31,9 @@ class Envelope(BaseModel):
     error: EnvelopeError | None = None
 ```
 
-`schema_version` is **required**. A missing or `null` value fails
-validation — a default would let pre-v0.2 envelopes silently validate as
-current. See `docs/SPEC.md` for the full rationale.
+`schema_version` is **required**. A missing, `null`, or empty-string
+value fails validation — a default would let pre-v0.2 envelopes silently
+validate as current. See `docs/SPEC.md` for the full rationale.
 
 Status semantics:
 
