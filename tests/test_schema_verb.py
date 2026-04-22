@@ -98,7 +98,7 @@ def test_fetch_rejects_silent_cache_flag(flag: str) -> None:
     assert result.exit_code != 0
     plain = _plain(result.output)
     assert flag in plain
-    assert "not implemented" in plain or "issues/37" in plain
+    assert "not implemented" in plain or "issues/9" in plain
 
 
 def test_fetch_rejects_silent_config_flag(tmp_path: Path) -> None:
@@ -121,7 +121,7 @@ def test_fetch_rejects_silent_config_flag(tmp_path: Path) -> None:
     assert result.exit_code != 0
     plain = _plain(result.output)
     assert "--config" in plain
-    assert "not implemented" in plain or "issues/37" in plain
+    assert "not implemented" in plain or "issues/9" in plain
 
 
 @pytest.mark.parametrize(

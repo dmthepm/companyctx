@@ -70,8 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `--from-cache` / `--refresh` / `--no-cache` / `--config` previously were
   accepted silently and ignored. They now raise `typer.BadParameter` with a
-  link to the tracking issue (#37). No silent-pass behavior for contracts
-  the tool does not honour.
+  link to the tracking issue (#9 — SQLite cache schema + migrations; the
+  v0.2.0 messages originally named a phantom tracking number, corrected in
+  the Unreleased block below). No silent-pass behavior for contracts the
+  tool does not honour.
 - `batch` / `cache list` / `cache clear` previously exited 2 with no output.
   They now print `<command> is not implemented in v0.2.0 — see #N` to
   stderr before exiting non-zero.

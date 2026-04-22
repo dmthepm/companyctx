@@ -4,6 +4,23 @@ This folder is a curated, zero-to-hero progression. Each file is a
 self-contained recipe that solves a real business problem using
 `companyctx`'s schema-locked JSON envelope.
 
+## Prerequisites
+
+Install `companyctx` first — **every recipe in this gallery assumes the
+CLI and package are on the Python path**:
+
+```bash
+# From a clean checkout, either:
+pipx install companyctx            # CLI on PATH; enough for bash recipes
+# or, for the .py recipes that `from companyctx.core import run`:
+pip install -e ".[dev,extract,reviews,youtube]"
+```
+
+Without one of those, the `.sh` scripts fail at the first `companyctx`
+invocation and the `.py` scripts fail at import.
+
+## The primitive
+
 Every example assumes the same primitive:
 
 ```bash
