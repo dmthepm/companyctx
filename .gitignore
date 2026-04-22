@@ -49,6 +49,7 @@ coverage.xml
 *.swp
 *.swo
 .DS_Store
+.claude/
 
 # Build artifacts / runtime caches
 *.log
