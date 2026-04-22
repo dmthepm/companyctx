@@ -18,7 +18,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from companyctx import __version__
-from companyctx.extract import site_signals_from_homepage_bytes
+from companyctx.extract import (
+    EMPTY_RESPONSE_ERROR as _EMPTY_RESPONSE_ERROR,
+)
+from companyctx.extract import (
+    is_empty_response,
+    site_signals_from_homepage_bytes,
+)
 from companyctx.providers import discover
 from companyctx.providers.base import FetchContext, ProviderBase
 from companyctx.schema import (
@@ -63,8 +69,9 @@ _ROBOTS_BLOCK_ERROR = "blocked_by_robots"
 # check (COX-44). Automatic proxy-retry on empty is explicitly out of
 # scope — agents branching on ``error.code`` decide what to do. Skipping
 # the retry here keeps the provider's honest signal from being laundered
-# into a degraded-but-ok row by the waterfall.
-_EMPTY_RESPONSE_ERROR = "empty_response"
+# into a degraded-but-ok row by the waterfall. The error-string constant
+# itself lives in ``companyctx.extract`` so the provider, the orchestrator,
+# and the smart-proxy recovery path all reference one source of truth.
 EMPTY_RESPONSE_SUGGESTION = (
     "site returned HTTP 200 with effectively no content; "
     "try --ignore-robots or check with a browser"
@@ -230,10 +237,16 @@ def _attempt_smart_proxy_recovery(
 ) -> SiteSignals | None:
     """Try every registered smart-proxy provider in slug order.
 
-    The first one that returns bytes + ``ok`` metadata wins. Every attempt's
-    metadata is written into ``provenance`` so the user sees the trace. On
-    bytes the shared extractor turns them into a ``SiteSignals`` payload;
-    parse failures downgrade the proxy row to ``failed`` and move on.
+    The first one that returns bytes + ``ok`` metadata AND clears the
+    empty-response gate wins. Every attempt's metadata is written into
+    ``provenance`` so the user sees the trace. On bytes the shared
+    extractor turns them into a ``SiteSignals`` payload; parse failures
+    downgrade the proxy row to ``failed`` and move on. An effectively-
+    empty recovery body (extracted text below
+    :data:`EMPTY_RESPONSE_BYTES`) is tagged ``failed`` with
+    ``error="empty_response"`` so the Attempt-2 path cannot launder a
+    silent-success onto the envelope — parallel to the Attempt-1 gate
+    in ``site_text_trafilatura``.
     """
     for proxy_slug in sorted(smart_proxy_registry):
         proxy_cls = smart_proxy_registry[proxy_slug]
@@ -242,13 +255,22 @@ def _attempt_smart_proxy_recovery(
         if body is None or proxy_meta.status != "ok":
             continue
         try:
-            return site_signals_from_homepage_bytes(body)
+            recovered = site_signals_from_homepage_bytes(body)
         except Exception as exc:  # noqa: BLE001 - deliberate boundary
             provenance[proxy_slug] = _failed_metadata(
                 error=f"smart-proxy bytes extraction failed: {exc.__class__.__name__}: {exc}",
                 provider_version=proxy_meta.provider_version,
                 latency_ms=proxy_meta.latency_ms,
             )
+            continue
+        if is_empty_response(recovered.homepage_text):
+            provenance[proxy_slug] = _failed_metadata(
+                error=_EMPTY_RESPONSE_ERROR,
+                provider_version=proxy_meta.provider_version,
+                latency_ms=proxy_meta.latency_ms,
+            )
+            continue
+        return recovered
     return None
 
 

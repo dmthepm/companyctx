@@ -27,7 +27,13 @@ from urllib.parse import urljoin, urlparse
 
 from curl_cffi import requests
 
-from companyctx.extract import detect_tech_stack, extract_body_text, extract_services
+from companyctx.extract import (
+    EMPTY_RESPONSE_ERROR,
+    detect_tech_stack,
+    extract_body_text,
+    extract_services,
+    is_empty_response,
+)
 from companyctx.providers.base import FetchContext
 from companyctx.robots import is_allowed
 from companyctx.schema import ProviderRunMetadata, SiteSignals
@@ -46,15 +52,9 @@ _VERSION = "0.1.0"
 # research/2026-04-21-tls-impersonation-spike.md.
 _IMPERSONATE: Literal["chrome146"] = "chrome146"
 _SAFE_FIXTURE_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
-# Extracted-text-length cutoff for the ``empty_response`` honesty check.
-# Tighter than FM-7's 1024-byte "thin extract" cutoff in
-# ``docs/RISK-REGISTER.md`` — a legitimate one-page brochure site still
-# clears 64 characters of visible text. Below this, the fetch worked but
-# the site returned effectively nothing (HTTP 200 with an empty body or a
-# login-wall stub); silent-success there violates the "loud failure >
-# silent fallthrough" contract. Surface it as a structured failure.
-EMPTY_RESPONSE_BYTES = 64
-EMPTY_RESPONSE_ERROR = "empty_response"
+# The empty-response cutoff + gate live in ``companyctx.extract`` so the
+# zero-key provider and the smart-proxy recovery path share one source
+# of truth (see COX-44).
 
 
 class Provider:
@@ -89,7 +89,7 @@ class Provider:
         # Surface it as a structured failure so downstream agents branch on
         # ``error.code == "empty_response"`` instead of seeing ``status: ok``
         # with a zero-length homepage.
-        if len(signals.homepage_text) < EMPTY_RESPONSE_BYTES:
+        if is_empty_response(signals.homepage_text):
             return None, _failed(EMPTY_RESPONSE_ERROR, start, self.version, mock=ctx.mock)
 
         # Mock mode has no real network latency; zero it so --mock runs are
