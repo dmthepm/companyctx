@@ -12,5 +12,8 @@
 #
 # When a dependency ships a fixed version, delete the entry rather than
 # leaving stale allowlist items lying around.
-
-ignore = []
+#
+# Leave this file entry-less (only comments) when there is nothing to
+# allowlist — do NOT seed `ignore = []`. TOML rejects mixing a bare
+# array with `[[ignore]]` table-array entries, so an accidental seed
+# breaks the gate the moment someone needs it.

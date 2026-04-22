@@ -190,21 +190,30 @@ pyroma gates then gate those PRs just like any human PR.
 
 Runs in the `supply-chain` job alongside ruff / mypy / pytest. Uses the
 `--strict` flag so any advisory against any installed package fails the
-build. Allowlist is `.pip-audit.toml` at repo root.
+build. The job installs `.[all,dev]` so every provider extra
+(`extract`, `reviews`, `youtube`) is audited, not just the default
+runtime deps. The job also matrixes across Python 3.10 / 3.11 / 3.12 so
+interpreter-pinned deps (e.g. `tomli` on 3.10) are actually covered.
 
-To dismiss a false positive:
+Allowlist is `.pip-audit.toml` at repo root. To dismiss a false
+positive:
 
-1. Reproduce locally: `pip-audit $(python scripts/pip_audit_ignores.py)`.
+1. Reproduce locally:
+   `pip-audit --strict $(python scripts/pip_audit_ignores.py)`.
 2. Confirm the vulnerable code path is not reachable from any provider
    or CLI entry point. If it is reachable, the answer is "upgrade the
    dep" or "vendor around it", not allowlist.
-3. Add an entry to `.pip-audit.toml`:
+3. Add an entry to `.pip-audit.toml` as a TOML table-array:
 
    ```toml
    [[ignore]]
    id = "GHSA-xxxx-xxxx-xxxx"
    reason = "vuln in <package>.<symbol>; companyctx calls <other_symbol> only."
    ```
+
+   Do NOT seed the file with `ignore = []`. TOML rejects mixing a bare
+   array with `[[ignore]]` table-array entries, so the allowlist file
+   stays entry-less (comments only) until the first real entry.
 
 4. Cite the advisory ID in your PR description. Reviewers verify the
    unreachable claim before approving.
