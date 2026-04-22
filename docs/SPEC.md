@@ -118,11 +118,24 @@ The 64-byte cutoff is stricter than FM-7's 1024-byte "thin extract"
 threshold in `docs/RISK-REGISTER.md`. FM-7 describes legitimate
 one-page / brochureware sites that extract to thin-but-real content —
 those stay `status: ok` with a short `homepage_text`. `empty_response`
-is the 0-to-64-byte case where the fetch worked but the site returned
-nothing useful (blank body, login-wall stub, JS-only landing with no
-SSR content). Automatic proxy retry on empty is intentionally out of
-scope: the smart-proxy recovery path skips rows tagged
-`empty_response`. Agents decide whether to retry upstream.
+is the 0-to-64-byte UTF-8-byte case where the fetch worked but the
+site returned nothing useful (blank body, login-wall stub, JS-only
+landing with no SSR content). The gate measures **UTF-8 bytes**, not
+character count, so multibyte scripts (CJK, accented Latin, Cyrillic)
+don't false-positive as empty.
+
+The gate applies to **both waterfall attempts**: Attempt 1
+(`site_text_trafilatura`) and Attempt 2 (smart-proxy recovery) run the
+same check against the extracted homepage text. An effectively-empty
+recovery body surfaces on the proxy row as
+`status: "failed"`, `error: "empty_response"` so Attempt 2 can't launder
+a silent-success onto the envelope.
+
+Automatic proxy retry on an Attempt-1 `empty_response` failure is
+intentionally out of scope: the smart-proxy recovery path skips
+primary rows tagged `empty_response` (the zero-key fetch already
+worked — the site returned nothing, retrying through a proxy won't
+invent content). Agents decide whether to retry upstream.
 
 ### `schema_version`
 
