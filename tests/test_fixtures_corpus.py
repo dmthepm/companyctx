@@ -37,9 +37,16 @@ EXPECTED_FILES = (
 )
 
 # Failure-shape fixtures carry only the files needed to reproduce the
-# empty/near-empty extraction shape — see fixtures/durability-report-*.md.
-FAILURE_FIXTURE_SLUGS = ("fm7-js-redirect-root", "fm7-maintenance-page")
-FAILURE_FIXTURE_FILES = ("homepage.html", "expected.json")
+# specific failure they capture — see fixtures/durability-report-*.md and
+# fixtures/README.md ("Failure-shape regressions").
+FM7_FIXTURE_SLUGS = ("fm7-js-redirect-root", "fm7-maintenance-page")
+FM7_FIXTURE_FILES = ("homepage.html", "expected.json")
+# Block-style fixtures use the `fixture-block.txt` sentinel honored by
+# site_text_trafilatura._from_fixture (issue #40). They carry no
+# homepage.html — the sentinel raises before any HTML is read.
+BLOCK_FIXTURE_SLUGS = ("fm13-timeout-smb-01",)
+BLOCK_FIXTURE_FILES = ("fixture-block.txt", "expected.json")
+FAILURE_FIXTURE_SLUGS = FM7_FIXTURE_SLUGS + BLOCK_FIXTURE_SLUGS
 
 
 def _synthetic_dirs() -> list[Path]:
@@ -82,10 +89,15 @@ def test_each_prospect_has_expected_files() -> None:
 
 
 def test_failure_fixtures_have_minimum_files() -> None:
-    for slug in FAILURE_FIXTURE_SLUGS:
+    for slug in FM7_FIXTURE_SLUGS:
         site_dir = FIXTURES_DIR / slug
         assert site_dir.is_dir(), slug
-        missing = [f for f in FAILURE_FIXTURE_FILES if not (site_dir / f).exists()]
+        missing = [f for f in FM7_FIXTURE_FILES if not (site_dir / f).exists()]
+        assert not missing, f"{slug} missing {missing}"
+    for slug in BLOCK_FIXTURE_SLUGS:
+        site_dir = FIXTURES_DIR / slug
+        assert site_dir.is_dir(), slug
+        missing = [f for f in BLOCK_FIXTURE_FILES if not (site_dir / f).exists()]
         assert not missing, f"{slug} missing {missing}"
 
 

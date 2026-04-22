@@ -96,7 +96,42 @@ them via `FAILURE_FIXTURE_SLUGS` in `tests/test_fixtures_corpus.py` and
 includes them in the byte-diff regression suite via
 `tests/test_regression_corpus.py`.
 
-Scaling the regression suite past these seven is v0.2 scope.
+### Network-failure regressions — the `fixture-block.txt` sentinel
+
+Network-level failures (timeout, anti-bot 403, TLS handshake, connection
+reset) never produce HTML for the extractor to chew on, so they can't be
+captured with a `homepage.html` fixture. Instead, the zero-key provider
+(`companyctx.providers.site_text_trafilatura._from_fixture`) honors a
+sentinel file:
+
+```
+fixtures/<slug>/
+  fixture-block.txt     # contents become the BlockedError reason verbatim
+  expected.json         # the resulting degraded envelope
+```
+
+When `fixture-block.txt` exists, the provider raises `_BlockedError`
+with the file's stripped contents as the reason *before* trying to read
+`homepage.html`, and the existing failure path maps that to
+`ProviderRunMetadata.status="failed"` with `error=<reason>`. With only
+the zero-key provider in the registry, the orchestrator aggregates that
+single failure to top-level `status: degraded`. (Once Attempt-2 / smart-
+proxy providers land, the same input will yield `status: partial` if any
+later attempt succeeds — the sentinel just controls Attempt 1.)
+
+Promoted from the 2026-04-21 durability run:
+
+| Slug                    | Failure mode                | What it guards against                                                  |
+| ----------------------- | --------------------------- | ----------------------------------------------------------------------- |
+| `fm13-timeout-smb-01`   | Network timeout (FM-13)     | Envelope shape downstream branches on for `network error: Timeout`.     |
+
+A single `fixture-block.txt` is honored by every provider that consumes
+`fixtures/<slug>/`; per-provider sentinel specialisation is out of scope
+until a second provider lands. Block-style fixtures are wired through
+`BLOCK_FIXTURE_SLUGS` in `tests/test_fixtures_corpus.py` and pinned in
+the byte-diff regression suite via `tests/test_regression_corpus.py`.
+
+Scaling the regression suite past these eight is v0.2 scope.
 
 ## Determinism rule
 

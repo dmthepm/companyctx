@@ -1,0 +1,23 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
+    "pages": null,
+    "reviews": null,
+    "signals": null,
+    "site": "fm13-timeout-smb-01.example",
+    "social": null
+  },
+  "error": "network error: Timeout",
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": "network error: Timeout",
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "failed"
+    }
+  },
+  "status": "degraded",
+  "suggestion": "configure a smart-proxy provider key or skip this prospect"
+}

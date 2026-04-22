@@ -47,6 +47,13 @@ REGRESSION_SLUGS = (
     # content from an effectively empty page.
     "fm7-js-redirect-root",
     "fm7-maintenance-page",
+    # FM-13 network-failure regression. Driven by the fixture-block.txt
+    # sentinel honoured by site_text_trafilatura._from_fixture: the file's
+    # contents become the BlockedError reason verbatim, the provider maps
+    # that to status=failed, and the orchestrator aggregates a single
+    # failed provider to status=degraded. Locks the envelope shape that
+    # downstream pipelines branch on for FM-13 timeouts (see issue #40).
+    "fm13-timeout-smb-01",
 )
 
 

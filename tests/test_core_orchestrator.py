@@ -227,6 +227,61 @@ def test_orchestrator_graceful_partial_on_missing_fixture() -> None:
     assert "fixture" in provider_error
 
 
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "blocked_by_antibot (HTTP 403)",
+        "network error: Timeout",
+        "fm13-custom-reason",
+    ],
+)
+def test_fixture_block_sentinel_round_trips_as_degraded(reason: str, tmp_path: Path) -> None:
+    """`fixture-block.txt` raises _BlockedError with its content as the reason.
+
+    Provider already maps _BlockedError → ProviderRunMetadata.status="failed"
+    with `error=<reason>`; when it's the only provider, the envelope status
+    aggregates to "degraded".
+    """
+    slug = "blockfix"
+    site_dir = tmp_path / slug
+    site_dir.mkdir()
+    (site_dir / "fixture-block.txt").write_text(reason, encoding="utf-8")
+
+    env = core.run(
+        f"{slug}.example",
+        mock=True,
+        fixtures_dir=tmp_path,
+        providers=_reg(site_text_trafilatura=TrafilaturaProvider),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "degraded"
+    row = env.provenance["site_text_trafilatura"]
+    assert row.status == "failed"
+    assert row.error == reason
+    assert env.error == reason
+    assert env.data.pages is None
+
+
+def test_fixture_block_sentinel_takes_precedence_over_homepage(tmp_path: Path) -> None:
+    """If both files exist, the block sentinel wins — homepage is not read."""
+    slug = "blockfix"
+    site_dir = tmp_path / slug
+    site_dir.mkdir()
+    (site_dir / "fixture-block.txt").write_text("blocked_by_antibot (HTTP 403)", encoding="utf-8")
+    (site_dir / "homepage.html").write_text("<html><body>should not appear</body></html>")
+
+    env = core.run(
+        f"{slug}.example",
+        mock=True,
+        fixtures_dir=tmp_path,
+        providers=_reg(site_text_trafilatura=TrafilaturaProvider),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "degraded"
+    assert env.data.pages is None
+    assert env.provenance["site_text_trafilatura"].error == "blocked_by_antibot (HTTP 403)"
+
+
 def test_mock_mode_rejects_invalid_fixture_slug() -> None:
     env = core.run(
         "../secrets",
