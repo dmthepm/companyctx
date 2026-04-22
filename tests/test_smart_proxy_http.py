@@ -59,10 +59,29 @@ def _ctx(*, mock: bool = False, fixtures_dir: str | None = None) -> FetchContext
 
 
 class _FakeResponse:
-    def __init__(self, status_code: int, body: bytes = b"") -> None:
+    """Mimics ``curl_cffi.requests.Response`` for the streaming fetch path.
+
+    Matches the ``iter_content`` + ``headers`` + ``close`` surface the
+    hardened ``_from_network`` relies on (see ``companyctx/security.py``).
+    """
+
+    def __init__(
+        self,
+        status_code: int,
+        body: bytes = b"",
+        headers: dict[str, str] | None = None,
+    ) -> None:
         self.status_code = status_code
-        self.content = body
+        self._body = body
+        self.headers: dict[str, str] = headers or {}
         self.text = body.decode("utf-8", errors="replace")
+
+    def iter_content(self, chunk_size: int = 8192) -> object:
+        for i in range(0, len(self._body), chunk_size):
+            yield self._body[i : i + chunk_size]
+
+    def close(self) -> None:
+        return None
 
 
 class _ProxyVendorDown:
@@ -654,6 +673,121 @@ class _FailingSiteMeta:
             error="meta-miss",
             provider_version=self.version,
         )
+
+
+# ---------------------------------------------------------------------------
+# Security guardrails on the proxied path (SSRF, redirect cap, body cap)
+# ---------------------------------------------------------------------------
+
+
+def test_smart_proxy_rejects_non_http_scheme(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Non-HTTP target → ``unsafe_url`` row, proxy never contacted."""
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+
+    def _boom(*args: object, **kwargs: object) -> _FakeResponse:
+        raise AssertionError("proxy must not fire for unsafe scheme")
+
+    monkeypatch.setattr("companyctx.providers.smart_proxy_http.requests.get", _boom)
+
+    body, meta = SmartProxyHttpProvider().fetch("file:///etc/passwd", ctx=_ctx())
+    assert body is None
+    assert meta.status == "failed"
+    assert meta.error is not None
+    assert "unsafe_url" in meta.error
+
+
+def test_smart_proxy_rejects_metadata_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cloud-metadata hostnames are refused before egress through the proxy."""
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+
+    def _boom(*args: object, **kwargs: object) -> _FakeResponse:
+        raise AssertionError("proxy must not fire for metadata host")
+
+    monkeypatch.setattr("companyctx.providers.smart_proxy_http.requests.get", _boom)
+
+    body, meta = SmartProxyHttpProvider().fetch("http://metadata.google.internal/", ctx=_ctx())
+    assert body is None
+    assert meta.status == "failed"
+    assert meta.error is not None
+    assert "unsafe_url" in meta.error
+
+
+def test_smart_proxy_refuses_oversize_body_content_length(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A ``Content-Length`` above the cap trips before any body is read."""
+    from companyctx.security import MAX_RESPONSE_BYTES
+
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+    monkeypatch.setattr(
+        "companyctx.providers.smart_proxy_http.requests.get",
+        lambda *args, **kwargs: _FakeResponse(
+            200, body=b"", headers={"content-length": str(MAX_RESPONSE_BYTES + 1)}
+        ),
+    )
+    body, meta = SmartProxyHttpProvider().fetch("https://example.com", ctx=_ctx())
+    assert body is None
+    assert meta.status == "failed"
+    assert meta.error is not None
+    assert "response_too_large" in meta.error
+
+
+def test_smart_proxy_refuses_oversize_body_streaming(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When content-length is absent or lies, the streaming cap still trips."""
+    from companyctx.security import MAX_RESPONSE_BYTES
+
+    big = b"x" * (MAX_RESPONSE_BYTES + 1024)
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+    monkeypatch.setattr(
+        "companyctx.providers.smart_proxy_http.requests.get",
+        lambda *args, **kwargs: _FakeResponse(200, body=big),
+    )
+    body, meta = SmartProxyHttpProvider().fetch("https://example.com", ctx=_ctx())
+    assert body is None
+    assert meta.status == "failed"
+    assert meta.error is not None
+    assert "response_too_large" in meta.error
+
+
+def test_smart_proxy_redirect_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A redirect loop is capped at :data:`MAX_REDIRECTS`."""
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+    monkeypatch.setattr(
+        "companyctx.providers.smart_proxy_http.requests.get",
+        lambda *args, **kwargs: _FakeResponse(
+            302, body=b"", headers={"location": "https://example.com/next"}
+        ),
+    )
+    body, meta = SmartProxyHttpProvider().fetch("https://example.com", ctx=_ctx())
+    assert body is None
+    assert meta.status == "failed"
+    assert meta.error is not None
+    assert "redirect limit" in meta.error
+
+
+def test_smart_proxy_rejects_traversal_fixture_slug(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Symlinked fixture escapes are refused by the path-traversal guard."""
+    # The slug regex already rejects ``..``; this locks the
+    # symlink-resolving fallback (``_safe_fixture_root``) for parity with
+    # the zero-key provider's hardening.
+    escape_target = tmp_path / "outside"
+    escape_target.mkdir()
+    (escape_target / "homepage.html").write_bytes(b"<html>escape</html>")
+    inside = tmp_path / "inside"
+    inside.mkdir()
+    (inside / "recoverfix").symlink_to(escape_target)
+
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+    body, meta = SmartProxyHttpProvider().fetch(
+        "recoverfix.example",
+        ctx=_ctx(mock=True, fixtures_dir=str(inside)),
+    )
+    assert body is None
+    assert meta.status == "failed"
+    assert meta.error is not None
+    assert "escapes fixtures_dir" in meta.error
 
 
 def test_site_meta_failure_does_not_trigger_recovery(

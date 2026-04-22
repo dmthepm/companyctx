@@ -23,7 +23,7 @@ import re
 import time
 from pathlib import Path
 from typing import ClassVar, Literal
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from curl_cffi import requests
 
@@ -31,6 +31,12 @@ from companyctx.extract import detect_tech_stack, extract_body_text, extract_ser
 from companyctx.providers.base import FetchContext
 from companyctx.robots import is_allowed
 from companyctx.schema import ProviderRunMetadata, SiteSignals
+from companyctx.security import (
+    MAX_REDIRECTS,
+    MAX_RESPONSE_BYTES,
+    UnsafeURLError,
+    validate_public_http_url,
+)
 
 _VERSION = "0.1.0"
 # curl_cffi types ``impersonate`` as a ``Literal`` of supported browser names.
@@ -108,23 +114,23 @@ def _failed(reason: str, start: float, version: str, *, mock: bool = False) -> P
 def _from_fixture(site: str, fixtures_dir: str | None) -> SiteSignals:
     if fixtures_dir is None:
         raise _MissingFixtureError("mock mode requires fixtures_dir")
-    root = Path(fixtures_dir) / _slug_for(site)
+    root = _safe_fixture_root(fixtures_dir, _slug_for(site))
     # Sentinel for committed network-failure regressions. The file's contents
     # become the BlockedError reason verbatim, which the orchestrator surfaces
     # as `provenance[slug].error`. See fixtures/README.md ("Network-failure
     # regressions") and the rationale in issue #40.
-    block = root / "fixture-block.txt"
+    block = _safe_child(root, "fixture-block.txt")
     if block.exists():
         reason = block.read_text(encoding="utf-8").strip()
         raise _BlockedError(reason or "blocked")
-    homepage = root / "homepage.html"
+    homepage = _safe_child(root, "homepage.html")
     if not homepage.exists():
         raise _MissingFixtureError(f"fixture not found: {homepage}")
     homepage_html = homepage.read_text(encoding="utf-8")
     homepage_text = extract_body_text(homepage_html)
-    about = root / "about.html"
+    about = _safe_child(root, "about.html")
     about_text = extract_body_text(about.read_text(encoding="utf-8")) if about.exists() else None
-    services_path = root / "services.html"
+    services_path = _safe_child(root, "services.html")
     services = (
         extract_services(services_path.read_text(encoding="utf-8"))
         if services_path.exists()
@@ -156,27 +162,103 @@ def _from_network(site: str, ctx: FetchContext) -> SiteSignals:
     )
 
 
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+
+
 def _stealth_fetch(url: str, ctx: FetchContext) -> str:
+    """Issue one HTTP GET and return the decoded body.
+
+    Layered guardrails (see ``docs/THREAT-MODEL.md``):
+      1. :func:`validate_public_http_url` pre-flight on every URL — and on
+         every redirect hop — rejects non-HTTP schemes and non-public IPs.
+      2. Redirects are followed manually with a hard cap of
+         :data:`MAX_REDIRECTS`; each hop re-validates before the next fetch.
+      3. Response bodies stream and are capped at :data:`MAX_RESPONSE_BYTES`
+         so a 10 GB or gzip-bomb target can't exhaust memory.
+    """
+    current = url
+    seen = 0
+    while True:
+        _ensure_safe_for_fetch(current, ctx)
+        try:
+            # curl_cffi's ``impersonate`` sets the TLS ClientHello + HTTP/2
+            # SETTINGS frame + header order. Passing a custom User-Agent here
+            # would desynchronise the presented UA from the impersonated
+            # fingerprint (cheap anti-bot tell), so we deliberately don't
+            # override it.
+            resp = requests.get(
+                current,
+                impersonate=_IMPERSONATE,
+                timeout=ctx.timeout_s,
+                allow_redirects=False,
+                stream=True,
+            )
+        except requests.RequestsError as exc:
+            raise _BlockedError(f"network error: {exc.__class__.__name__}") from exc
+
+        if resp.status_code in _REDIRECT_STATUSES:
+            location = resp.headers.get("location") or resp.headers.get("Location")
+            resp.close()  # type: ignore[no-untyped-call]
+            if not location:
+                raise _BlockedError(f"HTTP {resp.status_code} with no Location header")
+            seen += 1
+            if seen > MAX_REDIRECTS:
+                raise _BlockedError(f"redirect limit ({MAX_REDIRECTS}) exceeded")
+            current = urljoin(current, location)
+            continue
+
+        if resp.status_code in (401, 403):
+            resp.close()  # type: ignore[no-untyped-call]
+            raise _BlockedError(f"blocked_by_antibot (HTTP {resp.status_code})")
+        if resp.status_code >= 400:
+            resp.close()  # type: ignore[no-untyped-call]
+            raise _BlockedError(f"HTTP {resp.status_code}")
+
+        try:
+            body = _read_capped_body(resp)
+        finally:
+            resp.close()  # type: ignore[no-untyped-call]
+        encoding = resp.encoding or "utf-8"
+        return body.decode(encoding, errors="replace")
+
+
+def _ensure_safe_for_fetch(url: str, ctx: FetchContext) -> None:
+    """Run SSRF + robots.txt guardrails for ``url``.
+
+    Order matters: SSRF check first so we never even *resolve* robots.txt
+    against a cloud-metadata or RFC 1918 endpoint.
+    """
+    try:
+        validate_public_http_url(url)
+    except UnsafeURLError as exc:
+        raise _BlockedError(f"unsafe_url: {exc}") from exc
     if not ctx.ignore_robots and not is_allowed(url, user_agent=ctx.user_agent):
         raise _BlockedError("blocked_by_robots")
-    # curl_cffi's ``impersonate`` sets the TLS ClientHello + HTTP/2 SETTINGS
-    # frame + header order. Passing a custom User-Agent here would desynchronise
-    # the presented UA from the impersonated fingerprint (cheap anti-bot tell),
-    # so we deliberately don't override it.
-    try:
-        resp = requests.get(
-            url,
-            impersonate=_IMPERSONATE,
-            timeout=ctx.timeout_s,
-            allow_redirects=True,
-        )
-    except requests.RequestsError as exc:
-        raise _BlockedError(f"network error: {exc.__class__.__name__}") from exc
-    if resp.status_code in (401, 403):
-        raise _BlockedError(f"blocked_by_antibot (HTTP {resp.status_code})")
-    if resp.status_code >= 400:
-        raise _BlockedError(f"HTTP {resp.status_code}")
-    return resp.text
+
+
+def _read_capped_body(resp: requests.Response) -> bytes:
+    """Stream response bytes into memory, refusing to exceed the cap.
+
+    Also rejects up-front when ``Content-Length`` already advertises too much
+    — this saves us from reading a single oversize chunk into the buffer
+    before the cap trips.
+    """
+    declared = resp.headers.get("content-length") or resp.headers.get("Content-Length")
+    if declared is not None:
+        try:
+            if int(declared) > MAX_RESPONSE_BYTES:
+                raise _BlockedError(
+                    f"response_too_large: content-length {declared} exceeds {MAX_RESPONSE_BYTES}"
+                )
+        except ValueError:
+            # Bogus Content-Length — fall through to streaming cap.
+            pass
+    buf = bytearray()
+    for chunk in resp.iter_content(chunk_size=8192):  # type: ignore[no-untyped-call]
+        buf.extend(chunk)
+        if len(buf) > MAX_RESPONSE_BYTES:
+            raise _BlockedError(f"response_too_large: exceeded {MAX_RESPONSE_BYTES} bytes")
+    return bytes(buf)
 
 
 def _try_fetch(url: str, ctx: FetchContext) -> str | None:
@@ -195,6 +277,41 @@ def _normalize_base_url(site: str) -> str:
     if not host or host in {".", ".."} or any(sep in host for sep in ("/", "\\")):
         raise _BlockedError("invalid site")
     return f"{scheme}://{host}".rstrip("/")
+
+
+def _safe_fixture_root(fixtures_dir: str, slug: str) -> Path:
+    """Resolve ``fixtures_dir / slug`` and refuse if it escapes the tree.
+
+    The slug regex in :func:`_slug_for` already rejects ``..``, ``/`` and
+    ``\\``, but a symlink planted inside ``fixtures_dir`` could still point
+    outside. Resolving both paths and verifying containment closes that gap
+    and gives us one explicit chokepoint to grep for in the audit.
+    """
+    base = Path(fixtures_dir).resolve(strict=False)
+    candidate = (base / slug).resolve(strict=False)
+    try:
+        candidate.relative_to(base)
+    except ValueError as exc:
+        raise _MissingFixtureError(f"fixture path escapes fixtures_dir: {candidate}") from exc
+    return candidate
+
+
+def _safe_child(root: Path, name: str) -> Path:
+    """Resolve ``root / name`` and refuse if the result escapes ``root``.
+
+    ``_safe_fixture_root`` protects the per-site directory, but individual
+    files inside a legitimate directory can still be symlinks pointing
+    elsewhere (e.g., ``fixtures/acme/homepage.html -> /etc/passwd``).
+    ``Path.resolve`` follows the symlink; ``relative_to`` then refuses the
+    escape. ``root`` must already be a resolved path (as returned by
+    :func:`_safe_fixture_root`).
+    """
+    candidate = (root / name).resolve(strict=False)
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:
+        raise _MissingFixtureError(f"fixture file escapes fixtures_dir: {candidate}") from exc
+    return candidate
 
 
 def _slug_for(site: str) -> str:

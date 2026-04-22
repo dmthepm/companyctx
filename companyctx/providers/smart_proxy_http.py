@@ -27,7 +27,7 @@ import re
 import time
 from pathlib import Path
 from typing import ClassVar, Literal
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from curl_cffi import requests
 
@@ -35,6 +35,12 @@ from companyctx.providers.base import FetchContext
 from companyctx.providers.smart_proxy_base import failed_metadata, not_configured_metadata
 from companyctx.robots import is_allowed
 from companyctx.schema import ProviderRunMetadata
+from companyctx.security import (
+    MAX_REDIRECTS,
+    MAX_RESPONSE_BYTES,
+    UnsafeURLError,
+    validate_public_http_url,
+)
 
 _VERSION = "0.1.0"
 ENV_URL = "COMPANYCTX_SMART_PROXY_URL"
@@ -110,47 +116,128 @@ def _elapsed_ms(start: float) -> int:
     return int((time.monotonic() - start) * 1000)
 
 
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+
+
 def _from_fixture(url: str, fixtures_dir: str | None) -> bytes:
     if fixtures_dir is None:
         raise _ProxyError("mock mode requires fixtures_dir")
-    slug = _slug_for(url)
-    homepage = Path(fixtures_dir) / slug / "homepage.html"
+    root = _safe_fixture_root(fixtures_dir, _slug_for(url))
+    homepage = _safe_child(root, "homepage.html")
     if not homepage.exists():
         raise _ProxyError(f"smart-proxy mock: fixture missing {homepage}")
     return homepage.read_bytes()
 
 
 def _from_network(url: str, proxy_url: str, ctx: FetchContext) -> bytes:
+    """Fetch via the user-configured proxy with the same guardrails as the zero-key path.
+
+    The proxy handles DNS resolution for the target, but we still validate
+    the host locally so a user typo like ``fetch http://169.254.169.254``
+    can't be laundered into the run. Redirects are followed manually and
+    every hop is re-validated; response bytes stream in under
+    :data:`MAX_RESPONSE_BYTES`.
+    """
     target = url if "://" in url else f"https://{url}"
-    # Honor robots.txt on the smart-proxy path too. Residential-proxy egress
-    # shouldn't launder a robots violation — the user opted into compliance
-    # by not passing ``--ignore-robots``. Same policy as the zero-key path.
-    if not ctx.ignore_robots and not is_allowed(target, user_agent=ctx.user_agent):
-        raise _ProxyError("blocked_by_robots")
     verify_path = os.environ.get(ENV_VERIFY, "").strip()
+    current = target
+    seen = 0
+    while True:
+        _ensure_safe_for_fetch(current, ctx)
+        try:
+            resp = requests.get(
+                current,
+                proxies={"http": proxy_url, "https": proxy_url},
+                timeout=ctx.timeout_s,
+                # curl_cffi types ``verify`` as ``bool | None`` but accepts a
+                # CA-bundle path at runtime (same shape as ``requests``).
+                verify=verify_path if verify_path else True,  # type: ignore[arg-type]
+                allow_redirects=False,
+                stream=True,
+            )
+        except requests.RequestsError as exc:
+            raise _ProxyError(f"proxy network error: {exc.__class__.__name__}") from exc
+
+        status_code = getattr(resp, "status_code", 0)
+        if status_code in _REDIRECT_STATUSES:
+            headers = getattr(resp, "headers", {}) or {}
+            location = headers.get("location") or headers.get("Location")
+            resp.close()  # type: ignore[no-untyped-call]
+            if not location:
+                raise _ProxyError(f"HTTP {status_code} with no Location header")
+            seen += 1
+            if seen > MAX_REDIRECTS:
+                raise _ProxyError(f"redirect limit ({MAX_REDIRECTS}) exceeded")
+            current = urljoin(current, location)
+            continue
+
+        if status_code in (401, 403):
+            resp.close()  # type: ignore[no-untyped-call]
+            raise _ProxyError(f"proxy auth/block (HTTP {status_code})")
+        if status_code >= 400:
+            resp.close()  # type: ignore[no-untyped-call]
+            raise _ProxyError(f"proxy upstream HTTP {status_code}")
+
+        try:
+            return _read_capped_body(resp)
+        finally:
+            resp.close()  # type: ignore[no-untyped-call]
+
+
+def _ensure_safe_for_fetch(url: str, ctx: FetchContext) -> None:
+    """SSRF + robots.txt guardrails — order matters.
+
+    Validate the URL before any resolution side effect. Robots is checked
+    after SSRF so we never issue a ``robots.txt`` request against a
+    cloud-metadata or RFC 1918 endpoint.
+    """
     try:
-        # curl_cffi types ``verify`` as ``bool | None`` but accepts a CA-bundle
-        # path at runtime (same shape as ``requests``); the cast keeps the
-        # mypy boundary honest without hiding the full signature.
-        resp = requests.get(
-            target,
-            proxies={"http": proxy_url, "https": proxy_url},
-            timeout=ctx.timeout_s,
-            verify=verify_path if verify_path else True,  # type: ignore[arg-type]
-            allow_redirects=True,
-        )
-    except requests.RequestsError as exc:
-        raise _ProxyError(f"proxy network error: {exc.__class__.__name__}") from exc
-    status_code = getattr(resp, "status_code", 0)
-    if status_code in (401, 403):
-        raise _ProxyError(f"proxy auth/block (HTTP {status_code})")
-    if status_code >= 400:
-        raise _ProxyError(f"proxy upstream HTTP {status_code}")
-    content = getattr(resp, "content", None)
-    if isinstance(content, (bytes, bytearray)):
-        return bytes(content)
-    text = getattr(resp, "text", "")
-    return text.encode("utf-8") if isinstance(text, str) else b""
+        validate_public_http_url(url)
+    except UnsafeURLError as exc:
+        raise _ProxyError(f"unsafe_url: {exc}") from exc
+    if not ctx.ignore_robots and not is_allowed(url, user_agent=ctx.user_agent):
+        raise _ProxyError("blocked_by_robots")
+
+
+def _read_capped_body(resp: requests.Response) -> bytes:
+    """Stream response bytes, refusing to exceed :data:`MAX_RESPONSE_BYTES`."""
+    headers = getattr(resp, "headers", {}) or {}
+    declared = headers.get("content-length") or headers.get("Content-Length")
+    if declared is not None:
+        try:
+            if int(declared) > MAX_RESPONSE_BYTES:
+                raise _ProxyError(
+                    f"response_too_large: content-length {declared} exceeds {MAX_RESPONSE_BYTES}"
+                )
+        except ValueError:
+            pass
+    buf = bytearray()
+    for chunk in resp.iter_content(chunk_size=8192):  # type: ignore[no-untyped-call]
+        buf.extend(chunk)
+        if len(buf) > MAX_RESPONSE_BYTES:
+            raise _ProxyError(f"response_too_large: exceeded {MAX_RESPONSE_BYTES} bytes")
+    return bytes(buf)
+
+
+def _safe_fixture_root(fixtures_dir: str, slug: str) -> Path:
+    """Resolve ``fixtures_dir / slug`` and refuse if it escapes the tree."""
+    base = Path(fixtures_dir).resolve(strict=False)
+    candidate = (base / slug).resolve(strict=False)
+    try:
+        candidate.relative_to(base)
+    except ValueError as exc:
+        raise _ProxyError(f"fixture path escapes fixtures_dir: {candidate}") from exc
+    return candidate
+
+
+def _safe_child(root: Path, name: str) -> Path:
+    """Resolve ``root / name`` and refuse if the result escapes ``root``."""
+    candidate = (root / name).resolve(strict=False)
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:
+        raise _ProxyError(f"fixture file escapes fixtures_dir: {candidate}") from exc
+    return candidate
 
 
 def _slug_for(url: str) -> str:
