@@ -59,6 +59,16 @@ _SMART_PROXY_CATEGORY = "smart_proxy"
 # The smart-proxy must not "recover" these — the user opted into robots
 # compliance by not passing ``--ignore-robots``.
 _ROBOTS_BLOCK_ERROR = "blocked_by_robots"
+# ``empty_response`` is the "HTTP 200 with effectively no body" honesty
+# check (COX-44). Automatic proxy-retry on empty is explicitly out of
+# scope — agents branching on ``error.code`` decide what to do. Skipping
+# the retry here keeps the provider's honest signal from being laundered
+# into a degraded-but-ok row by the waterfall.
+_EMPTY_RESPONSE_ERROR = "empty_response"
+EMPTY_RESPONSE_SUGGESTION = (
+    "site returned HTTP 200 with effectively no content; "
+    "try --ignore-robots or check with a browser"
+)
 
 
 def run(
@@ -142,6 +152,8 @@ def run(
                 if meta.status != "failed":
                     continue
                 if meta.error == _ROBOTS_BLOCK_ERROR:
+                    continue
+                if meta.error == _EMPTY_RESPONSE_ERROR:
                     continue
                 recovered_signals = _attempt_smart_proxy_recovery(
                     site=site,
@@ -397,7 +409,20 @@ def _build_envelope_error(
         "one or more providers failed" if status == "partial" else "no providers succeeded"
     )
     code = _classify_error_code(message, failure_status, status)
-    return EnvelopeError(code=code, message=message, suggestion=GENERIC_SUGGESTION)
+    return EnvelopeError(code=code, message=message, suggestion=_suggestion_for(code))
+
+
+def _suggestion_for(code: EnvelopeErrorCode) -> str:
+    """Per-code actionable suggestion.
+
+    Most codes share the generic "configure a smart-proxy or skip" fix.
+    ``empty_response`` gets its own line because smart-proxy retry is not
+    the right remediation — the fetch already worked, the site returned
+    nothing.
+    """
+    if code == "empty_response":
+        return EMPTY_RESPONSE_SUGGESTION
+    return GENERIC_SUGGESTION
 
 
 def _classify_error_code(
@@ -428,6 +453,8 @@ def _classify_error_code(
         return "network_timeout"
     if "blocked_by_antibot" in lower or "blocked_by_robots" in lower:
         return "blocked_by_antibot"
+    if "empty_response" in lower:
+        return "empty_response"
     # 401/403 without the canonical `blocked_by_antibot` prefix still read as
     # an access block; other 4xx/5xx codes fall through to the generic
     # no-provider-succeeded catch.
@@ -505,7 +532,7 @@ def _fallback_envelope(
         error = EnvelopeError(
             code="no_provider_succeeded",
             message="no providers succeeded",
-            suggestion=GENERIC_SUGGESTION,
+            suggestion=_suggestion_for("no_provider_succeeded"),
         )
     return Envelope(
         status=status,
