@@ -148,12 +148,24 @@ invent content). Agents decide whether to retry upstream.
 
 Every envelope carries a top-level `schema_version: Literal["0.3.0"]`.
 Agents branch on shape by reading this field directly — no substring-
-parsing an error string. Adding an optional envelope field is a PATCH (no
-`schema_version` bump); adding or renaming an `EnvelopeError.code` is a
-MINOR bump; changing or removing an existing field is a MAJOR bump.
-v0.3.0 adds the `empty_response` code to the closed set — a minor bump
-from v0.2.0. v0.1 envelopes lack the `schema_version` field and fail
-validation under `extra="forbid"`.
+parsing an error string.
+
+**The field is REQUIRED. There is no default.** A missing, `null`, or
+empty-string `schema_version` fails validation at parse time with a
+`ValidationError`. This is deliberate: a default value would let pre-v0.3
+envelopes (which lack the field entirely, or carry the older `"0.2.0"`
+literal) silently validate as current, defeating the point of a shape
+discriminator. The constructor signature in `companyctx/schema.py` is the
+source of truth — every call site must pass `schema_version="0.3.0"`
+explicitly. Published JSON Schema (`companyctx schema`) lists
+`schema_version` in the `required` array.
+
+Adding an optional envelope field is a PATCH (no `schema_version` bump);
+adding or renaming an `EnvelopeError.code` is a MINOR bump; changing or
+removing an existing field is a MAJOR bump. v0.3.0 adds the
+`empty_response` code to the closed set — a minor bump from v0.2.0. v0.1
+envelopes lack the `schema_version` field and fail validation under
+`extra="forbid"` plus the required-field check.
 
 ### `providers list` output shape
 
