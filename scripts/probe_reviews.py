@@ -112,7 +112,11 @@ class ProviderAdapter(Protocol):
 
     provider_id: str
 
-    def fetch(self, slug: str, host: str, query_name: str) -> ProbeRow: ...
+    def fetch(self, slug: str, host: str, query_name: str) -> ProbeRow:
+        """Fetch rating + count for ``slug``. Must never raise — map all
+        failure modes (missing key, network error, zero-result, blocked)
+        to a ``ProbeRow`` with the appropriate ``status`` and
+        ``error_*`` fields instead."""
 
 
 def _hash_response(obj: object) -> str:
