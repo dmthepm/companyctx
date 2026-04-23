@@ -88,18 +88,21 @@ The SQLite cache is a byproduct that compounds into a local data asset.
   `ProviderRunMetadata` per provider — not raw HTML snippets.
 - **Where it lives.** `~/.cache/companyctx/` (XDG-respecting via
   `platformdirs`).
-- **Keyed on.** `(normalized_host, provider_set_hash, provider_slug)` plus
-  TTL.
-- **Schema is versioned.** Migrations are first-class; the cache survives
-  provider upgrades.
+- **Keyed on.** `(normalized_host, provider_set_hash)` plus TTL.
+  `provider_set_hash` is a stable hash of sorted
+  `(slug, provider_version)` pairs from the live registry — bumping a
+  provider's version invalidates stale rows automatically.
+- **Schema is versioned.** Numbered SQL migrations under
+  `companyctx/migrations/` are first-class; the cache survives provider
+  upgrades.
 
 Over time a user accumulates a queryable local B2B dataset as a side effect
 of normal use — the differentiator against hosted actors (Apify / Clearbit /
 Firecrawl) where the JSON evaporates per call.
 
-v0.1 ships persistence + `--refresh` / `--from-cache` flags. A
-`companyctx query "SELECT …"` DSL is v0.2 scope and intentionally not
-committed here.
+v0.3 ships persistence + `--refresh` / `--from-cache` / `--no-cache` flags +
+`cache list` / `cache clear` (#9 / COX-6). A `companyctx query "SELECT …"`
+DSL is future scope and intentionally not committed here.
 
 ## Brains-and-muscles example
 

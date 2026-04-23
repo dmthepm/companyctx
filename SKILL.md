@@ -6,10 +6,16 @@ schema-locked JSON envelope out. Zero keys on the default path.
 **Commands.**
 
 - `companyctx fetch <site> --json` — run the waterfall; emit one envelope.
+  Reads the local cache by default; flags: `--refresh` (force re-fetch +
+  shadow-write), `--from-cache` (read-only; exit non-zero on miss),
+  `--no-cache` (bypass read, still write back).
 - `companyctx schema` — emit the envelope's Draft 2020-12 JSON Schema.
 - `companyctx providers list --json` — registered providers as JSON
   (`slug`, `tier`, `category`, `cost_hint`, `status`, `reason`).
 - `companyctx validate <path.json>` — round-trip through the Pydantic schema.
+- `companyctx cache list [--json]` — latest cached envelope per host.
+- `companyctx cache clear --site X` / `--older-than 7d` — prune cached
+  rows (at least one filter required).
 
 **Rules for agents.**
 

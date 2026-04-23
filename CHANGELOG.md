@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] — 2026-04-23
 
+### Added — Vertical Memory cache (COX-6 / #9)
+
+- **SQLite cache lands.** Every `fetch` run persists the assembled
+  envelope to a local SQLite file under `default_cache_dir() /
+  "companyctx.sqlite3"` (XDG-respecting via `platformdirs`). Subsequent
+  runs against the same host serve from cache by default until the row
+  expires (30-day default TTL). The cache is the Vertical Memory moat —
+  the user accumulates a queryable local B2B dataset as a side effect
+  of normal use.
+- **Three user-domain tables + a migration ledger.** `companies` (latest
+  envelope per host), `raw_payloads` (full envelope JSON per run for
+  audit), `provenance` (per-provider row mirroring
+  `ProviderRunMetadata`), and `schema_version` (managed by the runner).
+  Migrations are first-class — numbered SQL files under
+  `companyctx/migrations/NNNN_<slug>.sql` apply in ascending order at
+  open time, each in its own transaction. No implicit `ALTER TABLE` at
+  startup.
+- **Read-key shape.** `(normalized_host, provider_set_hash)` plus TTL.
+  `provider_set_hash` is a 16-char SHA-256 prefix of sorted
+  `(slug, provider_version)` pairs from the live registry — bumping a
+  provider's `version` invalidates stale rows automatically without an
+  explicit DELETE.
+- **`fetch` flags wired.** `--refresh` ignores the cached read and
+  force-writes a shadow row (audit trail; old rows kept).
+  `--from-cache` returns only the cached payload, never hits the
+  network, and exits non-zero on miss. `--no-cache` bypasses the read
+  path; the fresh result is still written back. `--from-cache` cannot
+  be combined with `--refresh` or `--no-cache`.
+- **`cache list` + `cache clear`.** `cache list` shows one row per
+  host (text and `--json` modes). `cache clear` requires at least one
+  filter (`--site` or `--older-than 7d`); wiping the entire cache is
+  intentional friction (delete the DB file directly).
+- **Cache writes are opportunistic.** A write failure (full disk,
+  locked file) never takes a successful fetch down with it; the
+  envelope is the product, persistence is opportunistic. Cache reads
+  are similarly best-effort — a corrupted row falls through to a
+  fresh fetch.
+
 ### Changed — envelope schema bump (v0.3)
 
 - **`schema_version` bumped to `"0.3.0"`.** Adding the `empty_response`
