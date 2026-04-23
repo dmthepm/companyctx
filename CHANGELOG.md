@@ -5,13 +5,12 @@ All notable changes to `companyctx` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v0.4.0
+## [0.4.0] — 2026-04-23
 
 v0.4.0 bundles the COX-52 FM-7 floor correction, the COX-49 NXDOMAIN
 routing fix, and a schema-version bump that closes the drift the
 v0.3.0 cache merge introduced (the `cache_corrupted` Literal was added
-without bumping `SCHEMA_VERSION`). Package version stays at `0.3.0`
-until the separate release-runbook PR cuts the tag.
+without bumping `SCHEMA_VERSION`).
 
 ### Changed — envelope schema bump (v0.4)
 
