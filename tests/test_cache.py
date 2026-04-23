@@ -502,6 +502,139 @@ def test_cli_cache_clear_invalid_age(isolated_cache_dir: Path) -> None:
     assert result.exit_code != 0
 
 
+# ---- review fixes: hardened cache boundary ----
+
+
+def test_cli_fetch_continues_when_cache_open_fails(
+    monkeypatch: pytest.MonkeyPatch, isolated_cache_dir: Path
+) -> None:
+    """A cache-open failure on the default ``fetch`` path must not crash.
+
+    The orchestrator should fall through to running providers normally
+    with ``cache=None``. This is the "cache is opportunistic, never
+    raise at the boundary" invariant — verbatim from CLAUDE.md.
+    """
+
+    def _boom() -> FetchCache:
+        raise OSError("simulated cache open failure")
+
+    monkeypatch.setattr("companyctx.cli._open_cache", _boom)
+    runner = CliRunner()
+    result = _fetch(runner)
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    # The fetch ran without a cache; envelope is still a valid one.
+    assert payload["data"]["site"] == "acme-bakery.example"
+    assert payload["status"] in {"ok", "partial", "degraded"}
+
+
+def test_cli_fetch_from_cache_open_failure_emits_cache_corrupted(
+    monkeypatch: pytest.MonkeyPatch, isolated_cache_dir: Path
+) -> None:
+    """``--from-cache`` cannot fall back to the network — open failure
+    must emit a structured ``cache_corrupted`` envelope, not a crash."""
+
+    def _boom() -> FetchCache:
+        raise OSError("simulated cache open failure")
+
+    monkeypatch.setattr("companyctx.cli._open_cache", _boom)
+    runner = CliRunner()
+    result = runner.invoke(app, ["fetch", "acme-bakery.example", "--from-cache", "--json"])
+    assert result.exit_code == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "degraded"
+    assert payload["error"]["code"] == "cache_corrupted"
+    assert "cache clear --site" in payload["error"]["suggestion"]
+
+
+def test_cli_fetch_from_cache_corrupted_row_emits_cache_corrupted(
+    isolated_cache_dir: Path,
+) -> None:
+    """A corrupted cached row on the ``--from-cache`` path becomes a
+    structured envelope (no Python traceback on stderr)."""
+    runner = CliRunner()
+    primed = _fetch(runner)
+    assert primed.exit_code == 0, primed.output
+
+    # Corrupt the latest cached payload so model_validate_json raises.
+    db = isolated_cache_dir / CACHE_DB_FILENAME
+    conn = sqlite3.connect(str(db))
+    try:
+        conn.execute("UPDATE raw_payloads SET payload_json = '{not json'")
+        conn.commit()
+    finally:
+        conn.close()
+
+    result = runner.invoke(app, ["fetch", "acme-bakery.example", "--from-cache", "--json"])
+    assert result.exit_code == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "degraded"
+    assert payload["error"]["code"] == "cache_corrupted"
+
+
+def test_cli_fetch_from_cache_miss_emits_structured_envelope(
+    isolated_cache_dir: Path,
+) -> None:
+    """A clean miss on ``--from-cache`` emits a structured envelope too —
+    pipelines branch on ``error.code`` instead of parsing stderr."""
+    runner = CliRunner()
+    result = runner.invoke(app, ["fetch", "no-such-site.example", "--from-cache", "--json"])
+    assert result.exit_code == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "degraded"
+    assert payload["error"]["code"] == "no_provider_succeeded"
+    assert "cache miss" in payload["error"]["message"]
+
+
+# ---- review fix: real pending-migration discovery test ----
+
+
+def test_migration_runner_discovers_new_file_on_reopen(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A new numbered migration appearing between two opens must be applied.
+
+    This exercises the production code path — ``_migrate`` calling
+    ``_discover_migrations`` at open time — instead of the
+    ``apply_migration_sql`` shortcut. Without this test, the "numbered
+    migrations discover on reopen" claim is aspirational. The test
+    monkey-patches ``_discover_migrations`` between opens so the second
+    open sees a 0002 migration the first one didn't.
+    """
+    db = tmp_path / "c.sqlite3"
+    real_disc = cache_mod._discover_migrations
+
+    # First open: only 0001 exists.
+    with FetchCache(db) as fc:
+        assert fc.schema_version() == 1
+        cur = fc._conn.execute("SELECT name FROM sqlite_master WHERE name='reopen_marker'")
+        assert cur.fetchone() is None
+
+    # New 0002 migration "appears" before reopen.
+    extra = (2, "CREATE TABLE reopen_marker (id INTEGER PRIMARY KEY);")
+
+    def _disc_with_0002() -> list[tuple[int, str]]:
+        return real_disc() + [extra]
+
+    monkeypatch.setattr(cache_mod, "_discover_migrations", _disc_with_0002)
+
+    # Second open: must apply 0002 via the production discovery path.
+    with FetchCache(db) as fc:
+        assert fc.schema_version() == 2
+        cur = fc._conn.execute("SELECT name FROM sqlite_master WHERE name='reopen_marker'")
+        assert cur.fetchone() is not None
+
+
+def test_cache_corrupted_is_in_envelope_error_codes() -> None:
+    """The new code is part of the closed Literal — schema introspection
+    must list it so downstream agents can hard-code their branch table."""
+    from typing import get_args  # noqa: PLC0415
+
+    from companyctx.schema import EnvelopeErrorCode  # noqa: PLC0415
+
+    assert "cache_corrupted" in get_args(EnvelopeErrorCode)
+
+
 # ---- TTL default ----
 
 
