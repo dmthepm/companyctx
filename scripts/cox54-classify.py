@@ -51,7 +51,7 @@ def bucket(envelope: dict, bytes_: int) -> tuple[str, str]:
 
     if status == "ok":
         if bytes_ >= 1024:
-            if 700 <= bytes_ <= 1200:
+            if bytes_ <= 1200:
                 return "clean-ok-borderline", "ok"
             return "clean-ok", "ok"
         return "CONTRACT-VIOLATION", f"ok but {bytes_}B"
