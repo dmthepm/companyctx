@@ -4,7 +4,7 @@
 
 # companyctx
 
-**Deterministic B2B context router. Zero keys. Schema-locked JSON your agent pipelines can actually trust.**
+**The deterministic B2B company context router. Zero keys. Schema-locked JSON your agent pipelines can actually trust.**
 
 ```bash
 pipx install companyctx   # v0.2.0 on PyPI — schema_version field + structured errors

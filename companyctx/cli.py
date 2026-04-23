@@ -40,7 +40,7 @@ from companyctx.schema import SCHEMA_VERSION, Envelope
 
 app = typer.Typer(
     name="companyctx",
-    help="Deterministic B2B context router. Zero keys. Schema-locked JSON.",
+    help="Deterministic B2B company context router. Zero keys. Schema-locked JSON.",
     no_args_is_help=True,
     add_completion=False,
 )
