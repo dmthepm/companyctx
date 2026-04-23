@@ -393,95 +393,184 @@ double-counts the signal.
   — appended by the harness; sanitized (slugs only, no hostnames).
 - **Credentials:** operator-provided env vars, never committed.
 
-## Cross-reference: external LLM research pass
+## Cross-reference: external LLM research passes
 
-Devon gave the same COX-64 prompt in parallel to Grok. Grok produced two
-passes (Pass 1, then a "deeper" Pass 2 that supersedes Pass 1). Both are
-preserved verbatim in the private research archive outside this repo for
-the diff of record. This section reconciles them against the decisions
-above.
+Devon ran the same COX-64 prompt through two external LLMs in parallel
+with this Claude pass: **Grok** (two passes, Pass 2 supersedes Pass 1)
+and **Gemini** (single long-form pass with Works Cited). All three
+external drafts are preserved verbatim in the private research archive
+outside this repo. This section reconciles them against the decisions
+above. Keeping this reconciliation in the research doc rather than in a
+scratch note is deliberate: three LLMs landed on meaningfully different
+recommendations for the same prompt, and the diff is itself evidence
+about the reliability of single-pass LLM research — directly relevant
+to the kind of confidence the downstream partner should place in any
+one of them.
 
-### Convergences (both passes agree with this doc)
+### Convergences (all three external lines agree with this doc)
 
-- **The cost delta is real.** Both passes land on ~10–20× between
-  first-party (Google) and scraper-family (Apify / Outscraper) at the
-  partner's ~3k/mo volume. This doc's math agrees.
-- **Apify `compass/crawler-google-places` is a legitimate scraper-family
-  finalist.** Grok names it explicitly; this doc probes it.
-- **ProviderBase pluggability is free from an architectural standpoint.**
-  Both agree that adding or swapping a reviews provider is a provider
-  entry-point change, not a schema or core-loop change.
-- **Caching makes the winner cheaper regardless.** Reviews are slow-
-  changing; a TTL'd cache of any provider's output shifts the effective
-  cost toward zero. See the new "Cross-cutting: caching" subsection below.
+- **The cost delta is real.** Grok puts it at ~10–20× between
+  first-party (Google Enterprise) and scraper-family (Apify /
+  Outscraper); Gemini puts it at ~28× specifically for Google Enterprise
+  → Apify compass. This doc's math (~20× at partner volume after the
+  Google SKU free caps are factored in) agrees with the order of
+  magnitude.
+- **Apify `compass/crawler-google-places` is a legitimate scraper-
+  family finalist.** All three external passes name it explicitly.
+  Gemini independently cites its stats — **24,000+ monthly active
+  users, 4.7/5 rating across 1,200+ reviews, 1.6-day average issue
+  response time** — which is a stronger maintenance signal than this
+  doc previously captured from the Apify MCP search (which returned a
+  different `compass/` actor). Stats taken; the `compass/crawler-
+  google-places` slot is reinforced, not replaced.
+- **ProviderBase pluggability is architecturally free.** All three
+  agree that adding or swapping a reviews provider is a provider entry-
+  point change, not a schema or core-loop change. The disagreement is
+  **whether** to use pluggability, not **whether we could**.
+- **Outscraper introduces async/webhook integration friction.** Gemini
+  documents this most concretely — the 1-to-3-minute async task model
+  requires either polling or webhook refactoring, both of which are
+  non-trivial engineering against a linear pipeline. This reinforces
+  this doc's elimination of Outscraper pre-probe; it's not just that it
+  wraps scraped Google data, it's also that adopting it requires a
+  pipeline-shape change the partner has not asked for.
+- **Yelp Fusion is pricing-hostile.** Gemini cites a **$229/month base
+  minimum** in addition to the per-1k rate — significantly harsher than
+  this doc's first draft, which treated Yelp Fusion Plus as "free
+  during trial then $9.99/1k." Taken; Yelp Fusion's post-trial economics
+  are worse than this doc stated.
+- **Gemini independently confirms the Enterprise-SKU-for-rating
+  mapping.** Gemini Works-Cited [15] quotes Google's docs directly:
+  *"requesting the rating or userRatingCount fields automatically
+  triggers the Place Details Enterprise SKU."* This validates this
+  doc's finding that Grok's "Essentials + field mask" plan does not
+  return the fields we need. Two of three external passes now converge
+  on the correct SKU mapping.
 
-### Divergences — where this doc holds its line
+### Where this doc holds its line against all external passes
 
-1. **Google SKU field-tier mapping.** Both Grok passes collapse the
-   Essentials / Pro / Enterprise distinction and propose "Google Places
-   Essentials + field mask" as the cost-optimized Google path. The
-   authoritative Google docs place `rating`, `userRatingCount`,
-   `websiteUri`, and `regularOpeningHours` in the **Enterprise** Place
-   Details SKU, not Essentials or Pro. Essentials returns address /
-   location / types only; Pro adds display-name, phone, hours —
-   still no rating. The "Essentials with field mask" path does not
-   return the fields we need. This doc's Enterprise-tier probe slot is
-   correct; Grok's "Essentials-stays-free" framing is not.
-2. **SerpAPI.** Grok Pass 2 lists SerpApi Google Maps at $0.025+ as a
-   viable option without mention of Google's December-2025 DMCA suit
-   (motion-to-dismiss hearing 2026-05-19). This doc eliminates SerpAPI
-   pre-probe on that litigation risk; the miss in Grok's pass is an
-   example of why adversarial critique is a distinct step from desktop
-   survey. Load-bearing legal risk can hide from a single-pass
-   literature review.
-3. **ToS weighting.** Grok Pass 2 frames scraper-ToS risk as "overblown
-   ... no major enforcement actions reported in 2025–2026 against these
-   platforms for low-volume B2B use." That's true for the **act of
-   scraping**; it elides the **redistribution** axis — the partner's
-   reports ship scraped Google data to downstream cold-outreach targets,
-   which is where Google's ToS posture gets more hostile. This doc
-   weights ToS at 3× (up from the issue's 2×) for that reason. Grok
-   treats it at 2× with an "acceptable at this volume" caveat.
-4. **Recommendation shape.** Grok Pass 2 recommends "pluggable provider,
-   default to Outscraper, Google fallback." This doc (and the linked
-   ADR) explicitly rejects pluggable-as-default per the adversarial
-   critique that pluggability is maintenance debt dressed as
-   flexibility — doubled fixture sets, doubled CI-matrix cells, doubled
-   ToS surfaces, and it forces the partner to pick when the partner's
-   actual need is "rating + count shows up." Grok's suggestion and the
-   adversarial critique's rebuttal are both preserved in the record;
-   the Slice B probe numbers + the pre-registered decision rule pick
-   the outcome, not either narrative.
-5. **Grok Pass 2's factual claim that `reviews_google_places` was
-   "scaffolded but never implemented" is wrong.** The provider ships in
-   v0.3.0 and is live on `main` at 533 lines
-   (`companyctx/providers/reviews_google_places.py`), with a 572-line
-   test file, an entry point at `pyproject.toml:60`, and fixtures under
-   `fixtures/<slug>/google_places.json`. Grok Pass 1 had this right;
-   Pass 2 regressed. The error is worth flagging not to dunk on the
-   external pass but because it is a **concrete example** of why the
+1. **Google SKU field-tier mapping.** Both Grok passes collapsed the
+   Essentials / Pro / Enterprise distinction and proposed "Essentials +
+   field mask" as the cost-optimized Google path. Gemini gets this
+   right. This doc's Enterprise-tier probe slot is correct; Grok's
+   "Essentials-stays-free" framing is not. Worth flagging that
+   single-pass desktop research can collapse authoritative-doc
+   distinctions in ways that make the downstream recommendation
+   silently wrong — this is why the probe is load-bearing.
+2. **SerpAPI.** Grok Pass 2 lists SerpApi Google Maps as viable without
+   mention of Google's Dec-2025 DMCA suit. Gemini does not discuss
+   SerpAPI at all (narrower shortlist, didn't include it). This doc
+   eliminates SerpAPI pre-probe on the active-litigation risk. The miss
+   in Grok's pass is an example of why adversarial critique is a
+   distinct step from desktop survey.
+3. **ToS weighting.** Grok Pass 2 frames scraper-ToS risk as
+   "overblown"; Gemini's framing is more careful — cites the
+   hiQ-Labs-v-LinkedIn / CFAA jurisprudence correctly, notes that
+   *contract-breach claims persist even when CFAA does not apply*, and
+   specifically documents Google Maps Platform's **30-day caching
+   restriction**. This doc's 3× ToS weighting stands; Gemini's detail
+   sharpens rather than undercuts it.
+4. **Recommendation shape.** Grok Pass 2 recommends pluggable-default-
+   to-Outscraper; Gemini recommends a **Factory Pattern with
+   `REVIEWS_PROVIDER` env toggle**. Two external passes, two votes for
+   pluggable. This doc (and the linked ADR) holds its rejection of
+   pluggable-as-default per the adversarial critique already on record:
+   pluggability is maintenance debt dressed as flexibility (doubled
+   fixture sets, doubled CI-matrix cells, doubled ToS surfaces), and it
+   forces the partner to pick when the partner's actual need is "rating
+   + count shows up." The 2-vs-1 external weight is noted but the
+   adversarial critique's argument is about architecture cost, not about
+   vote-counting — and the probe numbers + the pre-registered decision
+   rule, not external-LLM consensus, pick the outcome.
+5. **Grok Pass 2's "provider never implemented" claim.** Wrong — the
+   provider ships in v0.3.0, 533 lines on `main`. Grok Pass 1 had it
+   right; Pass 2 regressed. Flagged as a concrete example of narrative-
+   research hallucination.
+6. **Gemini's "Empirical Evaluation Framework and Probe Execution"
+   section is fabricated.** This is the most important single finding
+   from this synthesis. Gemini's document includes a section that
+   presents itself as having *run the 10-site probe* and produces
+   specific numbers in a measurement-like table:
+
+   > | Metric | Google Places (Enterprise) | Apify (compass) | Outscraper API |
+   > | Billed Cost (per 10 sites) | $0.58 | $0.021 | $0.03 |
+   > | Coverage Rate | 100% (10/10) | 100% (10/10) | 100% (10/10) |
+   > | Data Consistency | Baseline Control | 100% Match (Rating) | 100% Match (Rating) |
+
+   Gemini did not run this probe. No API keys were provisioned, no
+   slugs were tested, no billed costs were observed. The numbers are
+   extrapolations from desktop pricing pages presented in a table shape
+   that looks like measurement. This is the **exact failure mode the
    repo rule "never name a vendor in public docs before measurement"
-   exists. Narrative research that doesn't bottom out on read-the-code
-   can invent load-bearing facts in either direction.
+   exists to prevent**. If we had accepted Gemini's recommendation
+   ("switch to Apify compass as primary") on the strength of that
+   table, we would have been shipping a vendor change backed by
+   fabricated measurement. The header of this doc's methodology section
+   reads "10 sites is a cost-and-fit sanity check, not a coverage
+   benchmark" precisely to keep even our own future-selves honest about
+   what n=10 measurement can and can't support — Gemini's pass presents
+   n=10 *extrapolation* as if it were that benchmark, and it isn't.
 
-### Additions taken from Grok's passes
+   The Gemini pass is cited here *because* it got this wrong in an
+   instructive way, not to dismiss it. The rest of Gemini's research
+   (Enterprise-SKU mapping, Apify stats, Yelp base minimum, ToS detail)
+   is genuinely useful. The fabricated-probe section is the single
+   sharpest argument for why this ticket had to be split into Slice A
+   (research + harness, deferred probe) and Slice B (actual probe with
+   real keys + real billed cost): shipping one of those external
+   passes as the ADR directly would have meant shipping a recommendation
+   backed by a table of invented numbers.
 
-- **Foursquare Places API** added to the matrix below as an evaluated
-  alternative (deferred, not a Slice B finalist). Foursquare brings a
-  different reviewer pool (not 1:1 with Google — different absolute
-  numbers, correlated trend), so it trades data-consistency vs. Google
-  for data-diversity. Out of scope for the Slice B probe's "cost vs.
-  Google baseline" question, but a real first-party ToS-clean option
-  if we ever need review-source diversity (e.g., non-US expansion or
-  Google-ZERO_RESULTS edge cases).
-- **30-day cache TTL** promoted from "hybrid idea" to a cross-cutting
-  optimization note, below.
+### Additions taken from the external passes
+
+- **Foursquare Places API** added to the matrix above as an evaluated
+  alternative (deferred, not a Slice B finalist — Grok Pass 2 surfaced
+  this).
+- **30-day cache TTL** promoted to a cross-cutting optimization note,
+  below. Grok surfaced the idea; **Gemini's Google Maps Platform ToS
+  citation sharpens the constraint**: Google permits temporary caching
+  of Places data for up to 30 consecutive calendar days; persistent
+  local stores past that window violate the ToS. This happens to be
+  exactly the TTL Grok proposed, which lands the cache proposal on the
+  right side of the ToS line by coincidence. This doc's Vertical Memory
+  cache (SQLite) can apply this TTL directly; Slice B keeps the cache
+  disabled so per-call cost is measured honestly.
 - **2026 SKU free-tier caps** (Essentials 10k/mo free, Pro 5k/mo free)
-  taken as additional evidence in the cost math: at the partner's 3k/mo
-  Text Search volume, the Pro SKU Text Search stays inside the 5k/mo
-  free cap so the effective cost is only the Enterprise Place Details
-  leg (~2.5¢/call). This narrows the Google New Enterprise vs. Apify
-  delta versus the 10–20× figure Grok's passes quote.
+  — at partner 3k/mo volume, Text Search Pro stays inside the 5k/mo
+  free cap so the effective Google cost is only the Enterprise Place
+  Details leg.
+- **Apify `compass/crawler-google-places` usage stats** — 24,000+ MAU,
+  4.7/5 rating, 1.6-day average issue response (per Gemini citation [9]).
+  Stronger maintenance signal than the first draft of this doc cited;
+  reinforces the Slot #2 choice.
+- **Yelp Fusion $229/month base minimum** — Gemini citation [27].
+  Post-trial economics are worse than this doc initially stated;
+  captured in the matrix note.
+- **hiQ Labs v. LinkedIn + CFAA jurisprudence framing** — Gemini
+  citations [38–40]. Not taken into the doc verbatim (legal-framework
+  summaries age poorly and the doc doesn't need to relitigate Ninth
+  Circuit caselaw), but captured in the archive for the implementation
+  follow-up issue.
+
+### What none of the external passes covered
+
+- **WebSearch + LLM parsing as a candidate.** None of Grok-1, Grok-2,
+  or Gemini surfaced the agentic alternative. That candidate came from
+  Devon's skeptical question on the issue thread — not a desktop-
+  research category any of the LLMs spontaneously considered. This is
+  itself a signal: the alternatives external LLMs generate are the
+  alternatives that *look like the incumbent* (more structured APIs).
+  The most consequential candidate in this survey was surfaced by a
+  human who stepped outside the "what replaces the API?" frame. Noted
+  for the process record.
+- **DataForSEO Google Reviews API.** Surfaced cross-issue from the
+  COX-63 audit; none of the three external passes named this one
+  independently.
+- **Google Places Legacy's non-enablable-since-2025-03-01 status.**
+  None of the three passes flagged this. It is the single largest
+  migration-force acting on this decision independent of cost, and
+  pure desktop survey missed it. This doc catches it in Context #1 of
+  the ADR.
 
 ### Foursquare — deferred alternative
 
@@ -510,6 +599,6 @@ on top of whichever provider ships.
 - Issue: [#116](https://github.com/dmthepm/companyctx/issues/116)
 - Linked ADR: `decisions/2026-04-23-reviews-provider-selection.md` (status: **proposed**)
 - Prior art: `noontide-projects/research/2026-04-20-research-pack-reviews-business-claude-code.md` (private)
-- External LLM parallel pass: Grok passes 1 + 2 preserved in the private research archive outside this repo (per the noontide-projects split; not referenced by path here to honor the "never create companyctx imports or paths to noontide-projects" rule)
+- External LLM parallel passes: Grok (passes 1 + 2) and Gemini (single long-form pass), all preserved verbatim in the private research archive outside this repo. Paths deliberately omitted to honor the "never create companyctx imports or paths to noontide-projects" rule. Cross-reference + critique in the "Cross-reference: external LLM research passes" section above.
 - Partner posture: `new-signal-studio/logs/d100-run-*.md` (private)
 - Pattern precedent: `research/2026-04-21-tls-impersonation-spike.md`
