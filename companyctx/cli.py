@@ -9,9 +9,9 @@ Exposes the public contract described in ``docs/SPEC.md``:
 - ``cache list`` / ``cache clear`` — Vertical Memory plumbing (COX-6 / #9).
 - ``batch <csv>`` — batch mode stub (still gated on the batch slice).
 
-Several flags and subcommands in v0.3 are still stubs. They fail loudly
-rather than silently accepting input and doing nothing — see issue #68 for
-the honesty pass.
+Several flags and subcommands are still stubs. They fail loudly rather
+than silently accepting input and doing nothing — see issue #68 for the
+honesty pass.
 """
 
 from __future__ import annotations
@@ -168,7 +168,7 @@ _FORMAT_OPT = typer.Option(
     "--json/--markdown",
     help=(
         "Output format. --json is the supported contract. "
-        "--markdown is experimental and not implemented in v0.2.0 — "
+        "--markdown is experimental and not implemented — "
         "runs fail fast (see issue #68)."
     ),
 )
@@ -185,7 +185,7 @@ _NO_CACHE_OPT = typer.Option(
 _CONFIG_OPT = typer.Option(
     None,
     "--config",
-    help="TOML config path. (Not implemented in v0.3 — see issue #9.)",
+    help="TOML config path. (Not implemented yet — see issue #9.)",
     callback=_reject_config_flag,
 )
 _MOCK_FETCH_OPT = typer.Option(
