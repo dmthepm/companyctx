@@ -27,7 +27,7 @@ from curl_cffi import requests
 
 from companyctx import core
 from companyctx.http import DEFAULT_TIMEOUT_S, DEFAULT_USER_AGENT
-from companyctx.providers.base import FetchContext
+from companyctx.providers.base import FetchContext, ProviderBase
 from companyctx.providers.reviews_google_places import (
     _DETAILS_BASIC_ATMOSPHERE_TENTHS,
     _TEXT_SEARCH_TENTHS,
@@ -485,7 +485,9 @@ def test_envelope_comparison_zero_key_only_vs_with_places(
         "acme-bakery.example",
         mock=True,
         fixtures_dir=FIXTURES_DIR,
-        providers=cast("dict[str, type[object]]", {"site_text_trafilatura": TrafilaturaProvider}),
+        providers=cast(
+            dict[str, type[ProviderBase]], {"site_text_trafilatura": TrafilaturaProvider}
+        ),
         fetched_at=FIXED_WHEN,
     )
     assert env_zero_only.status == "ok"
@@ -497,7 +499,7 @@ def test_envelope_comparison_zero_key_only_vs_with_places(
         mock=True,
         fixtures_dir=FIXTURES_DIR,
         providers=cast(
-            "dict[str, type[object]]",
+            dict[str, type[ProviderBase]],
             {
                 "site_text_trafilatura": TrafilaturaProvider,
                 "reviews_google_places": Provider,
@@ -528,7 +530,7 @@ def test_explicit_providers_dict_preserves_not_configured_row(
         mock=True,
         fixtures_dir=FIXTURES_DIR,
         providers=cast(
-            "dict[str, type[object]]",
+            dict[str, type[ProviderBase]],
             {
                 "site_text_trafilatura": TrafilaturaProvider,
                 "reviews_google_places": Provider,

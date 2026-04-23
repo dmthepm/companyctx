@@ -99,6 +99,14 @@ REGRESSION_SLUGS = (
     # failed provider to status=degraded. Locks the envelope shape that
     # downstream pipelines branch on for FM-13 timeouts (see issue #40).
     "fm13-timeout-smb-01",
+    # COX-43 / #78 tech-fingerprint false-positive regression. HTML
+    # mentions WordPress / Shopify / Squarespace / Wix / Webflow / Elementor
+    # in prose, comments, and third-party widget src URLs but loads none of
+    # them. The v0.2 substring detector emitted all six; the v0.3 detector
+    # restricts to high-confidence signals (generator meta, framework-owned
+    # asset hostnames, platform class/data attrs on html/body) and pins
+    # tech_stack=[]. Byte-diff regression gate against a reversion.
+    "tech-fp-mentions-only",
 )
 
 

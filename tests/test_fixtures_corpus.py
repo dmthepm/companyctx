@@ -85,8 +85,19 @@ FM7_THIN_FIXTURE_FILES = ("homepage.html", "expected.json")
 # homepage.html — the sentinel raises before any HTML is read.
 BLOCK_FIXTURE_SLUGS = ("fm13-timeout-smb-01",)
 BLOCK_FIXTURE_FILES = ("fixture-block.txt", "expected.json")
+# Tech-fingerprint false-positive fixtures (COX-43 / #78). Carry a
+# homepage.html whose bytes *mention* multiple mutually-exclusive
+# platforms in prose / comments / third-party widget src URLs without
+# actually running any of them. The high-confidence detector must emit
+# tech_stack=[]; the fixture is the byte-diff regression gate.
+TECH_FP_FIXTURE_SLUGS = ("tech-fp-mentions-only",)
+TECH_FP_FIXTURE_FILES = ("homepage.html", "expected.json")
 FAILURE_FIXTURE_SLUGS = (
-    FM7_FIXTURE_SLUGS + EMPTY_RESPONSE_FIXTURE_SLUGS + FM7_THIN_FIXTURE_SLUGS + BLOCK_FIXTURE_SLUGS
+    FM7_FIXTURE_SLUGS
+    + EMPTY_RESPONSE_FIXTURE_SLUGS
+    + FM7_THIN_FIXTURE_SLUGS
+    + BLOCK_FIXTURE_SLUGS
+    + TECH_FP_FIXTURE_SLUGS
 )
 
 # Real-golden fixtures (issue #24) live alongside the 30 synthetic dirs but
@@ -162,6 +173,11 @@ def test_failure_fixtures_have_minimum_files() -> None:
         site_dir = FIXTURES_DIR / slug
         assert site_dir.is_dir(), slug
         missing = [f for f in BLOCK_FIXTURE_FILES if not (site_dir / f).exists()]
+        assert not missing, f"{slug} missing {missing}"
+    for slug in TECH_FP_FIXTURE_SLUGS:
+        site_dir = FIXTURES_DIR / slug
+        assert site_dir.is_dir(), slug
+        missing = [f for f in TECH_FP_FIXTURE_FILES if not (site_dir / f).exists()]
         assert not missing, f"{slug} missing {missing}"
 
 

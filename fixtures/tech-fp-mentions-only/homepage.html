@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- legacy note: migrated off Shopify in 2019; new build is hand-rolled. -->
+  <title>Tech FP Mentions Only — regression fixture</title>
+  <meta name="description" content="We reviewed WordPress, Squarespace, Wix, and Webflow before going custom.">
+  <meta property="og:site_name" content="Tech FP Mentions Only">
+  <meta property="og:url" content="https://tech-fp-mentions-only.example">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "LocalBusiness", "address": {"@type": "PostalAddress", "addressLocality": "Somewhere", "addressRegion": "CA"}, "name": "Tech FP Mentions Only", "url": "https://tech-fp-mentions-only.example"}</script>
+  <script async src="https://cdn.thirdparty.example/shopify-share-widget.js"></script>
+  <script async src="https://cdn.thirdparty.example/wordpress-importer.js"></script>
+  <link rel="stylesheet" href="https://cdn.thirdparty.example/squarespace-like-theme.css">
+</head>
+<body class="site-root content-elementor-like">
+  <header><h1>Tech FP Mentions Only</h1></header>
+  <main>
+    <p>
+      This fixture exists to reproduce the v0.2.0 RC-dogfood false-positive class
+      called out in #78 / COX-43: a page that <em>mentions</em> WordPress, Shopify,
+      Squarespace, Wix, Webflow, and Elementor in prose, comments, or third-party
+      script URLs, but does not actually <em>run</em> any of them.
+    </p>
+    <p>
+      A human inspecting this page would not describe the site's stack as
+      "WordPress + Shopify + Squarespace"; the substring match did.
+    </p>
+    <h2>Blog post — comparing website builders</h2>
+    <p>
+      When we started, we evaluated Shopify for e-commerce, Squarespace for
+      templates, Wix for drag-and-drop, and Webflow for design control. We
+      also considered WordPress with Elementor. In the end we shipped a
+      hand-rolled static build, which is what you are reading now.
+    </p>
+    <h2>What this page is testing</h2>
+    <p>
+      The goal of this regression page is simple: it repeats the names
+      WordPress, Shopify, Squarespace, Wix, Webflow, and Elementor in the
+      kinds of places that produced the original false positive, while
+      keeping the actual page shell free of generator tags, owned CDN assets,
+      or platform-specific body markers. The page is intentionally verbose so
+      it stays above the current empty-response honesty floor and continues to
+      exercise the tech detector rather than the thin-body gate.
+    </p>
+    <p>
+      In other words, this page talks about WordPress migrations, Shopify
+      commerce experiments, Squarespace templates, Wix builders, Webflow
+      mockups, and Elementor page editing as plain text. It also keeps the
+      legacy comment and unrelated third-party widget URLs whose path names
+      happen to contain those platform names. None of that should be promoted
+      into a detected stack because the site is not loading any platform-
+      owned runtime from those vendors.
+    </p>
+    <h2>Editorial note</h2>
+    <p>
+      A downstream user reading the extracted homepage text should still have
+      enough material to understand why the page exists, why the detector
+      would have been fooled before the COX-43 tightening, and why the new
+      contract only trusts high-confidence evidence. The page therefore
+      includes repeated, natural-language references to common site builders,
+      but the only real observation about the implementation is that the
+      current site is a custom static build.
+    </p>
+    <p>
+      That distinction matters for the product claim in companyctx. The tool
+      is supposed to surface observations, not inferences, and a bare mention
+      of Shopify or WordPress in prose is not the same thing as a Shopify or
+      WordPress page physically loading its own assets. This fixture keeps
+      that line explicit and durable across future extractor changes.
+    </p>
+    <h2>Get in touch</h2>
+    <p>Email: hello@example.test · Phone: (555) 555-0100</p>
+  </main>
+  <footer>© 2026 Tech FP Mentions Only. All rights reserved.</footer>
+</body>
+</html>

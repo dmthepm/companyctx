@@ -122,6 +122,24 @@ The deterministic recipe table lives in
 Wired through `FM7_THIN_FIXTURE_SLUGS` in `tests/test_fixtures_corpus.py`
 and pinned in `tests/test_regression_corpus.py::REGRESSION_SLUGS`.
 
+### Tech-fingerprint false-positive — COX-43 / #78
+
+| Slug                      | Failure mode                     | What it guards against                                            |
+| ------------------------- | -------------------------------- | ----------------------------------------------------------------- |
+| `tech-fp-mentions-only`   | Multi-vendor substring FP class  | A reversion to substring-match tech detection that asserts framework *presence* from bare *mention* (blog prose, legacy HTML comment, third-party widget src). |
+
+The HTML mentions WordPress, Shopify, Squarespace, Wix, Webflow, and
+Elementor in prose, a legacy `<!-- -->` comment, and third-party
+script/link URLs whose path happens to contain the name — without
+actually loading any of them (no generator meta, no framework-owned
+asset hostname, no platform class token or `data-wf-*` attr). The
+v0.2 substring detector emitted all six; the high-confidence detector
+shipped under COX-43 emits `tech_stack: []`. The fixture is pinned in
+both the shape-check suite (`FAILURE_FIXTURE_SLUGS` →
+`TECH_FP_FIXTURE_SLUGS` in `tests/test_fixtures_corpus.py`) and the
+byte-diff regression suite (`REGRESSION_SLUGS` in
+`tests/test_regression_corpus.py`).
+
 ### Network-failure regressions — the `fixture-block.txt` sentinel
 
 Network-level failures (timeout, anti-bot 403, TLS handshake, connection
