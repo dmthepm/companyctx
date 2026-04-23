@@ -39,6 +39,17 @@ class UnsafeURLError(ValueError):
     """Raised when a URL fails the public-HTTP guardrail."""
 
 
+class DNSResolutionError(UnsafeURLError):
+    """Raised when a hostname fails to resolve (NXDOMAIN, no-A-record, etc.).
+
+    Distinct from :class:`UnsafeURLError` so callers can route DNS-failure to
+    a non-SSRF envelope error code (``no_provider_succeeded``). Inherits from
+    :class:`UnsafeURLError` to preserve existing ``except UnsafeURLError``
+    fall-open branches (robots pre-flight) which treat any validation failure
+    identically.
+    """
+
+
 def validate_public_http_url(url: str) -> str:
     """Reject URLs that point at non-public or non-HTTP destinations.
 
@@ -86,7 +97,7 @@ def _resolve_all(host: str) -> list[str]:
     try:
         infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
     except OSError as exc:
-        raise UnsafeURLError(f"DNS resolution failed for {host}: {exc}") from exc
+        raise DNSResolutionError(f"DNS resolution failed for {host}: {exc}") from exc
     seen: set[str] = set()
     addrs: list[str] = []
     for info in infos:
@@ -101,7 +112,7 @@ def _resolve_all(host: str) -> list[str]:
             seen.add(ip)
             addrs.append(ip)
     if not addrs:
-        raise UnsafeURLError(f"no addresses for {host}")
+        raise DNSResolutionError(f"no addresses for {host}")
     return addrs
 
 
@@ -119,6 +130,7 @@ __all__ = [
     "ALLOWED_SCHEMES",
     "MAX_REDIRECTS",
     "MAX_RESPONSE_BYTES",
+    "DNSResolutionError",
     "UnsafeURLError",
     "validate_public_http_url",
 ]

@@ -70,6 +70,7 @@ from companyctx.robots import is_allowed
 from companyctx.security import (
     MAX_REDIRECTS,
     MAX_RESPONSE_BYTES,
+    DNSResolutionError,
     UnsafeURLError,
     validate_public_http_url,
 )
@@ -186,6 +187,8 @@ def _stealth_fetch_guarded(url: str, timeout_s: float) -> tuple[int, str, int, i
     while True:
         try:
             validate_public_http_url(current)
+        except DNSResolutionError as exc:
+            raise _ProbeFetchError(f"dns_resolve_failure: {exc}") from exc
         except UnsafeURLError as exc:
             raise _ProbeFetchError(f"unsafe_url: {exc}") from exc
         try:
@@ -279,7 +282,9 @@ def probe_one(
         row["elapsed_ms"] = int((time.monotonic() - t0) * 1000)
         reason = str(exc)
         row["error"] = reason
-        if reason.startswith("unsafe_url"):
+        if reason.startswith("dns_resolve_failure"):
+            row["outcome"] = "dns_resolve_failure"
+        elif reason.startswith("unsafe_url"):
             row["outcome"] = "unsafe_url"
         elif reason.startswith("blocked_by_antibot"):
             row["outcome"] = "blocked_by_antibot"

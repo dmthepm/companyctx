@@ -615,6 +615,11 @@ def _classify_error_code(
     """
     del envelope_status  # Reserved for future per-status heuristics.
     lower = message.lower()
+    # An unresolvable hostname is not an SSRF attempt (COX-49). Providers
+    # emit ``dns_resolve_failure:`` for this case so it routes to the generic
+    # no-provider-succeeded bucket rather than the SSRF pre-flight bucket.
+    if "dns_resolve_failure" in lower:
+        return "no_provider_succeeded"
     if "unsafe_url" in lower or "unsupported scheme" in lower or "invalid site" in lower:
         return "ssrf_rejected"
     if "fixture path escapes" in lower or "fixture file escapes" in lower:

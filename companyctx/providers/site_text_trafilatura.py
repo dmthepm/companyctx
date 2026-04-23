@@ -40,6 +40,7 @@ from companyctx.schema import ProviderRunMetadata, SiteSignals
 from companyctx.security import (
     MAX_REDIRECTS,
     MAX_RESPONSE_BYTES,
+    DNSResolutionError,
     UnsafeURLError,
     validate_public_http_url,
 )
@@ -247,6 +248,8 @@ def _ensure_safe_for_fetch(url: str, ctx: FetchContext) -> None:
     """
     try:
         validate_public_http_url(url)
+    except DNSResolutionError as exc:
+        raise _BlockedError(f"dns_resolve_failure: {exc}") from exc
     except UnsafeURLError as exc:
         raise _BlockedError(f"unsafe_url: {exc}") from exc
     if not ctx.ignore_robots and not is_allowed(url, user_agent=ctx.user_agent):
