@@ -12,7 +12,7 @@
 
 ---
 
-# companyctx — spec (v0.2)
+# companyctx — spec (v0.4)
 
 ## Purpose
 
@@ -28,7 +28,7 @@ layer that consumes the JSON. No people data in v0.1 (company side only).
 
 Built with Typer. Conforms to clig.dev.
 
-Shipped in v0.3:
+Shipped today:
 
 | Command | Behavior |
 |---|---|
@@ -39,7 +39,7 @@ Shipped in v0.3:
 | `companyctx cache list [--json]` | Latest cached envelope per host (one row per host). |
 | `companyctx cache clear --site X` / `--older-than 7d` | Prune cached rows; at least one filter is required. |
 
-Reserved in the CLI surface but **not wired** in v0.3 — invoking them
+Reserved in the CLI surface but **not wired** yet — invoking them
 prints a tracking-issue pointer to stderr and exits non-zero, so agents
 don't build on a contract we don't honour yet:
 
@@ -51,8 +51,8 @@ Flags on `fetch`:
 
 - `--out <path>` — write JSON to a file instead of stdout.
 - `--json` / `--markdown` — `--json` is the supported contract.
-  `--markdown` is **experimental and not implemented** in v0.2; the CLI
-  rejects it with an explicit message so downstream pipelines don't ship a
+  `--markdown` is **experimental and not implemented**; the CLI rejects
+  it with an explicit message so downstream pipelines don't ship a
   silent contract (#68).
 - `--mock` — load from `fixtures/<site>/` instead of the network. Paired
   with `--fixtures-dir` (default `./fixtures`).
