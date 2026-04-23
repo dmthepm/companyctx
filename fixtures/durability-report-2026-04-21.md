@@ -39,14 +39,14 @@ print('status :', dict(collections.Counter(r['status']  for r in rows)))
 ```
 
 No `slug` or `host` column is committed — per-site identifiers live
-only in `.context/durability/` (gitignored) and in @joel-req's private
+only in `.context/durability/` (gitignored) and in the external partner's private
 seed CSVs. This keeps the committed disclosure surface limited to the
 niche bucket + envelope shape, per the scope narrowing recorded in the
 issue `#22` kickoff comment.
 
 ## Methodology
 
-- **Seed source.** @joel-req's external prospect lists in a private partner
+- **Seed source.** The external partner's prospect lists in a private partner
   repo (12 niche files with explicit `**Website:**` fields). The raw lists
   never touch this repo.
 - **Sampling.** Stratified stride sample — 10 hosts per niche × 10
@@ -78,7 +78,7 @@ issue `#22` kickoff comment.
 - **Privacy.** Per-site hosts, slugs, and per-run envelopes live only
   in `.context/durability/` (gitignored). The committed raw JSONL
   carries niche + envelope stats only — no per-site identifier of any
-  kind. @joel-req's raw prospect list never touches this repo.
+  kind. The external partner's raw prospect list never touches this repo.
 - **Vertical skew — acknowledged.** The sample is **100%
   medical/aesthetic SMBs**. RISK-REGISTER was mined from gutter /
   roofing / IV-therapy transcripts. FM codes are site-shape-driven
@@ -312,7 +312,7 @@ byte-diff.
 - [x] ≥ 2 HTML-capturable fixtures committed (`fm7-js-redirect-root`,
       `fm7-maintenance-page`).
 - [x] No PII committed; fixtures contain only generic HTML.
-- [x] @joel-req's raw prospect list never landed in the repo.
+- [x] The external partner's raw prospect list never landed in the repo.
 - [x] Release-readiness ADR committed alongside
       ([`decisions/2026-04-21-v0.1.0-release-readiness.md`](../decisions/2026-04-21-v0.1.0-release-readiness.md)).
 

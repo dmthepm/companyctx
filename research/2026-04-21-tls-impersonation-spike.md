@@ -52,14 +52,14 @@ defaults — the very Python fingerprint this spike exists to replace.
 cosmetic dentistry, plastic surgery, bariatric surgery, IVF/fertility,
 orthodontics, business immigration, high-net-worth divorce, private lending.
 Seed domains sampled deterministically (alphabetical first-N) from
-@joel-req's D100 instantly-sequence CSVs at
-`new-signal-studio/outputs/2026-04-08-d100-*-instantly.csv`.
+the external partner's D100 instantly-sequence CSVs at
+`<partner-outputs-dir>/2026-04-08-d100-*-instantly.csv`.
 
 **Sanitization.** The committed probe set references sites by slug only
 (`bariatric-01`, `cos-dent-02`, …). The slug → real-URL mapping lives in a
 local-only file, `research/.slug-map.local.csv` (gitignored under
 `research/*.local.*`). Raw measurement records (JSONL, 120 rows) likewise
-carry slugs, not URLs. @joel-req's seed list is private; the research artifact
+carry slugs, not URLs. The external partner's seed list is private; the research artifact
 must not leak it.
 
 **Site-class coverage.** The probe was not pre-classified by WAF; classes
@@ -272,13 +272,13 @@ This decision drives, in the same PR:
 - Raw evidence: `research/2026-04-21-tls-impersonation-spike-raw.jsonl`
   (120 rows: 20 slugs × 3 libraries × 2 runs). Slug-only, no real URLs.
 - Slug mapping: `research/.slug-map.local.csv` (gitignored; recoverable
-  from `new-signal-studio/outputs/2026-04-08-d100-*-instantly.csv` via
+  from `<partner-outputs-dir>/2026-04-08-d100-*-instantly.csv` via
   the deterministic sampling procedure documented above).
 - Harness: `research/_scratch/probe.py` (gitignored; regenerable — the
   procedure is fully documented in this file).
 - Run date: 2026-04-21 (see `run_date` on each JSONL row).
 
-Re-running the spike requires only the D100 CSVs (private to @joel-req) and
+Re-running the spike requires only the D100 CSVs (private to the external partner) and
 the probe harness; no companyctx-specific infrastructure.
 
 ## Out of scope (deferred to other issues)
