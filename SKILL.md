@@ -1,7 +1,11 @@
 # SKILL.md — companyctx
 
-**Purpose.** Deterministic B2B context router. One site in,
-schema-locked JSON envelope out. Zero keys on the default path.
+**Purpose:** Extract deterministic, schema-locked company context
+(tech stack, reviews, core offerings) from any B2B domain. One site in,
+one JSON envelope out. Zero keys on the default path.
+
+`companyctx = company context.` The product packages the context of a
+company so an agent can reason about it, rather than reading raw HTML.
 
 **Commands.**
 

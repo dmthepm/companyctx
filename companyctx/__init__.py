@@ -1,4 +1,4 @@
-"""companyctx — deterministic B2B context router. Zero keys. Schema-locked JSON."""
+"""companyctx — deterministic B2B company context router. Zero keys. Schema-locked JSON."""
 
 from __future__ import annotations
 
