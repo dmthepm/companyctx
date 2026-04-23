@@ -33,6 +33,7 @@ EnvelopeErrorCode = Literal[
     "no_provider_succeeded",
     "misconfigured_provider",
     "empty_response",
+    "cache_corrupted",
 ]
 
 
