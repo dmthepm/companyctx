@@ -625,6 +625,39 @@ def test_migration_runner_discovers_new_file_on_reopen(
         assert cur.fetchone() is not None
 
 
+def test_cli_cache_list_open_failure_exits_cleanly(
+    monkeypatch: pytest.MonkeyPatch, isolated_cache_dir: Path
+) -> None:
+    """``cache list`` has no degraded fallback — it must exit 2 with a
+    one-line stderr message instead of leaking a Python traceback."""
+
+    def _boom() -> FetchCache:
+        raise OSError("disk full")
+
+    monkeypatch.setattr("companyctx.cli._open_cache", _boom)
+    runner = CliRunner()
+    result = runner.invoke(app, ["cache", "list"])
+    assert result.exit_code == 2
+    assert "cache list failed" in result.output
+    assert "disk full" in result.output
+
+
+def test_cli_cache_clear_open_failure_exits_cleanly(
+    monkeypatch: pytest.MonkeyPatch, isolated_cache_dir: Path
+) -> None:
+    """Same contract as ``cache list``: open failure exits 2 with a clean message."""
+
+    def _boom() -> FetchCache:
+        raise OSError("disk full")
+
+    monkeypatch.setattr("companyctx.cli._open_cache", _boom)
+    runner = CliRunner()
+    result = runner.invoke(app, ["cache", "clear", "--site", "anything.example"])
+    assert result.exit_code == 2
+    assert "cache clear failed" in result.output
+    assert "disk full" in result.output
+
+
 def test_cache_corrupted_is_in_envelope_error_codes() -> None:
     """The new code is part of the closed Literal — schema introspection
     must list it so downstream agents can hard-code their branch table."""

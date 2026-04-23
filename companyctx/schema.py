@@ -6,10 +6,12 @@ Every model sets ``extra="forbid"`` so schema drift is loud. See
 frozen spec snapshot.
 
 v0.2.0 introduced the schema-locked envelope (top-level ``schema_version``
-plus structured :class:`EnvelopeError`). v0.3.0 adds one new error code —
-``empty_response`` — so agents can branch on "site returned HTTP 200 with
-effectively no content" instead of mistaking a silent-success for ok data.
-Per the closed-set rule, a new code is a minor schema bump.
+plus structured :class:`EnvelopeError`). v0.3.0 adds two new error codes:
+``empty_response`` (so agents can branch on "site returned HTTP 200 with
+effectively no content" instead of mistaking a silent-success for ok data)
+and ``cache_corrupted`` (emitted on the ``--from-cache`` CLI path when the
+cache opens but the row can't be deserialized). Both fold into the v0.3.0
+release; per the closed-set rule, adding codes is a minor schema bump.
 """
 
 from __future__ import annotations

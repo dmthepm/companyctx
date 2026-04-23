@@ -426,10 +426,30 @@ def _cache_entry_row(entry: CacheEntry) -> dict[str, str]:
     }
 
 
+def _open_cache_for_subcommand(subcommand: str) -> FetchCache:
+    """Open the cache for a ``cache`` subcommand, exiting cleanly on failure.
+
+    The ``cache list`` / ``cache clear`` subcommands have no degraded
+    fallback — they exist to manage the cache itself, so an open
+    failure is terminal. Print a one-line stderr message and exit 2
+    rather than letting OSError / sqlite3.OperationalError bubble up
+    as a Python traceback.
+    """
+    try:
+        return _open_cache()
+    except Exception as exc:  # noqa: BLE001 - deliberate boundary
+        typer.secho(
+            f"cache {subcommand} failed: cache unavailable — {exc.__class__.__name__}: {exc}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2) from exc
+
+
 @cache_app.command("list")
 def cache_list(json_out: bool = _CACHE_LIST_JSON_OPT) -> None:
     """List cached envelopes — one row per host (the latest run)."""
-    with closing(_open_cache()) as cache:
+    with closing(_open_cache_for_subcommand("list")) as cache:
         entries = cache.list_entries()
     if json_out:
         sys.stdout.write(
@@ -467,7 +487,7 @@ def cache_clear(
             age = parse_age(older_than)
         except ValueError as exc:
             raise typer.BadParameter(str(exc)) from exc
-    with closing(_open_cache()) as cache:
+    with closing(_open_cache_for_subcommand("clear")) as cache:
         removed = cache.clear(site=site, older_than=age)
     typer.echo(f"removed {removed} cached run(s)")
 
