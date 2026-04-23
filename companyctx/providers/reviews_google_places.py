@@ -3,22 +3,38 @@
 Google Places (legacy web-service API) is the cheapest ToS-safe source for
 aggregate review count + average rating for small-local-biz sites. The
 provider takes a site hostname, runs a Text Search to resolve candidate
-places, picks the best match by website-domain equality (falling back to
-Google's prominence ordering on ties), and issues one Place Details call to
-read ``user_ratings_total`` + ``rating``.
+places, and accepts Google's prominence-ordered first result as the pick.
+Legacy Text Search does NOT return ``website`` in its response bundle
+(see Google's "Place Data Fields (Legacy)" doc), so a website-domain
+match heuristic would require an extra Place Details + Contact-bundle
+billing hit per candidate and was removed per COX-5 review. The chosen
+``place_id`` is surfaced via the Details call's query string so downstream
+agents can branch on ambiguity if needed. One Place Details call then
+reads ``user_ratings_total`` + ``rating`` on the chosen candidate.
 
-**Never raises.** Missing key → ``status="not_configured"`` with an
-actionable ``suggestion`` pointing at ``GOOGLE_PLACES_API_KEY``. 401 / 403
-/ ``REQUEST_DENIED`` / ``OVER_QUERY_LIMIT`` / timeouts / malformed JSON all
-map to ``status="failed"`` with a structured error prefix the orchestrator's
+**Never raises.** Missing key → the discovery-path orchestrator skips the
+provider entirely (no provenance row, zero-key envelope stays ``ok``);
+library-API callers who explicitly pass ``providers={...}`` get a
+``status="not_configured"`` row with an actionable ``error`` naming
+``GOOGLE_PLACES_API_KEY``. 401 / 403 / ``REQUEST_DENIED`` /
+``OVER_QUERY_LIMIT`` / timeouts / malformed JSON all map to
+``status="failed"`` with a structured error prefix the orchestrator's
 classifier can read.
 
 **Cost accounting.** ``ProviderRunMetadata.cost_incurred`` is integer US
 cents. Per the COX-5 scope comment, real pricing must be confirmed against
 Google's page at measurement time before any vendor claim lands in
-``docs/PROVIDERS.md``. This module encodes the *current* published rates
-(Text Search $32/1k + Place Details $17/1k ≈ 5 cents for the happy path) as
-a source-cited constant; bump the constant when pricing changes.
+``docs/PROVIDERS.md``. Current published rates (legacy web-service):
+
+- Text Search (Basic)                   $32/1k = 3.2¢/call
+- Place Details Basic + Atmosphere      $22/1k = 2.2¢/call
+  (``rating`` + ``user_ratings_total`` sit in the Atmosphere bundle)
+
+Fractional cents are summed per leg and ceiled to an integer at emission
+time so partial billing never reads as free and ``cost_incurred`` never
+undercounts real spend. Happy path = ceil(3.2 + 2.2) = 6¢. Text-Search-
+only billing (``ZERO_RESULTS`` / quota) = ceil(3.2) = 4¢. Bump the
+tenths-of-a-cent constants when Google changes pricing.
 """
 
 from __future__ import annotations

@@ -73,13 +73,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Orchestrator skips primary providers whose `required_env` is unmet
-  (COX-5).** An opt-in direct-API provider (e.g. `reviews_google_places`)
-  that's registered but not wired no longer contributes a
-  `not_configured` row to provenance and no longer flips a successful
-  zero-key run to `status: partial`. This mirrors how the smart-proxy
-  stays off provenance on a clean zero-key run and preserves the
-  README's "Zero keys on the default path" promise. `providers list`
-  still surfaces every unconfigured slug with an actionable reason.
+  — discovery path only (COX-5).** When the CLI (or any caller that
+  lets us run `discover()`) finds an opt-in direct-API provider
+  registered via entry points but not wired, the orchestrator skips
+  invocation: no provenance row, zero-key envelope stays `ok`. Mirrors
+  how the smart-proxy stays off provenance on a clean zero-key run and
+  preserves the README's "Zero keys on the default path" promise.
+  Callers who pass a provider set explicitly via
+  `core.run(providers={...})` (library-API form) bypass this filter:
+  every slug they hand us runs, and a `not_configured` row still lands
+  on the envelope so the misconfiguration signal isn't silently
+  dropped — the caller explicitly opted in, so we honour it.
+  `providers list` surfaces unconfigured slugs either way via its
+  independent env check.
 - **Envelope-error suggestion routes to provider-agnostic guidance when
   `error.code == "misconfigured_provider"` (COX-5).** Prior generic
   "configure a smart-proxy provider key" suggestion misled users whose

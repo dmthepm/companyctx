@@ -515,14 +515,15 @@ def test_envelope_comparison_zero_key_only_vs_with_places(
     assert env_with_places.data.reviews.source == SOURCE_SLUG
 
 
-def test_places_unconfigured_does_not_downgrade_zero_key_success(
+def test_explicit_providers_dict_preserves_not_configured_row(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Missing ``GOOGLE_PLACES_API_KEY`` must NOT flip a successful zero-key
-    run to ``partial``. The orchestrator skips invocation of a primary
-    provider whose ``required_env`` is unmet — no provenance row, no
-    envelope-status downgrade. Mirrors the README's "Zero keys on the
-    default path" promise.
+    """Library API form (``core.run(providers={...})``) must honour the
+    caller's opt-in: every slug runs, even when its ``required_env`` is
+    unset, so the envelope carries the misconfiguration signal. This
+    diverges from the discovery/CLI path (next test) on purpose — the
+    caller handed us a specific set, skipping silently would drop
+    context they explicitly asked for.
     """
     monkeypatch.delenv(ENV_KEY, raising=False)
     env = core.run(
@@ -536,6 +537,32 @@ def test_places_unconfigured_does_not_downgrade_zero_key_success(
                 "reviews_google_places": Provider,
             },
         ),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "partial"
+    assert env.provenance["reviews_google_places"].status == "not_configured"
+    assert env.provenance["site_text_trafilatura"].status == "ok"
+    assert env.data.reviews is None
+    assert env.error is not None
+    assert env.error.code == "misconfigured_provider"
+    places_error = env.provenance["reviews_google_places"].error or ""
+    assert ENV_KEY in places_error
+
+
+def test_discovery_path_skips_unconfigured_direct_api_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Discovery/CLI path (no ``providers=`` kwarg) skips primary providers
+    whose ``required_env`` is unmet. That's what preserves the README's
+    "Zero keys on the default path" promise — an opt-in direct-API
+    provider registered via entry points but not wired leaves the
+    envelope unchanged instead of flipping it to ``partial``.
+    """
+    monkeypatch.delenv(ENV_KEY, raising=False)
+    env = core.run(
+        "acme-bakery.example",
+        mock=True,
+        fixtures_dir=FIXTURES_DIR,
         fetched_at=FIXED_WHEN,
     )
     assert env.status == "ok"

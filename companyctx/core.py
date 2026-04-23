@@ -108,8 +108,19 @@ def run(
     )
 
     when = fetched_at if fetched_at is not None else datetime.now(timezone.utc)
+    # ``explicit_registry`` is True when the caller handed us a provider set
+    # directly (library-API form). That's an explicit opt-in: we must not
+    # silently filter out unconfigured providers — the caller expects every
+    # slug they passed to appear in provenance, even if its row is
+    # ``not_configured``, so the envelope still carries the misconfiguration
+    # signal. Only the discovery path (no ``providers=`` kwarg) applies the
+    # required-env skip filter, which is what preserves the CLI's zero-key
+    # default-path promise (see COX-5 review).
+    explicit_registry = providers is not None
     try:
-        registry = providers if providers is not None else discover()
+        registry: Mapping[str, type[ProviderBase]] = (
+            providers if providers is not None else discover()
+        )
     except Exception as exc:  # noqa: BLE001 - deliberate boundary
         return _fallback_envelope(
             site=site,
@@ -123,17 +134,22 @@ def run(
             registry={},
         )
 
-    # Skip primary providers whose declared ``required_env`` is unmet. This
-    # keeps the zero-key default path at ``status: "ok"`` when an opt-in
-    # direct-API provider (e.g. ``reviews_google_places``) is registered
-    # but not wired — the provider contributes nothing to provenance, mirrors
-    # how the smart-proxy stays off provenance on a clean zero-key run, and
-    # preserves the README's "Zero keys" promise. ``providers list`` still
-    # surfaces the unconfigured slug independently so users see wiring gaps.
+    # Skip primary providers whose declared ``required_env`` is unmet —
+    # but ONLY on the discovery path (no explicit ``providers=`` kwarg).
+    # This keeps the zero-key CLI default at ``status: "ok"`` when an
+    # opt-in direct-API provider (e.g. ``reviews_google_places``) is
+    # registered but not wired, mirroring how the smart-proxy stays off
+    # provenance on a clean zero-key run. When the caller hands us a
+    # provider set explicitly (library API), we honour their opt-in:
+    # every slug they passed runs, and its ``not_configured`` row still
+    # lands on the envelope so the misconfiguration signal isn't silently
+    # dropped. ``providers list`` surfaces unconfigured slugs independently
+    # via its own env check either way.
     primary_registry = {
         slug: cls
         for slug, cls in registry.items()
-        if getattr(cls, "category", None) != _SMART_PROXY_CATEGORY and _required_env_satisfied(cls)
+        if getattr(cls, "category", None) != _SMART_PROXY_CATEGORY
+        and (explicit_registry or _required_env_satisfied(cls))
     }
     smart_proxy_registry = {
         slug: cls
