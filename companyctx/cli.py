@@ -20,6 +20,7 @@ import json
 import os
 import sys
 from contextlib import closing
+from datetime import datetime, timezone
 from pathlib import Path
 
 import typer
@@ -35,7 +36,7 @@ from companyctx.cache import (
 from companyctx.config import default_cache_dir
 from companyctx.providers import discover
 from companyctx.providers.base import ProviderBase
-from companyctx.schema import Envelope
+from companyctx.schema import SCHEMA_VERSION, Envelope
 
 app = typer.Typer(
     name="companyctx",
@@ -97,6 +98,55 @@ def _fail_stub(command: str, issue: int) -> None:
 def _open_cache() -> FetchCache:
     """Open the user's XDG-resolved fetch cache (creating dirs as needed)."""
     return FetchCache(default_cache_dir() / CACHE_DB_FILENAME)
+
+
+def _try_open_cache(verbose: bool) -> FetchCache | None:
+    """Open the cache, returning ``None`` (with a stderr warn) on failure.
+
+    Cache outages — read-only home dir, locked DB, migration regression —
+    must never crash a normal ``fetch``. The orchestrator runs without a
+    cache when this returns ``None``; the ``--from-cache`` path handles
+    its own hard-fail separately so the user gets a structured envelope
+    instead of a Python traceback.
+    """
+    try:
+        return _open_cache()
+    except Exception as exc:  # noqa: BLE001 - deliberate boundary
+        if verbose:
+            typer.secho(
+                f"warning: cache unavailable, continuing without: {exc.__class__.__name__}: {exc}",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
+        return None
+
+
+def _cache_corrupted_envelope(site: str, *, message: str, when: datetime | None = None) -> Envelope:
+    """Build a structured ``cache_corrupted`` envelope for the ``--from-cache`` path.
+
+    Used when the cache opens but the cached row can't be deserialized
+    (Pydantic ValidationError, JSON parse error, sqlite read error). The
+    envelope carries an actionable suggestion pointing at
+    ``cache clear --site``; the CLI exits non-zero so pipelines can still
+    branch on the exit code, but they get a parseable envelope on stdout
+    rather than a smear of Python tracebacks on stderr.
+    """
+    from companyctx.schema import CompanyContext, EnvelopeError
+
+    return Envelope(
+        schema_version=SCHEMA_VERSION,
+        status="degraded",
+        data=CompanyContext(
+            site=site,
+            fetched_at=when or datetime.now(timezone.utc),
+        ),
+        provenance={},
+        error=EnvelopeError(
+            code="cache_corrupted",
+            message=message,
+            suggestion=(f"run `companyctx cache clear --site {site}` to evict the stale entry"),
+        ),
+    )
 
 
 # Module-level Typer parameter singletons.
@@ -161,7 +211,13 @@ _REFRESH_OPT = typer.Option(
 _FROM_CACHE_OPT = typer.Option(
     False,
     "--from-cache",
-    help="Return only the cached payload; never hit the network. Exits non-zero on miss.",
+    help=(
+        "Return only the cached payload; never hit the network. "
+        "Exits non-zero on miss / corrupted row (with a structured "
+        "cache_corrupted envelope on stdout). Note: cache keys hash "
+        "installed providers, not env-config — use --refresh after "
+        "changing provider env vars to evict stale partials."
+    ),
 )
 _CSV_ARG = typer.Argument(..., help="CSV of sites.")
 _JSON_ARG = typer.Argument(..., help="Path to a companyctx JSON.")
@@ -208,18 +264,11 @@ def fetch(
     if from_cache and (refresh or no_cache):
         raise typer.BadParameter("--from-cache cannot be combined with --refresh or --no-cache")
 
-    with closing(_open_cache()) as cache:
-        if from_cache:
-            registry = discover()
-            envelope = cache.get_envelope(site, registry=registry)
-            if envelope is None:
-                typer.secho(
-                    f"cache miss for {site}; --from-cache will not fall through to the network.",
-                    fg=typer.colors.RED,
-                    err=True,
-                )
-                raise typer.Exit(code=2)
-        else:
+    if from_cache:
+        envelope, exit_code = _run_from_cache_only(site)
+    else:
+        cache = _try_open_cache(verbose=verbose)
+        try:
             envelope = core.run(
                 site,
                 mock=mock,
@@ -229,6 +278,10 @@ def fetch(
                 read_cache=not (refresh or no_cache),
                 write_cache=True,
             )
+        finally:
+            if cache is not None:
+                cache.close()
+        exit_code = 0
 
     payload = envelope.model_dump(mode="json")
     text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
@@ -250,6 +303,68 @@ def fetch(
         sys.stdout.write(text)
     else:
         out.write_text(text, encoding="utf-8")
+
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
+def _run_from_cache_only(site: str) -> tuple[Envelope, int]:
+    """Read-only ``--from-cache`` path. Never raises at the boundary.
+
+    Three outcomes, all surfaced as ``(envelope, exit_code)`` so the caller
+    can emit the JSON envelope on stdout uniformly:
+
+    - Hit: ``(cached_envelope, 0)``.
+    - Miss: ``(degraded envelope with no_provider_succeeded, 2)`` —
+      the user explicitly opted into cache-only and there's nothing to
+      return.
+    - Cache open failure or corrupted row: ``(degraded envelope with
+      cache_corrupted, 2)`` — agents branch on ``error.code``, humans
+      read ``error.message``.
+
+    Exit code stays non-zero so existing pipelines that branch on the
+    shell return code keep working; the new structured envelope is
+    additive.
+    """
+    from companyctx.schema import CompanyContext, EnvelopeError
+
+    cache: FetchCache | None = None
+    try:
+        cache = _open_cache()
+    except Exception as exc:  # noqa: BLE001 - deliberate boundary
+        return _cache_corrupted_envelope(
+            site,
+            message=f"cache open failed: {exc.__class__.__name__}: {exc}",
+        ), 2
+
+    try:
+        try:
+            envelope = cache.get_envelope(site, registry=discover())
+        except Exception as exc:  # noqa: BLE001 - deliberate boundary
+            return _cache_corrupted_envelope(
+                site,
+                message=f"cached row could not be deserialized: {exc.__class__.__name__}: {exc}",
+            ), 2
+    finally:
+        cache.close()
+
+    if envelope is not None:
+        return envelope, 0
+
+    miss = Envelope(
+        schema_version=SCHEMA_VERSION,
+        status="degraded",
+        data=CompanyContext(site=site, fetched_at=datetime.now(timezone.utc)),
+        provenance={},
+        error=EnvelopeError(
+            code="no_provider_succeeded",
+            message=f"cache miss for {site}; --from-cache will not fall through to the network",
+            suggestion=(
+                "rerun without --from-cache, or prime the cache with `companyctx fetch <site>`"
+            ),
+        ),
+    )
+    return miss, 2
 
 
 @app.command()
