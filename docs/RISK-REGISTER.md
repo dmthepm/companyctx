@@ -311,6 +311,27 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
     "empty_response"`. Both land on `status != "ok"`; agents branch on
     `error.code` to decide next action.
 
+- **Known conflation under v0.4.0 — `empty_response` covers two
+  different shapes** (COX-54 fresh-live probe, n=30).
+  [`research/2026-04-23-cox-54-post-v0.4-threshold-fit.md`](../research/2026-04-23-cox-54-post-v0.4-threshold-fit.md)
+  measured the 1024 floor against a fresh, thin-biased sample. The
+  floor itself is correctly calibrated (0 / 30 legitimate
+  thin-but-usable sites incorrectly demoted) — but 6 of 7
+  `empty_response` classifications in the sample were on content-
+  bearing sites whose content did not survive the zero-key fetch +
+  trafilatura path (browser-view spot-checks showed 3-20 KB of
+  visible text). Mechanism is either CDN fingerprint-filtering, a
+  JS-rendered content shell, or trafilatura dropping the raw body.
+  From a partner-agent's perspective the current
+  `error.code = "empty_response"` frames all three cases as "the
+  site has nothing" when in 6/7 observed cases "our fetch couldn't
+  see what a browser can" would be more honest. Follow-up
+  [#109](https://github.com/dmthepm/companyctx/issues/109) proposes
+  splitting the code so Attempt-2 smart-proxy escalation
+  (currently explicitly *not* retried on `empty_response`) becomes
+  the right suggestion for the content-bearing-but-stripped shape.
+  The 1024 floor stays; the conflation is orthogonal to it.
+
 ## FM-8 — Upstream vertical tag disagrees with homepage-inferred vertical
 
 - **Signature.** `"Apollo's 'real estate' classification confirmed
