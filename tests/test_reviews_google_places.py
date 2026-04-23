@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import pytest
 from curl_cffi import requests
@@ -38,9 +38,6 @@ from companyctx.providers.reviews_google_places import (
     _cost_cents,
 )
 from companyctx.providers.site_text_trafilatura import Provider as TrafilaturaProvider
-
-if TYPE_CHECKING:
-    from companyctx.providers.base import ProviderBase
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 FIXED_WHEN = datetime(2026, 4, 22, tzinfo=timezone.utc)
@@ -488,10 +485,7 @@ def test_envelope_comparison_zero_key_only_vs_with_places(
         "acme-bakery.example",
         mock=True,
         fixtures_dir=FIXTURES_DIR,
-        providers=cast(
-            "dict[str, type[ProviderBase]]",
-            {"site_text_trafilatura": TrafilaturaProvider},
-        ),
+        providers=cast("dict[str, type[object]]", {"site_text_trafilatura": TrafilaturaProvider}),
         fetched_at=FIXED_WHEN,
     )
     assert env_zero_only.status == "ok"
@@ -503,7 +497,7 @@ def test_envelope_comparison_zero_key_only_vs_with_places(
         mock=True,
         fixtures_dir=FIXTURES_DIR,
         providers=cast(
-            "dict[str, type[ProviderBase]]",
+            "dict[str, type[object]]",
             {
                 "site_text_trafilatura": TrafilaturaProvider,
                 "reviews_google_places": Provider,
@@ -534,7 +528,7 @@ def test_explicit_providers_dict_preserves_not_configured_row(
         mock=True,
         fixtures_dir=FIXTURES_DIR,
         providers=cast(
-            "dict[str, type[ProviderBase]]",
+            "dict[str, type[object]]",
             {
                 "site_text_trafilatura": TrafilaturaProvider,
                 "reviews_google_places": Provider,
