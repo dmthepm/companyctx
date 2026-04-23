@@ -118,7 +118,14 @@ byte-identical `--mock` output across runs.*
   linting on `main` — either pinned to a specific version or bounded
   with a compatible-release operator (`~=`). Fixtures are deterministic
   and re-generating them produces byte-identical output modulo
-  `fetched_at`.
+  `fetched_at`. A `wheel-install-smoke` job (same workflow, runs on
+  `push` + `pull_request`) exercises the release path end-to-end:
+  `python -m build` produces sdist + wheel, the wheel installs into a
+  fresh venv (no repo sources on `sys.path`), and the user-facing smoke
+  commands (`--version`, `schema`, `providers list`, `fetch --mock`)
+  run against it. Catches packaging drift the editable-install matrix
+  can't see — a missing `py.typed`, a stale `[tool.setuptools.package-data]`
+  entry, or an entry-point group that only registers under `-e`.
 - **Fail.** CI uses `python-version: 3.x` (floats). `ruff>=0.4` in dev
   deps lets a major-bump release of ruff silently change lint rules on
   the next install. A fixture regenerator is non-deterministic (random
