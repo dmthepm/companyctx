@@ -75,7 +75,7 @@ def test_top_level_literal_aliases_expose_expected_members() -> None:
 
 def test_package_version_is_current() -> None:
     """Pinned to current release — bump in the version-bump PR."""
-    assert __version__ == "0.3.0"
+    assert __version__ == "0.3.1"
 
 
 def test_py_typed_marker_ships_with_package() -> None:

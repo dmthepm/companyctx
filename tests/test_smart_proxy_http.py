@@ -113,13 +113,29 @@ class _ProxyRecoversSite:
     category: ClassVar[Literal["smart_proxy"]] = "smart_proxy"
     cost_hint: ClassVar[Literal["per-call"]] = "per-call"
     version: ClassVar[str] = "0.1.0"
-    # Keep the recovered prose above ``EMPTY_RESPONSE_BYTES`` (COX-44) so
-    # recovery tests stay about the waterfall wiring, not the empty-
-    # response gate on Attempt 2.
+    # Keep the recovered prose above ``EMPTY_RESPONSE_BYTES`` (COX-44
+    # / COX-52, now 1024) so recovery tests stay about the waterfall
+    # wiring, not the empty-response gate on Attempt 2.
     RECOVERED_HTML = (
         b"<html><body><h1>Recovered Biz</h1>"
-        b"<p>hello via proxy -- this recovery body is long enough to clear the cutoff</p>"
-        b"</body></html>"
+        b"<p>hello via proxy. This recovery body is intentionally long enough to clear "
+        b"the v0.3.1 empty-response cutoff of 1024 UTF-8 bytes so the waterfall lands on "
+        b"status=ok and this test keeps probing the recovery wiring, not the thin-body "
+        b"gate. Recovered Biz is a Portland-based fictional company that has served the "
+        b"region for over a decade with a realistic mix of consumer and commercial "
+        b"services. Our team of nine delivers work the old-fashioned way: named owners, "
+        b"written scopes, no surprises on invoice day.</p>"
+        b"<p>We work with homeowners, small businesses, and repeat commercial accounts "
+        b"across the metro area. Whether you have used a firm like ours before or this "
+        b"is your first project, we walk every new client through the process step by "
+        b"step: what to expect, what options exist at your price point, and what we "
+        b"would recommend if the job were on our own property. No hard sell, no upsell "
+        b"theatre, no contracts you cannot cancel.</p>"
+        b"<p>Recovered Biz is fully insured and holds every permit and certification "
+        b"the state requires for our trade. Our team collectively brings decades of "
+        b"hands-on experience, and we publish before-and-after galleries, customer "
+        b"reviews, and project case studies so prospective clients can see the actual "
+        b"work and not just marketing renders.</p></body></html>"
     )
 
     def fetch(
@@ -321,8 +337,32 @@ def _blocked_fixture(tmp_path: Path, slug: str, *, with_homepage: bool) -> None:
     if with_homepage:
         (site_dir / "homepage.html").write_bytes(
             b"<html><body><h1>Recovered</h1>"
-            b"<p>proxy win -- recovered body long enough to clear the empty-response cutoff</p>"
-            b"</body></html>"
+            b"<p>proxy win. The smart-proxy recovered a full homepage body, comfortably "
+            b"above the v0.3.1 empty-response cutoff of 1024 UTF-8 bytes. A realistic "
+            b"residential-proxy recovery returns the rendered page, not just a shell "
+            b"-- the kind of multi-paragraph content an LLM can actually synthesize a "
+            b"brief from.</p>"
+            b"<p>This prose covers the differentiator, audience, and credentials "
+            b"sections the partner's brief pipeline expects to see. It names the "
+            b"city, the founding year, and the team-size claim in plain text so the "
+            b"downstream synthesis layer never has to infer them from chrome. The "
+            b"extra length here is deliberate regression padding against the FM-7 "
+            b"thin-body class that COX-52 closed out.</p>"
+            b"<p>The fictional business is based in Portland, Oregon, and has been "
+            b"operating since 2012. We employ a team of nine across the metro area "
+            b"and work with homeowners, small businesses, and repeat commercial "
+            b"accounts throughout Multnomah and Washington counties. Our core "
+            b"offerings are deliberately generic here so the fixture reads like a "
+            b"plausible brochure site and trafilatura returns a realistic body "
+            b"above the v0.3.1 thin-body floor.</p>"
+            b"<p>Every engagement starts with a site walkthrough and a written "
+            b"scope so there are no surprises on invoice day. We publish "
+            b"before-and-after galleries, customer reviews, and project case "
+            b"studies on the site so prospective clients can see the actual work "
+            b"our team has delivered, not just marketing renders. The extra "
+            b"paragraphs of prose here simulate a normal residential-proxy "
+            b"recovery where the full SSR-rendered page is returned by the "
+            b"vendor.</p></body></html>"
         )
 
 
@@ -414,12 +454,31 @@ def test_waterfall_skips_smart_proxy_when_site_text_ok(
     slug = "cleanfix"
     site_dir = tmp_path / slug
     site_dir.mkdir()
-    # Body clears the v0.3 ``EMPTY_RESPONSE_BYTES`` cutoff so this test
-    # stays about the smart-proxy skip path, not the empty-response check.
+    # Body clears the v0.3.1 ``EMPTY_RESPONSE_BYTES`` cutoff (1024) so
+    # this test stays about the smart-proxy skip path, not the empty-
+    # response check.
     (site_dir / "homepage.html").write_bytes(
         b"<html><body><h1>Clean Biz</h1>"
-        b"<p>hello from the clean-path homepage, long enough to clear the cutoff</p>"
-        b"</body></html>"
+        b"<p>hello from the clean-path homepage. This body is intentionally long "
+        b"enough to clear the v0.3.1 empty-response cutoff of 1024 UTF-8 bytes so "
+        b"the zero-key provider completes with status=ok and the smart-proxy never "
+        b"has to run.</p>"
+        b"<p>The point of the test is the skip path: when Attempt 1 succeeds, "
+        b"Attempt 2 stays off provenance entirely. Adding enough prose to clear "
+        b"the FM-7 floor keeps that invariant honest without changing the shape "
+        b"of the test.</p>"
+        b"<p>The rest of this paragraph is padding prose describing a fictional "
+        b"Portland business, its service mix, and its credentials, so the "
+        b"trafilatura extractor returns a realistic body rather than a "
+        b"one-sentence stub. The business has operated in the metro area for "
+        b"over a decade and serves homeowners and small commercial accounts.</p>"
+        b"<p>Our team of nine covers everything from initial consultation through "
+        b"completion with written scopes and named owners. Every engagement "
+        b"starts with a site walkthrough and a written scope so there are no "
+        b"surprises on invoice day. We publish before-and-after galleries, "
+        b"customer reviews, and project case studies on the site so prospective "
+        b"clients can see the actual work our team has delivered, not just "
+        b"marketing renders.</p></body></html>"
     )
     monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
 
@@ -851,13 +910,33 @@ def test_site_meta_failure_does_not_trigger_recovery(
     slug = "metaok"
     site_dir = tmp_path / slug
     site_dir.mkdir()
-    # Body clears ``EMPTY_RESPONSE_BYTES`` so the zero-key provider
-    # completes with ``ok`` — this test is about site_meta failures not
-    # being routed to smart-proxy recovery, not about empty responses.
+    # Body clears ``EMPTY_RESPONSE_BYTES`` (1024, v0.3.1) so the
+    # zero-key provider completes with ``ok`` — this test is about
+    # site_meta failures not being routed to smart-proxy recovery, not
+    # about empty responses.
     (site_dir / "homepage.html").write_bytes(
         b"<html><body><h1>Real Biz</h1>"
-        b"<p>full homepage prose long enough to clear the empty-response cutoff</p>"
-        b"</body></html>"
+        b"<p>full homepage prose. This body is intentionally long enough to clear "
+        b"the v0.3.1 empty-response cutoff of 1024 UTF-8 bytes so the zero-key "
+        b"provider lands on status=ok and the assertion chain about site_meta not "
+        b"triggering recovery stays clean.</p>"
+        b"<p>A realistic homepage carries a differentiator paragraph, a "
+        b"who-we-serve paragraph, and a credentials paragraph. This filler covers "
+        b"all three so the test fixture reads like a plausible small-business "
+        b"brochure site and the extractor returns something well above the FM-7 "
+        b"thin-body floor.</p>"
+        b"<p>Real Biz is a fictional Portland-based company that has operated in "
+        b"the metro area for over a decade. We serve homeowners, small "
+        b"businesses, and repeat commercial accounts with written scopes and "
+        b"named owners on every project. Our team of nine is fully insured and "
+        b"licensed across the region we work in.</p>"
+        b"<p>Every engagement starts with a site walkthrough and a written scope "
+        b"so there are no surprises on invoice day. We publish before-and-after "
+        b"galleries, customer reviews, and project case studies on the site so "
+        b"prospective clients can see the actual work our team has delivered, "
+        b"not just marketing renders. The extra paragraphs of prose here "
+        b"simulate a normal SSR-rendered homepage that trafilatura can "
+        b"meaningfully extract from.</p></body></html>"
     )
     monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
 
