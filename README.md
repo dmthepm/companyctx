@@ -322,6 +322,11 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md). Conventional commits, ~400 LOC per
 PR, one PR per milestone or provider. ruff + mypy strict + pytest ≥70% cov.
 Architecture-shape changes go through `decisions/` first.
 
+## Commercial Support & Custom Pipelines
+`companyctx` is built and maintained by **[Noontide](https://noontide.co)**. We use it as the foundational context routing muscle for our own automated B2B outbound engines. 
+If your team needs a fully managed, agentic sales pipeline (Apollo → Context Routing → LLM Synthesis → HubSpot/Outreach) but you don't have the engineering resources to build and maintain the orchestrator yourself, we can help. 
+👉 **[Work with the Noontide Agency to get this built for you.](https://noontide.co)**
+
 ## License
 
 [MIT](LICENSE). Copyright 2026 Noontide Collective LLC.

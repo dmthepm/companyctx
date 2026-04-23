@@ -113,7 +113,7 @@ include = ["companyctx*"]
 [tool.setuptools.package-data]
 # PEP 561 marker — tells downstream mypy users we ship inline types, and
 # makes them visible in the built wheel + sdist.
-companyctx = ["py.typed"]
+companyctx = ["py.typed", "migrations/*.sql"]
 
 [tool.ruff]
 line-length = 100
