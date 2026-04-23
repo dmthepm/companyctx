@@ -9,9 +9,9 @@ Exposes the public contract described in ``docs/SPEC.md``:
 - ``cache list`` / ``cache clear`` — Vertical Memory plumbing (COX-6 / #9).
 - ``batch <csv>`` — batch mode stub (still gated on the batch slice).
 
-Several flags and subcommands in v0.3 are still stubs. They fail loudly
-rather than silently accepting input and doing nothing — see issue #68 for
-the honesty pass.
+Several flags and subcommands are still stubs. They fail loudly rather
+than silently accepting input and doing nothing — see issue #68 for the
+honesty pass.
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ def _reject_config_flag(value: Path | None) -> Path | None:
     """Reject ``--config <path>`` until the TOML loader lands."""
     if value is not None:
         raise typer.BadParameter(
-            "--config is not implemented in v0.3 — "
+            "--config is not implemented yet — "
             f"see https://github.com/dmthepm/companyctx/issues/{_CONFIG_ISSUE}"
         )
     return value
@@ -87,7 +87,7 @@ def _reject_config_flag(value: Path | None) -> Path | None:
 def _fail_stub(command: str, issue: int) -> None:
     """Print a loud stderr message and exit non-zero for a not-yet-wired command."""
     typer.secho(
-        f"{command} is not implemented in v0.3 — "
+        f"{command} is not implemented yet — "
         f"see https://github.com/dmthepm/companyctx/issues/{issue}",
         fg=typer.colors.RED,
         err=True,
@@ -168,7 +168,7 @@ _FORMAT_OPT = typer.Option(
     "--json/--markdown",
     help=(
         "Output format. --json is the supported contract. "
-        "--markdown is experimental and not implemented in v0.2.0 — "
+        "--markdown is experimental and not implemented — "
         "runs fail fast (see issue #68)."
     ),
 )
@@ -185,7 +185,7 @@ _NO_CACHE_OPT = typer.Option(
 _CONFIG_OPT = typer.Option(
     None,
     "--config",
-    help="TOML config path. (Not implemented in v0.3 — see issue #9.)",
+    help="TOML config path. (Not implemented yet — see issue #9.)",
     callback=_reject_config_flag,
 )
 _MOCK_FETCH_OPT = typer.Option(
@@ -255,7 +255,7 @@ def fetch(
     if not json_out:
         # Markdown output belongs in a downstream synthesis layer, not here.
         typer.secho(
-            "--markdown is not implemented in v0.3; rerun with --json.",
+            "--markdown is not implemented; rerun with --json.",
             fg=typer.colors.RED,
             err=True,
         )

@@ -7,7 +7,7 @@
 **The deterministic B2B company context router. Zero keys. Schema-locked JSON your agent pipelines can actually trust.**
 
 ```bash
-pipx install companyctx   # v0.2.0 on PyPI — schema_version field + structured errors
+pipx install companyctx   # v0.4.0 on PyPI — schema_version 0.4.0, SQLite cache, FM-7 floor
 companyctx fetch acme-bakery.com --json
 ```
 
@@ -55,12 +55,12 @@ which is what the `--mock` fixture tree reproduces byte-for-byte.
 
 ## Status
 
-`v0.2.0` is the current release. What's shipped:
+`v0.4.0` is the current release. What's shipped:
 
 - **Envelope contract** — `{schema_version, status, data, provenance, error?}`
   with `status ∈ {ok, partial, degraded}` and a structured `EnvelopeError`
   (`{code, message, suggestion}`) on non-`ok` runs. `extra="forbid"` on every
-  model. See [`docs/SCHEMA.md`](docs/SCHEMA.md).
+  model. `schema_version` Literal is `"0.4.0"`. See [`docs/SCHEMA.md`](docs/SCHEMA.md).
 - **Zero-key Attempt 1** — `site_text_trafilatura` (TLS-impersonated fetch
   via `curl_cffi` + trafilatura extraction). Populates `data.pages.*`
   (`homepage_text`, `about_text`, `services`, `tech_stack`). 20/20 envelope-`ok`
@@ -70,23 +70,35 @@ which is what the `--mock` fixture tree reproduces byte-for-byte.
   proxy). User supplies `COMPANYCTX_SMART_PROXY_URL`; env-unset surfaces as
   `not_configured` with an actionable suggestion rather than a crash. Named-
   vendor adapter lands after the smart-proxy vendor eval (tracking: #63).
+- **SQLite fetch cache (Vertical Memory wiring).** `--from-cache` /
+  `--refresh` / `--no-cache` on `fetch`, plus `cache list` and
+  `cache clear --site X` / `--older-than 7d`. XDG paths via
+  `platformdirs`; schema-versioned migrations. `cache_corrupted` is a
+  first-class `EnvelopeErrorCode`.
+- **FM-7 honesty contract** — `EMPTY_RESPONSE_BYTES` raised from 64 to
+  1024 (COX-52 / #91). HTTP 200 with <1024 UTF-8 bytes of extracted text
+  now surfaces as `status: degraded + error.code: empty_response` instead
+  of silent `ok`.
+- **NXDOMAIN routed to `no_provider_succeeded`** — unresolvable hostnames
+  are dead hosts, not SSRF attempts (COX-49 / #86).
 - **CLI verbs** — `fetch`, `schema` (emits Draft 2020-12 JSON Schema),
-  `validate`, `providers list` (with `--json`, waterfall tier, config
-  status, reason).
+  `validate`, `providers list`, `cache list`, `cache clear` (with
+  `--json` where applicable).
 - **`py.typed` marker + public-API re-exports** — `from companyctx import
   Envelope, EnvelopeError, CompanyContext, ...` works straight off the
   package root; downstream `mypy` sees concrete types.
 
 What's **not** shipped yet and is explicitly deferred (the CLI surface
-rejects these flags with a tracking-issue pointer rather than silently
+rejects these with a tracking-issue pointer rather than silently
 accepting them):
 
-- **SQLite fetch cache** (`--from-cache` / `--refresh` / `--no-cache` /
-  `--config`) — tracked in #9.
-- **`batch <csv>`** — stub, prints an error and exits non-zero.
+- **`batch <csv>`** — stub, prints an error and exits non-zero. Tracked
+  in #9.
+- **`--config <path>` TOML loader** — stub; environment variables and
+  defaults only today. Tracked in #9.
 - **Direct-API (Attempt 3) providers** — Google Places (tracking: #7),
-  Yelp Fusion, YouTube Data, Brave Search (mentions tracking: #58). None
-  registered in v0.2; `data.reviews` / `data.social` / `data.mentions`
+  Yelp Fusion, YouTube Data, Brave Search (mentions tracking: #58). Not
+  registered today; `data.reviews` / `data.social` / `data.mentions`
   stay null on live runs until a direct-API provider lands.
 - **Site-heuristic `signals` provider** — planned alongside the direct-API
   slate; populates `data.signals.copyright_year`, `last_blog_post_at`,
@@ -96,8 +108,10 @@ accepting them):
   step, not here (tracking: #68).
 
 Measured 97% envelope-`ok` rate on a 100-site real-world sample on the
-v0.1 zero-key baseline; post-v0.2 re-measurement tracks under the durability
-rerun (#61). Full breakdown in
+v0.1 zero-key baseline. A 209-site partner-integration re-classification
+against the v0.4 FM-7 floor
+([`research/2026-04-23-cox-52-post-fix-reclassification.md`](research/2026-04-23-cox-52-post-fix-reclassification.md))
+puts the post-fix FM-7 rate at 0 / 209. Full breakdown in
 [`research/2026-04-21-tls-impersonation-spike.md`](research/2026-04-21-tls-impersonation-spike.md)
 and [`docs/ZERO-KEY.md`](docs/ZERO-KEY.md).
 
@@ -118,10 +132,11 @@ release-readiness ADR in
   configured). Every attempt returns the same shape.
 - **A narrow muscle in the brains-and-muscles pattern.** Your frontier
   model is the brain; `companyctx` is one of many CLIs it pipes through.
-- **A local-first memory layer — by design, landing later.** The SQLite
-  cache is scoped as Vertical Memory: a queryable local B2B dataset that
-  compounds as a byproduct of normal use. It is **not wired in v0.2** —
-  `--from-cache` / `--refresh` are deferred to #9.
+- **A local-first memory layer.** The SQLite cache is Vertical Memory: a
+  queryable local B2B dataset that compounds as a byproduct of normal
+  use. Wired via `--from-cache` / `--refresh` / `--no-cache` on `fetch`
+  and the `cache list` / `cache clear` subcommands. XDG paths via
+  `platformdirs`; schema-versioned migrations.
 
 ### ISN'T
 
@@ -218,11 +233,11 @@ context means.
 
 ## Install
 
-`v0.2.0` is the current release (schema-breaking envelope bump):
+`v0.4.0` is the current release:
 
 ```bash
 pipx install companyctx
-companyctx --version   # companyctx 0.2.0
+companyctx --version   # companyctx 0.4.0
 companyctx fetch acme-bakery.com --mock --json
 ```
 
@@ -243,18 +258,19 @@ companyctx --help
 - **Graceful-partial always.** Providers never raise uncaught. Every
   failure maps to `ProviderRunMetadata.status` per provider and the
   top-level `status` on the envelope.
-- **Vertical Memory (design invariant, not yet wired).** The SQLite cache
-  is designed to compound into a queryable local B2B dataset under
-  [XDG paths](https://specifications.freedesktop.org/basedir-spec/); the
-  schema-versioned migrations and `--refresh` / `--from-cache` flags are
-  reserved in the CLI surface but not implemented in v0.2 — they reject
-  with a tracking-issue pointer (#9).
+- **Vertical Memory.** The SQLite cache compounds into a queryable local
+  B2B dataset under
+  [XDG paths](https://specifications.freedesktop.org/basedir-spec/) via
+  the `--refresh` / `--from-cache` / `--no-cache` flags and the
+  `cache list` / `cache clear` subcommands. Schema-versioned migrations
+  make cache evolution explicit (see [`docs/SPEC.md`](docs/SPEC.md) §Cache).
 - **Provider pluggability.** Every deterministic call class is discovered
-  via Python entry points (`companyctx.providers`). v0.2 ships
+  via Python entry points (`companyctx.providers`). Today
   `site_text_trafilatura` (zero-key) and `smart_proxy_http` (user-keyed,
-  vendor-agnostic). Direct-API providers (Google Places, Yelp, YouTube,
-  Brave) and the `readability-lxml` bus-factor fallback are scaffolded for
-  later milestones. See [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
+  vendor-agnostic) are registered. Direct-API providers (Google Places,
+  Yelp, YouTube, Brave) and the `readability-lxml` bus-factor fallback are
+  scaffolded for later milestones. See
+  [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
 - **robots.txt respected by default.** `--ignore-robots` is an explicit
   CLI-only flag; never settable via TOML or env.
 - **Deterministic mocks.** `fixtures/<site>/` drives `--mock`; re-runs
@@ -262,7 +278,7 @@ companyctx --help
 
 ## Providers
 
-Shipped in v0.2 (run `companyctx providers list` to introspect):
+Registered today (run `companyctx providers list` to introspect):
 
 | Slug | Tier | Category | Key | Cost |
 |---|---|---|---|---|
@@ -304,7 +320,7 @@ companyctx/            # package
     smart_proxy_base.py         # shared helpers for smart-proxy providers
 SKILL.md               # ~150-token agent-discovery surface (not MCP)
 docs/
-  SPEC.md              # frozen spec snapshot (v0.2 envelope)
+  SPEC.md              # frozen spec snapshot (v0.4 envelope)
   SCHEMA.md            # Pydantic envelope in detail
   ARCHITECTURE.md      # brains-and-muscles + Deterministic Waterfall + Vertical Memory
   ZERO-KEY.md          # honest anti-bot coverage + graceful-partial contract

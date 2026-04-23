@@ -35,11 +35,11 @@ company so an agent can reason about it, rather than reading raw HTML.
 - The `data.site` field is the identifier; `data.pages` holds homepage-
   derived content (`homepage_text`, `about_text`, `services`, `tech_stack`).
 - `data.reviews` / `data.social` / `data.signals` / `data.mentions` are
-  reserved in the schema but stay `null` in v0.2 — the providers that
+  reserved in the schema but stay `null` today — the providers that
   fill them are deferred (see `docs/SPEC.md`). Schema-locked partials,
   not bugs.
 
-**Envelope shape (v0.2).**
+**Envelope shape.**
 
 ```json
 {
