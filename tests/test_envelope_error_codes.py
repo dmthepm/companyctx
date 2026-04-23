@@ -128,5 +128,19 @@ def test_no_provider_succeeded_code_for_unclassified_reason() -> None:
     assert _run_with_error("something we do not recognize") == "no_provider_succeeded"
 
 
+def test_dns_resolve_failure_routes_to_no_provider_succeeded() -> None:
+    """An unresolvable hostname must NOT classify as SSRF (COX-49).
+
+    Providers emit ``dns_resolve_failure: ...`` for NXDOMAIN / no-A-record.
+    The classifier routes that to ``no_provider_succeeded``; the generic
+    ``unsafe_url`` substring check (which lands on ``ssrf_rejected``) must
+    not win first.
+    """
+    assert (
+        _run_with_error("dns_resolve_failure: DNS resolution failed for nope.example")
+        == "no_provider_succeeded"
+    )
+
+
 def test_empty_response_code_from_provider_error_string() -> None:
     assert _run_with_error("empty_response") == "empty_response"

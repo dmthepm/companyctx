@@ -27,6 +27,7 @@ from companyctx.providers.site_text_trafilatura import (
     _stealth_fetch,
 )
 from companyctx.security import (
+    DNSResolutionError,
     UnsafeURLError,
     validate_public_http_url,
 )
@@ -125,6 +126,56 @@ def test_dns_rebinding_is_caught_on_resolve(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr("companyctx.security.socket.getaddrinfo", fake_getaddrinfo)
     with pytest.raises(UnsafeURLError, match="non-public"):
         validate_public_http_url("http://rebind.example.com/")
+
+
+def test_dns_failure_raises_dns_resolution_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """NXDOMAIN-style resolution failure raises :class:`DNSResolutionError`.
+
+    Regression guard for COX-49: an unresolvable host must surface a
+    distinct exception type so downstream envelope classification can route
+    it to ``no_provider_succeeded`` instead of ``ssrf_rejected``.
+    :class:`DNSResolutionError` subclasses :class:`UnsafeURLError` so
+    pre-existing ``except UnsafeURLError`` fall-open branches (robots) stay
+    correct.
+    """
+
+    def fake_getaddrinfo(host: str, *args: Any, **kwargs: Any) -> list[Any]:
+        raise OSError("[Errno 8] nodename nor servname provided, or not known")
+
+    monkeypatch.setattr("companyctx.security.socket.getaddrinfo", fake_getaddrinfo)
+    with pytest.raises(DNSResolutionError, match="DNS resolution failed"):
+        validate_public_http_url("http://this-does-not-exist.example/")
+
+
+def test_dns_failure_is_subclass_of_unsafe_url_error() -> None:
+    """Preserve the ``except UnsafeURLError`` contract for existing callers."""
+    assert issubclass(DNSResolutionError, UnsafeURLError)
+
+
+def test_stealth_fetch_emits_dns_resolve_failure_prefix_on_nxdomain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Provider wrapper distinguishes DNS failure from SSRF rejection (COX-49).
+
+    The zero-key provider must prefix DNS failures with
+    ``dns_resolve_failure:`` so the orchestrator's envelope classifier
+    routes them to ``no_provider_succeeded`` rather than ``ssrf_rejected``.
+    """
+    called = {"count": 0}
+
+    def fake_get(*args: Any, **kwargs: Any) -> Any:
+        called["count"] += 1
+        raise AssertionError("network must not be reached for NXDOMAIN input")
+
+    def fake_getaddrinfo(host: str, *args: Any, **kwargs: Any) -> list[Any]:
+        raise OSError("[Errno 8] nodename nor servname provided, or not known")
+
+    monkeypatch.setattr("companyctx.security.socket.getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr("companyctx.providers.site_text_trafilatura.requests.get", fake_get)
+    ctx = FetchContext(user_agent=UA, timeout_s=1.0, ignore_robots=True)
+    with pytest.raises(_BlockedError, match=r"^dns_resolve_failure:"):
+        _stealth_fetch("http://this-does-not-exist-abc123xyz.example/", ctx)
+    assert called["count"] == 0
 
 
 def test_stealth_fetch_rejects_ssrf_before_network(monkeypatch: pytest.MonkeyPatch) -> None:
