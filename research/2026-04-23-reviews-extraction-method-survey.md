@@ -292,10 +292,123 @@ double-counts the signal.
   — appended by the harness; sanitized (slugs only, no hostnames).
 - **Credentials:** operator-provided env vars, never committed.
 
+## Cross-reference: external LLM research pass
+
+Devon gave the same COX-64 prompt in parallel to Grok. Grok produced two
+passes (Pass 1, then a "deeper" Pass 2 that supersedes Pass 1). Both are
+preserved verbatim in the private research archive outside this repo for
+the diff of record. This section reconciles them against the decisions
+above.
+
+### Convergences (both passes agree with this doc)
+
+- **The cost delta is real.** Both passes land on ~10–20× between
+  first-party (Google) and scraper-family (Apify / Outscraper) at the
+  partner's ~3k/mo volume. This doc's math agrees.
+- **Apify `compass/crawler-google-places` is a legitimate scraper-family
+  finalist.** Grok names it explicitly; this doc probes it.
+- **ProviderBase pluggability is free from an architectural standpoint.**
+  Both agree that adding or swapping a reviews provider is a provider
+  entry-point change, not a schema or core-loop change.
+- **Caching makes the winner cheaper regardless.** Reviews are slow-
+  changing; a TTL'd cache of any provider's output shifts the effective
+  cost toward zero. See the new "Cross-cutting: caching" subsection below.
+
+### Divergences — where this doc holds its line
+
+1. **Google SKU field-tier mapping.** Both Grok passes collapse the
+   Essentials / Pro / Enterprise distinction and propose "Google Places
+   Essentials + field mask" as the cost-optimized Google path. The
+   authoritative Google docs place `rating`, `userRatingCount`,
+   `websiteUri`, and `regularOpeningHours` in the **Enterprise** Place
+   Details SKU, not Essentials or Pro. Essentials returns address /
+   location / types only; Pro adds display-name, phone, hours —
+   still no rating. The "Essentials with field mask" path does not
+   return the fields we need. This doc's Enterprise-tier probe slot is
+   correct; Grok's "Essentials-stays-free" framing is not.
+2. **SerpAPI.** Grok Pass 2 lists SerpApi Google Maps at $0.025+ as a
+   viable option without mention of Google's December-2025 DMCA suit
+   (motion-to-dismiss hearing 2026-05-19). This doc eliminates SerpAPI
+   pre-probe on that litigation risk; the miss in Grok's pass is an
+   example of why adversarial critique is a distinct step from desktop
+   survey. Load-bearing legal risk can hide from a single-pass
+   literature review.
+3. **ToS weighting.** Grok Pass 2 frames scraper-ToS risk as "overblown
+   ... no major enforcement actions reported in 2025–2026 against these
+   platforms for low-volume B2B use." That's true for the **act of
+   scraping**; it elides the **redistribution** axis — the partner's
+   reports ship scraped Google data to downstream cold-outreach targets,
+   which is where Google's ToS posture gets more hostile. This doc
+   weights ToS at 3× (up from the issue's 2×) for that reason. Grok
+   treats it at 2× with an "acceptable at this volume" caveat.
+4. **Recommendation shape.** Grok Pass 2 recommends "pluggable provider,
+   default to Outscraper, Google fallback." This doc (and the linked
+   ADR) explicitly rejects pluggable-as-default per the adversarial
+   critique that pluggability is maintenance debt dressed as
+   flexibility — doubled fixture sets, doubled CI-matrix cells, doubled
+   ToS surfaces, and it forces the partner to pick when the partner's
+   actual need is "rating + count shows up." Grok's suggestion and the
+   adversarial critique's rebuttal are both preserved in the record;
+   the Slice B probe numbers + the pre-registered decision rule pick
+   the outcome, not either narrative.
+5. **Grok Pass 2's factual claim that `reviews_google_places` was
+   "scaffolded but never implemented" is wrong.** The provider ships in
+   v0.3.0 and is live on `main` at 533 lines
+   (`companyctx/providers/reviews_google_places.py`), with a 572-line
+   test file, an entry point at `pyproject.toml:60`, and fixtures under
+   `fixtures/<slug>/google_places.json`. Grok Pass 1 had this right;
+   Pass 2 regressed. The error is worth flagging not to dunk on the
+   external pass but because it is a **concrete example** of why the
+   repo rule "never name a vendor in public docs before measurement"
+   exists. Narrative research that doesn't bottom out on read-the-code
+   can invent load-bearing facts in either direction.
+
+### Additions taken from Grok's passes
+
+- **Foursquare Places API** added to the matrix below as an evaluated
+  alternative (deferred, not a Slice B finalist). Foursquare brings a
+  different reviewer pool (not 1:1 with Google — different absolute
+  numbers, correlated trend), so it trades data-consistency vs. Google
+  for data-diversity. Out of scope for the Slice B probe's "cost vs.
+  Google baseline" question, but a real first-party ToS-clean option
+  if we ever need review-source diversity (e.g., non-US expansion or
+  Google-ZERO_RESULTS edge cases).
+- **30-day cache TTL** promoted from "hybrid idea" to a cross-cutting
+  optimization note, below.
+- **2026 SKU free-tier caps** (Essentials 10k/mo free, Pro 5k/mo free)
+  taken as additional evidence in the cost math: at the partner's 3k/mo
+  Text Search volume, the Pro SKU Text Search stays inside the 5k/mo
+  free cap so the effective cost is only the Enterprise Place Details
+  leg (~2.5¢/call). This narrows the Google New Enterprise vs. Apify
+  delta versus the 10–20× figure Grok's passes quote.
+
+### Foursquare — deferred alternative
+
+| Method | Cost/call (est.) | Fields | ToS | Notes |
+|---|---|---|---|---|
+| **Foursquare Places API** (Pro tier) | ~1.5¢; 10k/mo free | `rating` (0–10 scale), `tips` count, categories | First-party; clean | Different reviewer pool than Google — ratings do not compare 1:1. Useful as a diversity source or review-coverage backfill, not as a cost-replacement for a Google-agreement comparison. Skipped from Slice B probe to preserve the $15 envelope. Reopen if Slice B lands in Outcome D and we widen the shortlist. |
+
+### Cross-cutting: caching strategy
+
+Independent of the provider winner, the v0.3 Vertical Memory SQLite cache
+(`docs/ARCHITECTURE.md`) is already provider-agnostic. Reviews change
+slowly enough that a 30-day TTL on `reviews_*` entries would let the
+partner's steady-state request mix hit cache on most repeat sites and pay
+the provider cost only on net-new prospects. Cache-enabled effective
+cost at 3k/mo new-prospect volume with ~20% repeat rate is roughly 80%
+of the provider's nominal cost. Grok Pass 2 raised this as a major
+cost-reduction lever and the point stands regardless of which finalist
+wins the Slice B probe. Tracked as a separate optimization, not as a
+Slice B acceptance criterion — caching under-counts the measured
+per-call cost we need to compare providers on, so the Slice B probe
+runs with caching disabled. The cache becomes an additional value layer
+on top of whichever provider ships.
+
 ## References
 
 - Issue: [#116](https://github.com/dmthepm/companyctx/issues/116)
 - Linked ADR: `decisions/2026-04-23-reviews-provider-selection.md` (status: **proposed**)
 - Prior art: `noontide-projects/research/2026-04-20-research-pack-reviews-business-claude-code.md` (private)
+- External LLM parallel pass: Grok passes 1 + 2 preserved in the private research archive outside this repo (per the noontide-projects split; not referenced by path here to honor the "never create companyctx imports or paths to noontide-projects" rule)
 - Partner posture: `new-signal-studio/logs/d100-run-*.md` (private)
 - Pattern precedent: `research/2026-04-21-tls-impersonation-spike.md`
