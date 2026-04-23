@@ -371,11 +371,11 @@ def test_ignore_robots_bypasses_robots_check(monkeypatch: pytest.MonkeyPatch) ->
     marker_sentence = "Hello from the ignore-robots smoke path."
     body_paragraphs = (
         f"{marker_sentence} This body is intentionally long enough to clear the "
-        "v0.3.1 empty-response cutoff so the envelope lands on status=ok and this "
+        "v0.4.0 empty-response cutoff so the envelope lands on status=ok and this "
         "test keeps probing the robots-bypass wiring, not the thin-body gate.",
         "A legitimate homepage easily carries multiple paragraphs of "
         "differentiator, audience, and credentials prose; anything much shorter "
-        "would rightly trip empty_response under the v0.3.1 floor raise for FM-7.",
+        "would rightly trip empty_response under the v0.4.0 floor raise for FM-7.",
         "This fixture stands in for a normal SSR-rendered page returned by the "
         "zero-key provider. The business is fictional, based in Portland, and has "
         "operated in the metro area for over a decade with a team of nine.",
@@ -596,11 +596,11 @@ def test_cli_validate_rejects_extra_field(tmp_path: Path) -> None:
         # yields "". 0 < 1024 → empty_response trips.
         ("<!DOCTYPE html><html><head></head><body></body></html>", True),
         # Login-wall stub shape: visible text is well under the 1024-byte
-        # v0.3.1 cutoff (also under the prior 64-byte floor).
+        # v0.4.0 cutoff (also under the prior 64-byte floor).
         ("<html><body><p>Please sign in</p></body></html>", True),
         # FM-7 thin-body shape: ~500 bytes of visible prose — cleared the
         # old 64-byte floor (would have been silent-success under v0.3.0)
-        # but fails the v0.3.1 1024-byte floor. This case is the reason
+        # but fails the v0.4.0 1024-byte floor. This case is the reason
         # COX-52 exists.
         (
             "<html><body><p>"
@@ -631,7 +631,7 @@ def test_empty_response_trips_honesty_check(
     """COX-44 / COX-52 — extracted text below EMPTY_RESPONSE_BYTES surfaces
     as ``error.code == "empty_response"`` instead of a silent ``status: ok``.
     Above the cutoff the envelope stays ``ok``. Regression guard on the
-    exact threshold behavior: v0.3.1 raises the floor 64 → 1024 so the
+    exact threshold behavior: v0.4.0 raises the floor 64 → 1024 so the
     FM-7 thin-body class (status ok + <1 KiB of extracted text) now
     surfaces honestly.
     """
@@ -732,7 +732,7 @@ def test_empty_response_applies_to_smart_proxy_recovery(tmp_path: Path) -> None:
 def test_empty_response_gate_measures_utf8_bytes_not_chars(tmp_path: Path) -> None:
     """Multibyte prose must not false-positive as empty.
 
-    Under the v0.3.1 1024-byte floor, a ~400-char CJK homepage that
+    Under the v0.4.0 1024-byte floor, a ~400-char CJK homepage that
     encodes to ~1200 UTF-8 bytes must stay ``ok`` — counting
     ``len(text)`` instead of ``len(text.encode("utf-8"))`` would
     mis-flag it as empty_response because the char count (400) is under

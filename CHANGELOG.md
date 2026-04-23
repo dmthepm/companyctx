@@ -5,7 +5,29 @@ All notable changes to `companyctx` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v0.3.1
+## [Unreleased] — v0.4.0
+
+v0.4.0 bundles the COX-52 FM-7 floor correction, the COX-49 NXDOMAIN
+routing fix, and a schema-version bump that closes the drift the
+v0.3.0 cache merge introduced (the `cache_corrupted` Literal was added
+without bumping `SCHEMA_VERSION`). Package version stays at `0.3.0`
+until the separate release-runbook PR cuts the tag.
+
+### Changed — envelope schema bump (v0.4)
+
+- **`schema_version` bumped to `"0.4.0"`.** The Literal set didn't
+  grow in this release, but the mapping from provider input to
+  `error.code` did change (COX-52 and COX-49, see below). Per the
+  closed-set rule documented in `docs/SPEC.md`, any observable
+  change in what `error.code` an agent can receive on the same input
+  is a minor schema bump. Also closes the v0.3.0 drift: PR #93 added
+  `"cache_corrupted"` to the `EnvelopeErrorCode` Literal without
+  bumping `SCHEMA_VERSION`, so v0.3.0 on PyPI already advertised a
+  subset of codes vs. what `main` emitted. All call sites use the
+  `SCHEMA_VERSION` constant (per the COX-47 refactor in #88), so
+  there are no source edits at call sites — only the constant +
+  `Literal["0.4.0"]` in `companyctx/schema.py`, plus every pinned
+  test and every committed `expected.json`.
 
 ### Changed — FM-7 floor correction (COX-52 / #91)
 
@@ -17,19 +39,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   installation 6/14, real-estate photography 5/11, virtual staging
   4/11). Those envelopes returned "partial data wearing an `ok` label"
   — the single biggest partner-breaking gap still live on a
-  freshly-tagged release. v0.3.1 raises the floor so the FM-7 thin-body
-  class surfaces as `error.code: "empty_response"` instead of silent
-  success. Extracted-text p50 on successful runs is 2.29 KiB (well
-  above the new floor), so ~0 legitimate `ok` envelopes are lost;
-  research-modeled projection is a post-fix FM-7 rate under 5 %.
-  Retires the v0.2.0 Known Limitations disclosure in behavior, not
-  just name.
-- **No schema change.** `EnvelopeErrorCode` literal set is unchanged,
-  `schema_version` stays at `"0.3.0"`, strict-typing consumers need no
-  update. Path A (bump the existing floor) was chosen over Path B
-  (introduce a separate `thin_response` code) for the v0.3.1 release
-  gate; Path B stays deferred unless downstream agent feedback asks
-  for the distinction.
+  freshly-tagged release. v0.4.0 raises the floor so the FM-7
+  thin-body class surfaces as `error.code: "empty_response"` instead
+  of silent success. Retires the v0.2.0 Known Limitations disclosure
+  in behavior, not just name.
+- **Post-fix rate verified: 0.0 %.** Re-classifying the full 209-site
+  v0.2 validation corpus against the new floor lands the post-fix
+  FM-7 rate at **0 / 209** (acceptance threshold was <5 %). Analysis
+  + per-niche breakdown committed as
+  `research/2026-04-23-cox-52-post-fix-reclassification.md`. Not a
+  live re-run (the 209-site COX-46 harness stored the byte counts the
+  gate reads from; re-classification is deterministic against the
+  archived data); a live re-run on fresh network is a post-tag
+  follow-up if partner behavior changes.
+- **Path A chosen over Path B.** Raising the existing floor preserves
+  the closed Literal set for `EnvelopeErrorCode`; a separate
+  `thin_response` code (Path B) was deferred to a future minor only
+  if agent feedback asks for the distinction.
 - **Synthetic corpus homepage template inflated.** The 30-prospect
   synthetic fixtures extracted to ~350–400 bytes on v0.3.0 — they
   would have tripped the new floor on every run. The homepage
@@ -49,6 +75,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for byte-diff regression. Recipe table lives in
   `scripts/promote-fm7-thin-fixtures.py`.
 
+### Fixed — NXDOMAIN routing (COX-49 / #86)
+
+- **`unsafe_url:dns_resolve_failure` now routes to
+  `no_provider_succeeded`.** Pre-v0.4.0 the SSRF guardrail raised a
+  bare `unsafe_url: DNS resolution failed ...` on NXDOMAIN, and the
+  classifier's substring match on `unsafe_url` won before any
+  DNS-specific branch — so a non-resolving host silently appeared as
+  an SSRF attempt to downstream agents. Under v0.4.0 the guardrail
+  tags every `UnsafeURLError` with a `category` token; provider
+  wrappers emit category-prefixed strings of the shape
+  `unsafe_url:<category>: <detail>`. The classifier checks for
+  `unsafe_url:dns_resolve_failure` first and routes it to
+  `no_provider_succeeded`. Private-IP, metadata-host, scheme, and
+  parse rejections keep their existing `ssrf_rejected` routing.
+  Closes #86.
+
 ### Added
 
 - **COX-52 acceptance test suite** (`tests/test_cox52_thin_body_acceptance.py`).
@@ -59,6 +101,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the orchestrator envelope lands as `status: degraded` +
   `error.code: "empty_response"` + actionable `suggestion`. These
   mirror the acceptance checklist on #91 exactly.
+- **COX-49 regression tests** — `tests/test_envelope_error_codes.py`
+  gains `test_nxdomain_routes_to_no_provider_succeeded` (unit: the
+  classifier's substring rules) and
+  `test_nxdomain_cli_path_returns_no_provider_succeeded` (integration:
+  a `.invalid` host through the real `site_text_trafilatura` provider
+  + orchestrator lands on `no_provider_succeeded`).
 
 ## [0.3.0] — 2026-04-23
 

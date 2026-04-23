@@ -53,7 +53,7 @@ EMPTY_RESPONSE_FIXTURE_FILES = ("homepage.html", "expected.json")
 # (`research/2026-04-22-v0.2-joel-integration-validation.md` §3). Each
 # homepage extracts to somewhere in (64, 1024) UTF-8 bytes so it tripped
 # silently under the v0.3.0 64-byte floor and now correctly surfaces as
-# ``empty_response`` under the v0.3.1 1024-byte floor. 2 seeds × 4 thin-
+# ``empty_response`` under the v0.4.0 1024-byte floor. 2 seeds × 4 thin-
 # dominated niches (virtual staging, real-estate photography, gutter
 # installation, real-estate staging) + 1 seed × 11 occasional-FM-7
 # niches. See ``scripts/promote-fm7-thin-fixtures.py`` for the

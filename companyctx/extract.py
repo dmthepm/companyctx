@@ -26,7 +26,7 @@ from companyctx.schema import SiteSignals
 # validation (n=209, `research/2026-04-22-v0.2-joel-integration-
 # validation.md` §3) measured 41 / 209 = 19.6 % of `status: ok`
 # envelopes returning <1 KiB of extracted text — "FM-7 thin-body."
-# These were `ok`-but-partner-unusable. v0.3.1 raises the floor to
+# These were `ok`-but-partner-unusable. v0.4.0 raises the floor to
 # 1024 bytes so the thin-body class surfaces as structured
 # `empty_response` instead of silent success. The p50 extracted-text
 # size on successful runs in that validation was 2.29 KiB, well above

@@ -69,7 +69,7 @@ REGRESSION_SLUGS = (
     # the v0.2 partner-integration validation (`research/2026-04-22-v0.2-
     # joel-integration-validation.md` §3). Each extracts to 64-1023
     # UTF-8 bytes: cleared the v0.3.0 64-byte floor (silent-success) and
-    # now trips the v0.3.1 1024-byte floor. Pinned as byte-diff fixtures
+    # now trips the v0.4.0 1024-byte floor. Pinned as byte-diff fixtures
     # so the envelope shape they produce is frozen — any regression in
     # the empty-response classifier or the thin-body gate breaks the
     # byte-diff here before it reaches a partner release.

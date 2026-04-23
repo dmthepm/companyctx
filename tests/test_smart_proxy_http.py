@@ -119,7 +119,7 @@ class _ProxyRecoversSite:
     RECOVERED_HTML = (
         b"<html><body><h1>Recovered Biz</h1>"
         b"<p>hello via proxy. This recovery body is intentionally long enough to clear "
-        b"the v0.3.1 empty-response cutoff of 1024 UTF-8 bytes so the waterfall lands on "
+        b"the v0.4.0 empty-response cutoff of 1024 UTF-8 bytes so the waterfall lands on "
         b"status=ok and this test keeps probing the recovery wiring, not the thin-body "
         b"gate. Recovered Biz is a Portland-based fictional company that has served the "
         b"region for over a decade with a realistic mix of consumer and commercial "
@@ -338,7 +338,7 @@ def _blocked_fixture(tmp_path: Path, slug: str, *, with_homepage: bool) -> None:
         (site_dir / "homepage.html").write_bytes(
             b"<html><body><h1>Recovered</h1>"
             b"<p>proxy win. The smart-proxy recovered a full homepage body, comfortably "
-            b"above the v0.3.1 empty-response cutoff of 1024 UTF-8 bytes. A realistic "
+            b"above the v0.4.0 empty-response cutoff of 1024 UTF-8 bytes. A realistic "
             b"residential-proxy recovery returns the rendered page, not just a shell "
             b"-- the kind of multi-paragraph content an LLM can actually synthesize a "
             b"brief from.</p>"
@@ -354,7 +354,7 @@ def _blocked_fixture(tmp_path: Path, slug: str, *, with_homepage: bool) -> None:
             b"accounts throughout Multnomah and Washington counties. Our core "
             b"offerings are deliberately generic here so the fixture reads like a "
             b"plausible brochure site and trafilatura returns a realistic body "
-            b"above the v0.3.1 thin-body floor.</p>"
+            b"above the v0.4.0 thin-body floor.</p>"
             b"<p>Every engagement starts with a site walkthrough and a written "
             b"scope so there are no surprises on invoice day. We publish "
             b"before-and-after galleries, customer reviews, and project case "
@@ -454,13 +454,13 @@ def test_waterfall_skips_smart_proxy_when_site_text_ok(
     slug = "cleanfix"
     site_dir = tmp_path / slug
     site_dir.mkdir()
-    # Body clears the v0.3.1 ``EMPTY_RESPONSE_BYTES`` cutoff (1024) so
+    # Body clears the v0.4.0 ``EMPTY_RESPONSE_BYTES`` cutoff (1024) so
     # this test stays about the smart-proxy skip path, not the empty-
     # response check.
     (site_dir / "homepage.html").write_bytes(
         b"<html><body><h1>Clean Biz</h1>"
         b"<p>hello from the clean-path homepage. This body is intentionally long "
-        b"enough to clear the v0.3.1 empty-response cutoff of 1024 UTF-8 bytes so "
+        b"enough to clear the v0.4.0 empty-response cutoff of 1024 UTF-8 bytes so "
         b"the zero-key provider completes with status=ok and the smart-proxy never "
         b"has to run.</p>"
         b"<p>The point of the test is the skip path: when Attempt 1 succeeds, "
@@ -910,14 +910,14 @@ def test_site_meta_failure_does_not_trigger_recovery(
     slug = "metaok"
     site_dir = tmp_path / slug
     site_dir.mkdir()
-    # Body clears ``EMPTY_RESPONSE_BYTES`` (1024, v0.3.1) so the
+    # Body clears ``EMPTY_RESPONSE_BYTES`` (1024, v0.4.0) so the
     # zero-key provider completes with ``ok`` — this test is about
     # site_meta failures not being routed to smart-proxy recovery, not
     # about empty responses.
     (site_dir / "homepage.html").write_bytes(
         b"<html><body><h1>Real Biz</h1>"
         b"<p>full homepage prose. This body is intentionally long enough to clear "
-        b"the v0.3.1 empty-response cutoff of 1024 UTF-8 bytes so the zero-key "
+        b"the v0.4.0 empty-response cutoff of 1024 UTF-8 bytes so the zero-key "
         b"provider lands on status=ok and the assertion chain about site_meta not "
         b"triggering recovery stays clean.</p>"
         b"<p>A realistic homepage carries a differentiator paragraph, a "

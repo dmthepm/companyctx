@@ -351,7 +351,7 @@ def render_homepage(p: Prospect) -> str:
     # The synthetic homepage must clear EMPTY_RESPONSE_BYTES (1024) comfortably
     # — a realistic brochure homepage should carry differentiator, audience,
     # and credentials prose, not just a nav + service bullets. A thin render
-    # here would trip the v0.3.1 empty-response gate on every synthetic
+    # here would trip the v0.4.0 empty-response gate on every synthetic
     # fixture and the whole corpus would fail as FM-7. Keep the prose
     # deterministic and stack-agnostic so the generator stays byte-stable.
     return f"""<!DOCTYPE html>

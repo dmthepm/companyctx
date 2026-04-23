@@ -95,7 +95,7 @@ Under v0.3 (COX-44 / #79) the provider gate trips on extracted UTF-8
 byte length below `EMPTY_RESPONSE_BYTES`, so the envelope surfaces as
 `status: degraded`, `error.code: "empty_response"` instead of the v0.2
 silent-success `status: ok` with zero-length `homepage_text`. The
-floor was 64 bytes in v0.3.0 and raised to **1024 bytes in v0.3.1**
+floor was 64 bytes in v0.3.0 and raised to **1024 bytes in v0.4.0**
 (COX-52 / #91) to include the FM-7 thin-body class the v0.2 partner-
 integration validation measured at 19.6 % of `ok` envelopes. These
 three fixtures all extract well under the current floor and trip the
@@ -109,12 +109,12 @@ them in the byte-diff regression suite via
 ### FM-7 thin-body regressions — COX-52 / #91
 
 19 pseudonymized regression fixtures under `fixtures/fm7-thin-*/` seed
-the v0.3.1 floor raise with realistic thin-body homepages drawn (in
+the v0.4.0 floor raise with realistic thin-body homepages drawn (in
 shape, never verbatim) from the 41 FM-7 cases measured in
 `research/2026-04-22-v0.2-joel-integration-validation.md` §3. Each
 homepage extracts to somewhere in `(64, 1024)` UTF-8 bytes — cleared
 the v0.3.0 floor (would have been silent-success) and now trips the
-v0.3.1 floor. Distribution: 2 seeds for each of the 4 thin-dominated
+v0.4.0 floor. Distribution: 2 seeds for each of the 4 thin-dominated
 niches (virtual staging, real-estate photography, gutter installation,
 real-estate staging) + 1 seed for each of 11 occasional-FM-7 niches.
 The deterministic recipe table lives in

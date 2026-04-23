@@ -8,7 +8,7 @@
 >
 > Shape edits land upstream and flow back via a new handoff cycle. Shipped-vs-
 > deferred state (which commands / flags / providers are wired today) is
-> refreshed with each release — this file is current as of `v0.3.0`.
+> refreshed with each release — this file is current as of `v0.4.0`.
 
 ---
 
@@ -80,7 +80,7 @@ around a crash.
 
 ```
 {
-  "schema_version": "0.3.0",       // top-level shape discriminator
+  "schema_version": "0.4.0",       // top-level shape discriminator
   "status": "ok" | "partial" | "degraded",
   "data":   CompanyContext,        // the schema payload (always present, may
                                    //   have nullable fields on partial)
@@ -106,7 +106,7 @@ blocked_by_antibot | path_traversal_rejected | response_too_large |
 no_provider_succeeded | misconfigured_provider | empty_response |
 cache_corrupted`. See `docs/SCHEMA.md` for the shape.
 
-#### `empty_response` (v0.3, floor raised in v0.3.1)
+#### `empty_response` (v0.3, floor raised in v0.4.0)
 
 Closes the silent-success-on-empty and silent-success-on-thin gaps
 called out in v0.2.0 Known Limitations. When the zero-key `site_text`
@@ -118,14 +118,17 @@ that to top-level `error.code: "empty_response"` with an actionable
 suggestion (`"site returned HTTP 200 with effectively no content; try
 --ignore-robots or check with a browser"`).
 
-The 1024-byte cutoff (v0.3.1) supersedes the v0.3.0 64-byte floor. The
-v0.3.0 floor caught truly-empty bodies only; the v0.2 partner-
-integration validation (`research/2026-04-22-v0.2-joel-integration-
-validation.md` §3, n=209) measured 41 / 209 = 19.6 % of `status: ok`
-envelopes returning under 1 KiB of extracted text — "FM-7 thin-body"
-— concentrated in partner-active niches. Those cases are partial data
-wearing an `ok` label. v0.3.1 merges the `empty_response` code with
-FM-7's thin-extract threshold so both classes surface honestly. A
+The 1024-byte cutoff (v0.4.0, COX-52) supersedes the v0.3.0 64-byte
+floor. The v0.3.0 floor caught truly-empty bodies only; the v0.2
+partner-integration validation (`research/2026-04-22-v0.2-joel-
+integration-validation.md` §3, n=209) measured 41 / 209 = 19.6 % of
+`status: ok` envelopes returning under 1 KiB of extracted text —
+"FM-7 thin-body" — concentrated in partner-active niches. Those cases
+are partial data wearing an `ok` label. v0.4.0 merges the
+`empty_response` code with FM-7's thin-extract threshold so both
+classes surface honestly. Re-classifying the 209-site corpus against
+the new floor puts the post-fix FM-7 rate at 0 / 209
+(`research/2026-04-23-cox-52-post-fix-reclassification.md`). A
 legitimate one-page brochure site that clears 1 KiB stays `ok`; a
 4xx-but-HTTP-200 maintenance stub or a JS-only SPA shell trips the
 gate. The gate measures **UTF-8 bytes**, not character count, so
@@ -155,7 +158,7 @@ invent content). Agents decide whether to retry upstream.
 
 ### `schema_version`
 
-Every envelope carries a top-level `schema_version: Literal["0.3.0"]`.
+Every envelope carries a top-level `schema_version: Literal["0.4.0"]`.
 Agents branch on shape by reading this field directly — no substring-
 parsing an error string.
 
@@ -165,15 +168,22 @@ empty-string `schema_version` fails validation at parse time with a
 envelopes (which lack the field entirely, or carry the older `"0.2.0"`
 literal) silently validate as current, defeating the point of a shape
 discriminator. The constructor signature in `companyctx/schema.py` is the
-source of truth — every call site must pass `schema_version="0.3.0"`
+source of truth — every call site must pass `schema_version="0.4.0"`
 explicitly. Published JSON Schema (`companyctx schema`) lists
 `schema_version` in the `required` array.
 
 Adding an optional envelope field is a PATCH (no `schema_version` bump);
-adding or renaming an `EnvelopeError.code` is a MINOR bump; changing or
-removing an existing field is a MAJOR bump. v0.3.0 adds the
-`empty_response` code to the closed set — a minor bump from v0.2.0. v0.1
-envelopes lack the `schema_version` field and fail validation under
+adding or renaming an `EnvelopeError.code` is a MINOR bump; changing
+the input → code mapping without adding/renaming codes is also a MINOR
+bump (agents see different behavior for the same input); changing or
+removing an existing field is a MAJOR bump. v0.3.0 added the
+`empty_response` and `cache_corrupted` codes (minor bump from v0.2.0).
+v0.4.0 bumps for two code-mapping changes that keep the Literal set
+constant: the COX-52 FM-7 floor raise (`empty_response` now fires at
+<1024 UTF-8 bytes, not <64) and the COX-49 NXDOMAIN routing fix
+(`unsafe_url:dns_resolve_failure` now routes to
+`no_provider_succeeded` rather than `ssrf_rejected`). v0.1 envelopes
+lack the `schema_version` field and fail validation under
 `extra="forbid"` plus the required-field check.
 
 ### `providers list` output shape

@@ -3,7 +3,7 @@
 Three tests that mirror the acceptance checklist on issue #91:
 
 1. ``site_text_trafilatura`` (Attempt 1) — a ~500-byte homepage HTML
-   extracts to well under the v0.3.1 1024-byte floor. Provider row must
+   extracts to well under the v0.4.0 1024-byte floor. Provider row must
    be ``status: failed`` with ``error: "empty_response"`` instead of the
    pre-fix silent-success (the prose cleared the v0.3.0 64-byte floor).
 2. ``smart_proxy_http`` (Attempt 2) — same ~500-byte recovery body
@@ -17,7 +17,7 @@ Three tests that mirror the acceptance checklist on issue #91:
 These are the FM-7 thin-body cases the partner-integration validation
 measured at 19.6 % of 209 sites (`research/2026-04-22-v0.2-joel-
 integration-validation.md` §3). They surfaced as ``status: ok`` on
-v0.3.0; v0.3.1 raises the floor 64 → 1024 so they surface honestly.
+v0.3.0; v0.4.0 raises the floor 64 → 1024 so they surface honestly.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ FIXED_WHEN = datetime(2026, 4, 20, tzinfo=timezone.utc)
 
 # Realistic ~500-byte homepage for a virtual-staging studio. Extracts to
 # ~370 UTF-8 bytes under trafilatura — above the v0.3.0 64-byte floor
-# (would have silently passed) but well under the v0.3.1 1024-byte
+# (would have silently passed) but well under the v0.4.0 1024-byte
 # floor (now trips empty_response). Matches the FM-7 thin-body shape
 # the partner validation flagged.
 THIN_HOMEPAGE_HTML = (
@@ -71,8 +71,8 @@ def _write_thin_fixture(tmp_path: Path, slug: str) -> None:
 def test_site_text_trafilatura_500byte_payload_emits_empty_response(tmp_path: Path) -> None:
     """Zero-key provider: ~500-byte HTML → ``status: failed`` + ``empty_response``.
 
-    Pre-v0.3.1 this payload cleared the 64-byte floor and the provider
-    row was ``status: ok``. Under the v0.3.1 1024-byte floor the same
+    Pre-v0.4.0 this payload cleared the 64-byte floor and the provider
+    row was ``status: ok``. Under the v0.4.0 1024-byte floor the same
     payload now surfaces the honest failed row. Acceptance gate from
     COX-52 / issue #91.
     """
@@ -122,7 +122,7 @@ class _BlockedPrimary:
 
 class _ThinBodyProxy:
     """Smart-proxy that returns a ~500-byte homepage HTML — the exact FM-7
-    thin-body class the v0.3.1 floor raise targets."""
+    thin-body class the v0.4.0 floor raise targets."""
 
     slug: ClassVar[str] = "smart_proxy_thin"
     category: ClassVar[Literal["smart_proxy"]] = "smart_proxy"

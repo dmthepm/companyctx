@@ -273,7 +273,7 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   - `backfill-2026-04-16-command-message-167f63bc.md:1473`
   - `backfill-2026-04-18-command-message-05ed4365.md:3669`
 - **Agent recovery.** Accepted thin data, pivoted script angles to lean
-  on Apollo firmographics. Under v0.3.1 the envelope now names this
+  on Apollo firmographics. Under v0.4.0 the envelope now names this
   case honestly rather than laundering it as `ok`; agents branch on
   `error.code == "empty_response"` rather than guessing from byte
   length.
@@ -281,7 +281,7 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   proxy) deliberately does NOT retry on `empty_response` — the fetch
   worked; the site just has nothing to extract, and re-fetching through
   a residential proxy won't invent content.
-- **Envelope mapping (v0.3.1, COX-52 / #91).**
+- **Envelope mapping (v0.4.0, COX-52 / #91).**
   - A fetch that extracts **≥ 1024 UTF-8 bytes** returns
     `ProviderRunMetadata.status = "ok"` — the fetch worked and the
     site had enough content for a legitimate brief. Empty-but-not-thin
@@ -295,7 +295,7 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
     with `error = "empty_response"`. The orchestrator maps that to
     top-level `error.code: "empty_response"` with a suggestion that
     points at `--ignore-robots` or manual browser inspection (NOT a
-    proxy retry). Pre-v0.3.1 this class was silent-success `ok` with
+    proxy retry). Pre-v0.4.0 this class was silent-success `ok` with
     thin `homepage_text` — now partner agents can branch on
     `error.code` without byte-counting themselves.
   - Top-level `status`:

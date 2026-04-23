@@ -5,7 +5,7 @@ The v0.2 partner-integration validation measured 41 / 209 `status: ok`
 envelopes returning under 1 KiB of extracted text — FM-7 thin-body. The
 raw per-host evidence lives outside the repo (gitignored per the
 sanitization rule). This script writes the committed, sanitized, pseudo-
-named regression fixtures that guard the v0.3.1 floor raise.
+named regression fixtures that guard the v0.4.0 floor raise.
 
 Niche distribution matches issue #91 §"Fixture promotions":
 
@@ -51,7 +51,7 @@ class ThinRecipe:
     """A pseudonymized thin-body fixture recipe.
 
     ``intro`` must be under ~900 characters so the extracted text stays
-    below the v0.3.1 1024-byte floor. The build script asserts per-fixture
+    below the v0.4.0 1024-byte floor. The build script asserts per-fixture
     that the extract lands in ``(64, 1024)``.
     """
 
