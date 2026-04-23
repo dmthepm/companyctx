@@ -15,7 +15,7 @@ the real fixture-path validator for ``path_traversal_rejected``.
 
 The point is not to test internal code paths — those are covered in
 ``tests/test_envelope_error_codes.py``. The point is to give an
-external auditor (or a Joel-integration validator) one runnable script
+external auditor (or a partner-integration validator) one runnable script
 that proves every public ``EnvelopeErrorCode`` fires end-to-end with
 expected envelope shape, and to commit the envelope evidence.
 
