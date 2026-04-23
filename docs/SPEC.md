@@ -266,7 +266,7 @@ entry points:
 site_text_trafilatura  = "companyctx.providers.trafilatura_site:Provider"
 site_text_readability  = "companyctx.providers.readability_site:Provider"
 site_meta_extruct      = "companyctx.providers.extruct_meta:Provider"
-reviews_google_places  = "companyctx.providers.google_places:Provider"
+reviews_google_places  = "companyctx.providers.reviews_google_places:Provider"
 reviews_yelp_fusion    = "companyctx.providers.yelp_fusion:Provider"
 social_discovery_site  = "companyctx.providers.social_discovery:Provider"
 social_counts_youtube  = "companyctx.providers.youtube_counts:Provider"
@@ -308,14 +308,20 @@ on which attempt succeeded — they branch on the envelope's `status`.
   adapter lands after the smart-proxy vendor eval spike (#63).
 - **`reviews_google_places`** (Attempt 3, direct-API). Google Places via
   `curl_cffi` + the legacy Places web-service API. Text Search resolves
-  site hostname → candidate place_ids; Place Details reads
-  `user_ratings_total` + `rating` on the best-match candidate. Populates
-  `data.reviews.{count, rating, source}` only — hours / phone /
-  categories / individual review text stay out-of-scope per COX-5.
-  Missing `GOOGLE_PLACES_API_KEY` → `status: "not_configured"`; 401 /
-  403 / `REQUEST_DENIED` / `OVER_QUERY_LIMIT` → `status: "failed"` with
-  structured error. Cost charged in integer US cents via
-  `ProviderRunMetadata.cost_incurred`.
+  site hostname → candidate place_ids (we accept Google's prominence-
+  ordered first result; the legacy Text Search response doesn't include
+  `website`, so picking by domain match isn't available at that layer
+  without an extra Details billing hit per candidate). Place Details
+  reads `user_ratings_total` + `rating` on the chosen place_id.
+  Populates `data.reviews.{count, rating, source}` only — hours / phone
+  / categories / individual review text stay out-of-scope per COX-5.
+  **Skips invocation entirely when `GOOGLE_PLACES_API_KEY` is unset**
+  (no provenance row, no envelope status downgrade); `providers list`
+  still surfaces the slug as `not_configured`. Configured but upstream
+  401 / 403 / `REQUEST_DENIED` / `OVER_QUERY_LIMIT` → `status:
+  "failed"` with structured error. Cost charged in integer US cents via
+  `ProviderRunMetadata.cost_incurred`: Text Search Basic ($32/1k) +
+  Place Details Basic+Atmosphere ($22/1k) = 6¢/happy-path.
 
 ### Providers deferred
 

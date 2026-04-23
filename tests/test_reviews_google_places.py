@@ -5,8 +5,9 @@ Covers the COX-5 acceptance:
 - No key → ``not_configured`` with actionable suggestion.
 - Bad key (HTTP 401/403) → ``failed`` with ``blocked_by_antibot``-classified error.
 - Site with no Places result (``ZERO_RESULTS``) → ``failed`` with structured error.
-- Multiple candidates → best-match heuristic picks the candidate whose
-  ``website`` hostname matches the input site.
+- Multiple candidates → the picker takes Google's first Text Search
+  result (legacy Text Search doesn't return ``website`` so domain
+  matching isn't an option without an extra Details billing hit).
 - ``REQUEST_DENIED`` / ``OVER_QUERY_LIMIT`` → ``failed`` with classifiable errors.
 - Fixture parity with the zero-key-only run: the envelope's ``data.reviews``
   slot populates deterministically when the Places provider is registered.
@@ -28,12 +29,13 @@ from companyctx import core
 from companyctx.http import DEFAULT_TIMEOUT_S, DEFAULT_USER_AGENT
 from companyctx.providers.base import FetchContext, ProviderBase
 from companyctx.providers.reviews_google_places import (
-    _COST_HAPPY_PATH_CENTS,
-    _COST_TEXT_SEARCH_CENTS,
+    _DETAILS_BASIC_ATMOSPHERE_TENTHS,
+    _TEXT_SEARCH_TENTHS,
     ENV_KEY,
     NOT_CONFIGURED_SUGGESTION,
     SOURCE_SLUG,
     Provider,
+    _cost_cents,
 )
 from companyctx.providers.site_text_trafilatura import Provider as TrafilaturaProvider
 
@@ -128,13 +130,7 @@ def test_happy_path_populates_reviews_signals(monkeypatch: pytest.MonkeyPatch) -
             200,
             {
                 "status": "OK",
-                "results": [
-                    {
-                        "place_id": "pid-correct",
-                        "name": "Acme Bakery",
-                        "website": "https://acme-bakery.example",
-                    }
-                ],
+                "results": [{"place_id": "pid-correct", "name": "Acme Bakery"}],
             },
         ),
         "details": _FakeResponse(
@@ -157,70 +153,24 @@ def test_happy_path_populates_reviews_signals(monkeypatch: pytest.MonkeyPatch) -
 
     assert meta.status == "ok"
     assert meta.error is None
-    assert meta.cost_incurred == _COST_HAPPY_PATH_CENTS
+    # Happy path = Text Search Basic + Details Basic+Atmosphere,
+    # ceil-summed to integer cents.
+    assert meta.cost_incurred == _cost_cents(_TEXT_SEARCH_TENTHS, _DETAILS_BASIC_ATMOSPHERE_TENTHS)
     assert signals is not None
     assert signals.count == 128
     assert signals.rating == pytest.approx(4.4)
     assert signals.source == SOURCE_SLUG
 
 
-def test_multi_candidate_picks_matching_website(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Best-match heuristic must pick the candidate whose website hostname matches."""
-    monkeypatch.setenv(ENV_KEY, "test-key")
-    captured: list[str] = []
+def test_picker_takes_first_text_search_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Legacy Text Search doesn't return ``website``; we take Google's prominence-
+    ordered first result and the Place Details call must carry THAT ``place_id``.
 
-    def _capture(url: str, *_args: object, **_kwargs: object) -> _FakeResponse:
-        captured.append(url)
-        if "/textsearch/" in url:
-            return _FakeResponse(
-                200,
-                {
-                    "status": "OK",
-                    "results": [
-                        {
-                            "place_id": "pid-other",
-                            "name": "Different Acme",
-                            "website": "https://acme-other.example",
-                        },
-                        {
-                            "place_id": "pid-correct",
-                            "name": "Acme Bakery",
-                            "website": "https://www.acme-bakery.example/home",
-                        },
-                        {
-                            "place_id": "pid-third",
-                            "name": "Unrelated",
-                        },
-                    ],
-                },
-            )
-        return _FakeResponse(
-            200,
-            {
-                "status": "OK",
-                "result": {
-                    "place_id": "pid-correct",
-                    "rating": 4.8,
-                    "user_ratings_total": 42,
-                },
-            },
-        )
-
-    monkeypatch.setattr("companyctx.providers.reviews_google_places.requests.get", _capture)
-
-    signals, meta = Provider().fetch("acme-bakery.example", ctx=_ctx())
-    assert meta.status == "ok"
-    assert signals is not None
-    assert signals.count == 42
-    # The Place Details call must carry the matching candidate's place_id.
-    details_url = next(u for u in captured if "/details/" in u)
-    assert "place_id=pid-correct" in details_url
-
-
-def test_falls_back_to_first_candidate_when_no_website_match(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """When no candidate exposes a matching website, use Google's prominence ordering."""
+    An earlier draft picked by matching a fabricated ``website`` field on
+    Text Search results, but that field isn't returned by the legacy API
+    per Google's "Place Data Fields (Legacy)" docs. This regression
+    keeps the picker honest: first result wins, period.
+    """
     monkeypatch.setenv(ENV_KEY, "test-key")
     captured: list[str] = []
 
@@ -233,11 +183,8 @@ def test_falls_back_to_first_candidate_when_no_website_match(
                     "status": "OK",
                     "results": [
                         {"place_id": "pid-first", "name": "First"},
-                        {
-                            "place_id": "pid-second",
-                            "name": "Second",
-                            "website": "https://someone-else.example",
-                        },
+                        {"place_id": "pid-second", "name": "Second"},
+                        {"place_id": "pid-third", "name": "Third"},
                     ],
                 },
             )
@@ -247,19 +194,45 @@ def test_falls_back_to_first_candidate_when_no_website_match(
                 "status": "OK",
                 "result": {
                     "place_id": "pid-first",
-                    "rating": 3.2,
-                    "user_ratings_total": 7,
+                    "rating": 4.8,
+                    "user_ratings_total": 42,
                 },
             },
         )
 
     monkeypatch.setattr("companyctx.providers.reviews_google_places.requests.get", _capture)
+
     signals, meta = Provider().fetch("acme-bakery.example", ctx=_ctx())
     assert meta.status == "ok"
     assert signals is not None
-    assert signals.count == 7
+    assert signals.count == 42
     details_url = next(u for u in captured if "/details/" in u)
     assert "place_id=pid-first" in details_url
+
+
+def test_details_request_does_not_ask_for_website_field(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Requesting ``website`` would pull in the Contact billing bundle for
+    no benefit (we don't use it). The Details URL's ``fields`` param must
+    stay at ``place_id,rating,user_ratings_total``.
+    """
+    monkeypatch.setenv(ENV_KEY, "test-key")
+    captured: list[str] = []
+
+    def _capture(url: str, *_args: object, **_kwargs: object) -> _FakeResponse:
+        captured.append(url)
+        if "/textsearch/" in url:
+            return _FakeResponse(
+                200, {"status": "OK", "results": [{"place_id": "pid", "name": "x"}]}
+            )
+        return _FakeResponse(
+            200,
+            {"status": "OK", "result": {"place_id": "pid", "rating": 4.0, "user_ratings_total": 1}},
+        )
+
+    monkeypatch.setattr("companyctx.providers.reviews_google_places.requests.get", _capture)
+    Provider().fetch("acme-bakery.example", ctx=_ctx())
+    details_url = next(u for u in captured if "/details/" in u)
+    assert "website" not in details_url
 
 
 # ---------------------------------------------------------------------------
@@ -283,7 +256,7 @@ def test_bad_key_maps_to_failed_with_antibot_prefix(
     assert "blocked_by_antibot" in meta.error
     assert str(status_code) in meta.error
     # Text-Search leg still bills.
-    assert meta.cost_incurred == _COST_TEXT_SEARCH_CENTS
+    assert meta.cost_incurred == _cost_cents(_TEXT_SEARCH_TENTHS)
 
 
 def test_zero_results_maps_to_failed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -297,7 +270,7 @@ def test_zero_results_maps_to_failed(monkeypatch: pytest.MonkeyPatch) -> None:
     assert meta.status == "failed"
     assert meta.error is not None
     assert "no places result" in meta.error
-    assert meta.cost_incurred == _COST_TEXT_SEARCH_CENTS
+    assert meta.cost_incurred == _cost_cents(_TEXT_SEARCH_TENTHS)
 
 
 def test_request_denied_maps_to_failed_with_antibot_prefix(
@@ -452,12 +425,8 @@ def test_mock_full_fixture_shape_works(monkeypatch: pytest.MonkeyPatch, tmp_path
                 "text_search": {
                     "status": "OK",
                     "results": [
+                        {"place_id": "pid-right", "name": "right"},
                         {"place_id": "pid-wrong", "name": "wrong"},
-                        {
-                            "place_id": "pid-right",
-                            "name": "right",
-                            "website": "https://acmemulti.example",
-                        },
                     ],
                 },
                 "details": {
@@ -546,10 +515,15 @@ def test_envelope_comparison_zero_key_only_vs_with_places(
     assert env_with_places.data.reviews.source == SOURCE_SLUG
 
 
-def test_envelope_partial_when_places_not_configured(
+def test_places_unconfigured_does_not_downgrade_zero_key_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Missing ``GOOGLE_PLACES_API_KEY`` → envelope ``partial`` with actionable suggestion."""
+    """Missing ``GOOGLE_PLACES_API_KEY`` must NOT flip a successful zero-key
+    run to ``partial``. The orchestrator skips invocation of a primary
+    provider whose ``required_env`` is unmet — no provenance row, no
+    envelope-status downgrade. Mirrors the README's "Zero keys on the
+    default path" promise.
+    """
     monkeypatch.delenv(ENV_KEY, raising=False)
     env = core.run(
         "acme-bakery.example",
@@ -564,10 +538,8 @@ def test_envelope_partial_when_places_not_configured(
         ),
         fetched_at=FIXED_WHEN,
     )
-    assert env.status == "partial"
-    assert env.provenance["reviews_google_places"].status == "not_configured"
-    assert env.error is not None
-    # Classifier routes not_configured → misconfigured_provider.
-    assert env.error.code == "misconfigured_provider"
-    places_error = env.provenance["reviews_google_places"].error or ""
-    assert ENV_KEY in places_error
+    assert env.status == "ok"
+    assert env.error is None
+    assert "reviews_google_places" not in env.provenance
+    assert env.provenance["site_text_trafilatura"].status == "ok"
+    assert env.data.reviews is None

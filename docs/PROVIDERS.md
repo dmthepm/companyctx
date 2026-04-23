@@ -78,18 +78,27 @@ entry-point line in `pyproject.toml` or override at runtime.
 
 ## `reviews_google_places` (Attempt 3, direct-API) — shipped v0.3
 
-Attempt 3 provider landed in COX-5. Two Places API calls per successful
-lookup:
+Attempt 3 provider landed in COX-5. Two legacy Places API calls per
+successful lookup:
 
-1. **Text Search** — `textsearch/json?query=<hostname>` resolves the site
-   to candidate Places.
-2. **Place Details** — `details/json?place_id=<id>&fields=place_id,rating,
-   user_ratings_total,website` reads the aggregate fields on the winning
-   candidate.
+1. **Text Search (Legacy)** — `textsearch/json?query=<hostname>` resolves
+   the site to candidate Places.
+2. **Place Details (Legacy)** — `details/json?place_id=<id>&fields=
+   place_id,rating,user_ratings_total` reads the aggregate fields on the
+   chosen candidate.
 
-**Candidate picker.** The first candidate whose `website` hostname matches
-the input site wins. If no candidate exposes a matching website, we fall
-back to Google's prominence ordering (first result).
+**Candidate picker.** The legacy Text Search response doesn't include
+`website` (see Google's "Place Data Fields (Legacy)" — `website` is in
+the Details Contact bundle), so we deliberately take Google's first
+result (prominence ordering) and surface the `place_id` in provenance.
+Verifying a pick via per-candidate Details lookups would multiply
+billing with no gain over prominence for small-local-biz ICPs.
+
+**Skip-unless-configured.** The provider only runs when
+`GOOGLE_PLACES_API_KEY` is set + non-empty. Without a key the
+orchestrator skips invocation entirely (no provenance row, no envelope
+status downgrade); `companyctx providers list` still surfaces the slug
+as `not_configured` so users see the wiring gap independently.
 
 **Fields populated.** `data.reviews = ReviewsSignals{count, rating,
 source="reviews_google_places"}`. Count and rating only — the provider
@@ -99,8 +108,9 @@ brief-pipeline downstream of companyctx reads only count + rating today.
 
 **Failure modes (never raises).**
 
-- Missing env → `status="not_configured"` with a suggestion pointing at
-  `GOOGLE_PLACES_API_KEY`.
+- Missing env → provider skipped at the orchestrator (no provenance row).
+  `providers list` shows the slug as `not_configured` with an actionable
+  suggestion pointing at `GOOGLE_PLACES_API_KEY`.
 - HTTP 401 / 403 → `status="failed"` with `blocked_by_antibot` prefix
   (classifies into envelope `error.code="blocked_by_antibot"`).
 - Places API `REQUEST_DENIED` / `OVER_QUERY_LIMIT` → same.
@@ -108,13 +118,20 @@ brief-pipeline downstream of companyctx reads only count + rating today.
 - Network timeout → `status="failed"` classified as `network_timeout`.
 
 **Cost accounting.** `ProviderRunMetadata.cost_incurred` is integer US
-cents. Current constants (sourced from Google's published Places rates at
-COX-5 measurement time: Text Search $32/1k + Place Details basic-fields
-$17/1k ≈ 5¢/happy-path) live as module constants in
-`companyctx/providers/reviews_google_places.py`. Bump the constants (not
-the `cost_hint` surface) when Google changes pricing. `--mock` runs
-always charge 0 cents — the real charge is a real-network concern, and
-byte-identical deterministic mock runs are the contract.
+cents. Sourced from Google's published legacy Places pricing at COX-5
+measurement time:
+
+- Text Search (Basic): $32/1k = 3.2¢/call.
+- Place Details (Basic + Atmosphere): $17 + $5 = $22/1k = 2.2¢/call.
+  The `rating` + `user_ratings_total` fields sit in the Atmosphere
+  bundle, not Basic.
+
+Fractional cents are summed per leg and ceiled to an integer at
+emission so partial billing never reads as free. Happy path: ceil(3.2 +
+2.2) = **6 cents**. Text-Search-only (`ZERO_RESULTS` / quota) bills
+ceil(3.2) = **4 cents**. Constants live as module-level integers (tenths
+of a cent) in `companyctx/providers/reviews_google_places.py` — bump
+them when Google changes pricing. `--mock` runs always charge 0 cents.
 
 ## Provider rules (non-negotiable)
 

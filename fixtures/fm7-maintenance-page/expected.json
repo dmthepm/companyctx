@@ -14,13 +14,6 @@
     "suggestion": "site returned HTTP 200 with effectively no content; try --ignore-robots or check with a browser"
   },
   "provenance": {
-    "reviews_google_places": {
-      "cost_incurred": 0,
-      "error": "missing env var: GOOGLE_PLACES_API_KEY \u2014 export GOOGLE_PLACES_API_KEY=<your-key> (see https://developers.google.com/maps/documentation/places/web-service/get-api-key)",
-      "latency_ms": 0,
-      "provider_version": "0.1.0",
-      "status": "not_configured"
-    },
     "site_text_trafilatura": {
       "cost_incurred": 0,
       "error": "empty_response",
@@ -30,5 +23,5 @@
     }
   },
   "schema_version": "0.3.0",
-  "status": "partial"
+  "status": "degraded"
 }

@@ -432,11 +432,10 @@ def _scrub_fetched_at(raw: bytes) -> bytes:
 
 
 def test_cli_fetch_emits_schema_valid_envelope(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Exporting a key flips the reviews_google_places provider from
-    # ``not_configured`` → ``ok`` for the acme-bakery fixture (its
-    # ``google_places.json`` supplies deterministic count+rating), which
-    # is the shape users see once they've wired an API key.
-    monkeypatch.setenv("GOOGLE_PLACES_API_KEY", "test-key")
+    # Explicitly keep GOOGLE_PLACES_API_KEY unset: the orchestrator skips
+    # the unconfigured direct-API provider so the zero-key default path
+    # stays at status=ok (the README's load-bearing promise).
+    monkeypatch.delenv("GOOGLE_PLACES_API_KEY", raising=False)
     runner = CliRunner()
     result = runner.invoke(
         app,
@@ -456,6 +455,29 @@ def test_cli_fetch_emits_schema_valid_envelope(monkeypatch: pytest.MonkeyPatch) 
     assert env.status == "ok"
     assert env.data.pages is not None
     assert env.data.pages.homepage_text
+    # No Places key -> provider skipped entirely (no provenance row).
+    assert "reviews_google_places" not in env.provenance
+
+
+def test_cli_fetch_with_places_key_populates_reviews(monkeypatch: pytest.MonkeyPatch) -> None:
+    # With the Places key set, the --mock path reads the fixture's
+    # ``google_places.json`` and fills data.reviews deterministically.
+    monkeypatch.setenv("GOOGLE_PLACES_API_KEY", "test-key")
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "fetch",
+            "acme-bakery.example",
+            "--mock",
+            "--json",
+            "--fixtures-dir",
+            str(FIXTURES_DIR),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    env = Envelope.model_validate(json.loads(result.stdout))
+    assert env.status == "ok"
     assert env.data.reviews is not None
     assert env.data.reviews.source == "reviews_google_places"
 

@@ -527,12 +527,9 @@ def test_cli_fetch_blocked_fixture_ok_with_env(
 ) -> None:
     """End-to-end via the CLI — blocked fixture + env set → ok, exit 0.
 
-    ``GOOGLE_PLACES_API_KEY`` is unset in the ambient environment, so
-    delete it explicitly here and assert ``partial`` (smart-proxy
-    recovers the pages slot but the direct-API Places row stays
-    ``not_configured``). The assertion contract of this test is
-    "smart-proxy recovery works end-to-end" — the unrelated Places row
-    shouldn't tip the envelope into a different state.
+    GOOGLE_PLACES_API_KEY stays unset so the Places provider skips
+    invocation and the envelope status reflects the smart-proxy
+    recovery outcome on its own.
     """
     slug = "clifix02"
     _blocked_fixture(tmp_path, slug, with_homepage=True)
@@ -553,11 +550,11 @@ def test_cli_fetch_blocked_fixture_ok_with_env(
     )
     assert result.exit_code == 0, result.stdout
     env = Envelope.model_validate(json.loads(result.stdout))
-    assert env.status == "partial"
+    assert env.status == "ok"
     assert env.data.pages is not None
     assert env.provenance["site_text_trafilatura"].status == "failed"
     assert env.provenance["smart_proxy_http"].status == "ok"
-    assert env.provenance["reviews_google_places"].status == "not_configured"
+    assert "reviews_google_places" not in env.provenance
 
 
 # ---------------------------------------------------------------------------

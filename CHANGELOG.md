@@ -44,18 +44,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`reviews_google_places` provider (Attempt 3, direct-API)** — COX-5 / #7.
-  Resolves a site hostname via Google Places Text Search, picks the best
-  candidate by `website` match (falling back to Google's prominence
-  ordering when no candidate exposes a matching website), and reads
-  `user_ratings_total` + `rating` via Place Details. Populates
+  Resolves a site hostname via legacy Google Places Text Search, accepts
+  Google's prominence-ordered first result (the legacy Text Search
+  response doesn't include `website`, so picking by domain match would
+  require an extra Details billing hit per candidate for no gain), and
+  reads `user_ratings_total` + `rating` via Place Details. Populates
   `data.reviews.{count, rating, source="reviews_google_places"}`. Never
-  raises: missing `GOOGLE_PLACES_API_KEY` → `status: not_configured`
-  with actionable suggestion; 401 / 403 / `REQUEST_DENIED` /
-  `OVER_QUERY_LIMIT` → `status: failed` with `blocked_by_antibot`
-  prefix. Cost charged in integer US cents via
-  `ProviderRunMetadata.cost_incurred` (Text Search $32/1k + Place
-  Details basic-fields $17/1k ≈ 5¢/happy-path; constants live in the
-  provider module and bump on pricing change). `--mock` reads a
+  raises: missing `GOOGLE_PLACES_API_KEY` → orchestrator skips invocation
+  entirely (no provenance row, zero-key status stays `ok`); 401 / 403 /
+  `REQUEST_DENIED` / `OVER_QUERY_LIMIT` → `status: failed` with
+  `blocked_by_antibot` prefix. Cost charged in integer US cents via
+  `ProviderRunMetadata.cost_incurred`: Text Search Basic ($32/1k) + Place
+  Details Basic+Atmosphere ($22/1k; `rating`/`user_ratings_total` are
+  Atmosphere-tier SKUs) = 6¢/happy-path; constants live in the provider
+  module as tenths-of-a-cent and ceil-sum at emission. `--mock` reads a
   `fixtures/<slug>/google_places.json` file and always charges 0 cents.
   Scope stays tight to count + rating; hours / phone / categories /
   individual review text are out-of-scope per issue-7 guidance.
@@ -70,18 +72,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Envelope-error classifier now prefers real failures over
-  `not_configured` rows (COX-5).** When both a `failed` / `degraded`
-  row and a `not_configured` row coexist in provenance (e.g.
-  `site_text_trafilatura` timed out + `reviews_google_places` was
-  never wired), `_build_envelope_error` picks the real failure for
-  the top-level `error.code` so an unconfigured Attempt-3 provider
-  can't mask an Attempt-1 failure. Pre-existing `empty_response`
-  preference is unchanged. All synthetic + real-golden +
-  failure-shape fixtures regenerated to include the new
-  `reviews_google_places` provenance row; status aggregates stay
-  semantically equivalent (missing direct-API key reads as
-  `partial`, same shape as a missing smart-proxy key).
+- **Orchestrator skips primary providers whose `required_env` is unmet
+  (COX-5).** An opt-in direct-API provider (e.g. `reviews_google_places`)
+  that's registered but not wired no longer contributes a
+  `not_configured` row to provenance and no longer flips a successful
+  zero-key run to `status: partial`. This mirrors how the smart-proxy
+  stays off provenance on a clean zero-key run and preserves the
+  README's "Zero keys on the default path" promise. `providers list`
+  still surfaces every unconfigured slug with an actionable reason.
+- **Envelope-error suggestion routes to provider-agnostic guidance when
+  `error.code == "misconfigured_provider"` (COX-5).** Prior generic
+  "configure a smart-proxy provider key" suggestion misled users whose
+  actual gap was a missing direct-API key (Places, Yelp, etc.). The
+  specific env-var name still lives verbatim in `error.message`
+  (copied from the provider's own error string); the suggestion line
+  is now a tier-agnostic "configure the missing provider's env key."
+  Smart-proxy suggestion wording preserved for the Attempt-1-block
+  codes where it remains correct.
 - **Docs honesty pass (post-v0.2-tag).** README hero envelope, status
   block, provider tables, `docs/SPEC.md`, `docs/SCHEMA.md`, `SKILL.md`,
   and every file in `examples/` now describe the actual shipped v0.2

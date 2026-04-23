@@ -12,6 +12,7 @@ See ``docs/ARCHITECTURE.md`` for the three-attempt waterfall shape.
 
 from __future__ import annotations
 
+import os
 import time
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
@@ -52,7 +53,8 @@ DEFAULT_TIMEOUT_S = 10.0
 CORE_PROVIDER_VERSION = __version__
 DISCOVERY_PROVIDER_SLUG = "_provider_discovery"
 ORCHESTRATOR_PROVIDER_SLUG = "_orchestrator"
-GENERIC_SUGGESTION = "configure a smart-proxy provider key or skip this prospect"
+GENERIC_SUGGESTION = "configure the missing provider's env key or skip this prospect"
+SMART_PROXY_SUGGESTION = "configure a smart-proxy provider key or skip this prospect"
 
 # Only ``site_text`` recovers through the smart-proxy path. The recovery
 # extractor (:func:`extract.site_signals_from_homepage_bytes`) produces a
@@ -121,10 +123,17 @@ def run(
             registry={},
         )
 
+    # Skip primary providers whose declared ``required_env`` is unmet. This
+    # keeps the zero-key default path at ``status: "ok"`` when an opt-in
+    # direct-API provider (e.g. ``reviews_google_places``) is registered
+    # but not wired — the provider contributes nothing to provenance, mirrors
+    # how the smart-proxy stays off provenance on a clean zero-key run, and
+    # preserves the README's "Zero keys" promise. ``providers list`` still
+    # surfaces the unconfigured slug independently so users see wiring gaps.
     primary_registry = {
         slug: cls
         for slug, cls in registry.items()
-        if getattr(cls, "category", None) != _SMART_PROXY_CATEGORY
+        if getattr(cls, "category", None) != _SMART_PROXY_CATEGORY and _required_env_satisfied(cls)
     }
     smart_proxy_registry = {
         slug: cls
@@ -195,6 +204,18 @@ def run(
             provider_version=CORE_PROVIDER_VERSION,
         )
         return _fallback_envelope(site=site, when=when, provenance=provenance, registry=registry)
+
+
+def _required_env_satisfied(cls: type[ProviderBase]) -> bool:
+    """Return True when every env var in ``cls.required_env`` is set + non-empty.
+
+    Shared between the orchestrator (skip invocation when unsatisfied) and
+    ``providers list`` (``not_configured`` surface). Strips whitespace so a
+    value like ``"  "`` reads as unset, matching how ``providers list``
+    already treats empty-string env values.
+    """
+    names = tuple(getattr(cls, "required_env", ()))
+    return all(os.environ.get(name, "").strip() for name in names)
 
 
 def _invoke(
@@ -450,20 +471,33 @@ def _build_envelope_error(
         "one or more providers failed" if status == "partial" else "no providers succeeded"
     )
     code = _classify_error_code(message, failure_status, status)
-    return EnvelopeError(code=code, message=message, suggestion=_suggestion_for(code))
+    return EnvelopeError(
+        code=code,
+        message=message,
+        suggestion=_suggestion_for(code, failure_status=failure_status),
+    )
 
 
-def _suggestion_for(code: EnvelopeErrorCode) -> str:
+def _suggestion_for(
+    code: EnvelopeErrorCode,
+    *,
+    failure_status: ProviderStatus | None = None,
+) -> str:
     """Per-code actionable suggestion.
 
-    Most codes share the generic "configure a smart-proxy or skip" fix.
     ``empty_response`` gets its own line because smart-proxy retry is not
     the right remediation — the fetch already worked, the site returned
-    nothing.
+    nothing. ``misconfigured_provider`` routes to a provider-agnostic
+    hint ("configure the missing provider's env key") since the actual
+    env-var name already lives in ``error.message`` (the provider's own
+    error string is preserved verbatim). Everything else falls back to
+    the smart-proxy suggestion that applies to Attempt-1 blocks.
     """
     if code == "empty_response":
         return EMPTY_RESPONSE_SUGGESTION
-    return GENERIC_SUGGESTION
+    if code == "misconfigured_provider" or failure_status == "not_configured":
+        return GENERIC_SUGGESTION
+    return SMART_PROXY_SUGGESTION
 
 
 def _classify_error_code(

@@ -45,21 +45,35 @@ NOT_CONFIGURED_SUGGESTION = (
 )
 
 # Integer US cents charged on the happy path (Text Search + Place Details).
-# Sourced from Google's published Places API rates at COX-5 measurement
-# time: Text Search $32/1k ≈ 3.2c; Place Details (basic fields, no contact
-# or atmosphere add-ons) $17/1k ≈ 1.7c. Round half-up to 5c per successful
-# lookup. When a Text Search returns zero results, only that leg bills, so
-# the cost is 3c (we round up so partial billing never reads as free).
-_COST_TEXT_SEARCH_CENTS = 3
-_COST_PLACE_DETAILS_CENTS = 2  # rounded up from 1.7 so the integer total matches 5
-_COST_HAPPY_PATH_CENTS = _COST_TEXT_SEARCH_CENTS + _COST_PLACE_DETAILS_CENTS
+# Google bills Place Details per field-bundle SKU in the legacy web-service
+# pricing table at COX-5 measurement time:
+#   - Text Search (Basic)                   $32/1k = 3.2c/call
+#   - Place Details Basic                   $17/1k = 1.7c/call
+#   - Place Details Atmosphere (adder)       $5/1k = 0.5c/call
+# ``rating`` and ``user_ratings_total`` sit in the Atmosphere bundle, so a
+# Details call that reads them is billed Basic + Atmosphere = 2.2c/call.
+# We sum fractional cents per-leg and ceil the total at emission time so
+# partial billing never reads as free and the integer ``cost_incurred``
+# never undercounts real spend. Source: Google's "Places API Pricing"
+# (legacy) and "Place Data Fields (Legacy)" docs — cited in COX-5 review.
+_TENTHS_OF_CENT_PER_DOLLAR = 1000  # 1$ = 100c = 1000 tenths
+_TEXT_SEARCH_TENTHS = 32  # $32/1k → 3.2c → 32 tenths of a cent per call
+_DETAILS_BASIC_ATMOSPHERE_TENTHS = 17 + 5  # Basic+Atmosphere = $22/1k = 22 tenths
 
 _TEXT_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
 _DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 # Only ask for the fields we actually map onto ``ReviewsSignals``. Google
-# bills Place Details per Basic/Contact/Atmosphere field bundle; requesting
-# extras would raise the per-call cost and desync ``cost_incurred``.
-_DETAILS_FIELDS = "place_id,rating,user_ratings_total,website"
+# bills Place Details per Basic/Contact/Atmosphere bundle — requesting
+# ``website`` would pull in the Contact bundle and raise cost for no
+# benefit (the candidate picker no longer uses it — see note at
+# ``_pick_candidate``).
+_DETAILS_FIELDS = "place_id,rating,user_ratings_total"
+
+
+def _cost_cents(*tenths: int) -> int:
+    """Ceil fractional tenths-of-a-cent into integer cents."""
+    total_tenths = sum(tenths)
+    return (total_tenths + 9) // 10
 
 
 class Provider:
@@ -107,7 +121,6 @@ class Provider:
 class _Candidate:
     place_id: str
     name: str
-    website: str | None
 
 
 def _from_network(
@@ -140,7 +153,7 @@ def _from_network(
             error=str(exc),
             version=version,
             latency_ms=_elapsed_ms(start),
-            cost=_COST_TEXT_SEARCH_CENTS,
+            cost=_cost_cents(_TEXT_SEARCH_TENTHS),
         )
 
     search_err = _places_status_error(search_payload, leg="textsearch")
@@ -149,7 +162,7 @@ def _from_network(
             error=search_err,
             version=version,
             latency_ms=_elapsed_ms(start),
-            cost=_COST_TEXT_SEARCH_CENTS,
+            cost=_cost_cents(_TEXT_SEARCH_TENTHS),
         )
 
     candidates = _candidates_from_search(search_payload)
@@ -158,10 +171,10 @@ def _from_network(
             error=f"no places result for hostname {hostname!r}",
             version=version,
             latency_ms=_elapsed_ms(start),
-            cost=_COST_TEXT_SEARCH_CENTS,
+            cost=_cost_cents(_TEXT_SEARCH_TENTHS),
         )
 
-    chosen = _pick_best_candidate(candidates, hostname=hostname)
+    chosen = _pick_candidate(candidates)
 
     # Place Details — bills regardless of whether the fields come back populated.
     try:
@@ -175,7 +188,7 @@ def _from_network(
             error=str(exc),
             version=version,
             latency_ms=_elapsed_ms(start),
-            cost=_COST_HAPPY_PATH_CENTS,
+            cost=_cost_cents(_TEXT_SEARCH_TENTHS, _DETAILS_BASIC_ATMOSPHERE_TENTHS),
         )
 
     details_err = _places_status_error(details_payload, leg="details")
@@ -184,7 +197,7 @@ def _from_network(
             error=details_err,
             version=version,
             latency_ms=_elapsed_ms(start),
-            cost=_COST_HAPPY_PATH_CENTS,
+            cost=_cost_cents(_TEXT_SEARCH_TENTHS, _DETAILS_BASIC_ATMOSPHERE_TENTHS),
         )
 
     result = _reviews_from_details(details_payload)
@@ -193,7 +206,7 @@ def _from_network(
             error=f"places details missing user_ratings_total for {hostname!r}",
             version=version,
             latency_ms=_elapsed_ms(start),
-            cost=_COST_HAPPY_PATH_CENTS,
+            cost=_cost_cents(_TEXT_SEARCH_TENTHS, _DETAILS_BASIC_ATMOSPHERE_TENTHS),
         )
 
     return result, ProviderRunMetadata(
@@ -201,7 +214,7 @@ def _from_network(
         latency_ms=_elapsed_ms(start),
         error=None,
         provider_version=version,
-        cost_incurred=_COST_HAPPY_PATH_CENTS,
+        cost_incurred=_cost_cents(_TEXT_SEARCH_TENTHS, _DETAILS_BASIC_ATMOSPHERE_TENTHS),
     )
 
 
@@ -411,27 +424,22 @@ def _candidates_from_search(payload: dict[str, Any]) -> list[_Candidate]:
         if not isinstance(place_id, str) or not place_id:
             continue
         name = raw.get("name") if isinstance(raw.get("name"), str) else ""
-        website_value = raw.get("website")
-        website = website_value if isinstance(website_value, str) else None
-        out.append(_Candidate(place_id=place_id, name=str(name or ""), website=website))
+        out.append(_Candidate(place_id=place_id, name=str(name or "")))
     return out
 
 
-def _pick_best_candidate(candidates: list[_Candidate], *, hostname: str) -> _Candidate:
-    """Pick the first candidate whose ``website`` hostname matches ``hostname``.
+def _pick_candidate(candidates: list[_Candidate]) -> _Candidate:
+    """Pick the first Text Search result — Google's prominence ordering.
 
-    Google's text-search orders by relevance, so the first exact-domain
-    match is the strongest signal we can get without a second lookup. When
-    no candidate exposes a matching website (the Text Search response often
-    omits the ``website`` field for non-top results), fall back to the
-    first candidate — which is Google's own prominence ordering.
+    An earlier draft tried to pick by matching a candidate's ``website``
+    against the input site, but the legacy Text Search endpoint does NOT
+    return ``website`` in its result bundle (see Google's "Text Search
+    (Legacy)" + "Place Data Fields (Legacy)" docs). Verifying the pick
+    would require a Place Details + Contact-bundle billing hit per
+    candidate, which dwarfs the $32/1k Text Search cost. We accept the
+    first result and surface the ``place_id`` in the provenance row so
+    downstream agents can branch on ambiguity if they need to.
     """
-    for cand in candidates:
-        if cand.website is None:
-            continue
-        cand_host = _hostname_for(cand.website)
-        if cand_host is not None and cand_host == hostname:
-            return cand
     return candidates[0]
 
 
