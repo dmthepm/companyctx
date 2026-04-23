@@ -691,7 +691,7 @@ confirms or refutes the observation.
 
 The 2026-04-21 100-site durability run
 ([`fixtures/durability-report-2026-04-21.md`](../fixtures/durability-report-2026-04-21.md))
-measured 3 / 100 = **3%** FM-13 timeouts against @joel-req's medical /
+measured 3 / 100 = **3%** FM-13 timeouts against the external partner's medical /
 aesthetic SMB cohort. The register body says "0 observed … do not
 over-invest" based on the partner log-mining corpus (gutter / roofing /
 IV / waste-management). **Three caveats keep this out of the main

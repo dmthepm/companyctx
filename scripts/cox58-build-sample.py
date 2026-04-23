@@ -2,7 +2,7 @@
 """COX-58 corpus builder — stratified draw of ~100 sites from the partner's
 Dream-100 trackers for the v0.4 partner-integration re-validation.
 
-Reads ``new-signal-studio/outputs/dream100-<niche>-tracker.md`` markdown tables
+Reads ``<partner-outputs-dir>/dream100-<niche>-tracker.md`` markdown tables
 (columns include ``First``, ``Last``, ``Business``, ``Website``), extracts one
 row per tracker entry, and emits a CSV matching the shape
 ``scripts/run-durability-batch.py`` expects:
@@ -254,7 +254,7 @@ def main() -> None:
     if not args.trackers_dir:
         ap.error(
             "--trackers-dir is required (or set COX58_PARTNER_OUTPUTS_DIR). "
-            "Point it at your new-signal-studio/outputs directory."
+            "Point it at your partner outputs directory."
         )
     build(Path(args.trackers_dir), Path(args.out), seed=args.seed)
 

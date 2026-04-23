@@ -81,7 +81,7 @@ least one regression case.
 
 ### Failure-shape regressions — the durability two + COX-44
 
-The 2026-04-21 100-site durability run against @joel-req's external seed list
+The 2026-04-21 100-site durability run against the external partner's seed list
 (see `durability-report-2026-04-21.md`) surfaced two HTML-capturable
 shapes where the fetch returns HTTP 200 with effectively no body:
 
@@ -303,7 +303,7 @@ fixtures themselves pin `fetched_at` to `2026-04-20T00:00:00+00:00` in
 ## Rebuilding the corpus
 
 Anyone can regenerate the full 30-prospect starter corpus without needing
-@joel-req's private brief dump:
+the external partner's private brief dump:
 
 ```bash
 python scripts/build-fixtures.py --synthetic

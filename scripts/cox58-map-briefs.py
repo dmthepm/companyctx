@@ -100,7 +100,7 @@ def main() -> None:
     if not args.outputs_dir:
         ap.error(
             "--outputs-dir is required (or set COX58_PARTNER_OUTPUTS_DIR). "
-            "Point it at your new-signal-studio/outputs directory."
+            "Point it at your partner outputs directory."
         )
     hmap = build_map(Path(args.outputs_dir), Path(args.out_map))
     print(f"indexed {len(hmap)} briefs -> {args.out_map}")

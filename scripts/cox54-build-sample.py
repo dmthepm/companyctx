@@ -30,7 +30,7 @@ Total: 30. Picks a deterministic stride across each tracker (positions
 Usage:
 
     python3 scripts/cox54-build-sample.py \\
-        --trackers-dir /path/to/new-signal-studio/outputs \\
+        --trackers-dir <partner-outputs-dir> \\
         --out .context/cox-54/sample.csv
 """
 
@@ -111,7 +111,7 @@ def main() -> None:
         "--trackers-dir",
         required=True,
         type=Path,
-        help="path to new-signal-studio/outputs (contains dream100-*-tracker.md)",
+        help="path to the partner outputs directory (contains dream100-*-tracker.md)",
     )
     ap.add_argument(
         "--out",

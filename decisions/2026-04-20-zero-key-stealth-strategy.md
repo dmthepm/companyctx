@@ -21,7 +21,7 @@ linked_research:
 **`curl_cffi`**, pinned to `impersonate="chrome146"`. The measurement
 backing this pick is
 [`research/2026-04-21-tls-impersonation-spike.md`](../research/2026-04-21-tls-impersonation-spike.md)
-— a 20-site × 3-library matrix against @joel-req's external seed niches.
+— a 20-site × 3-library matrix against the external partner's seed niches.
 Headline result: at the latest native Chrome fingerprint all three
 candidates (`curl_cffi`, `primp`, `rnet`) clear 20/20 of the probe set;
 at a 6-month-stale `chrome131` fingerprint three Cloudflare-fronted
