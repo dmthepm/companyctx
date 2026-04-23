@@ -94,10 +94,33 @@ class TestShopify:
         html = _wrap(head='<script src="https://cdn.shopify.com/s/files/app.js"></script>')
         assert "Shopify" in detect_tech_stack(html)
 
-    def test_myshopify_hostname_fires(self) -> None:
-        html = _wrap(head='<link rel="canonical" href="https://store.myshopify.com/">')
-        # link href is treated as an asset URL for fingerprinting purposes.
+    def test_myshopify_preload_script_fires(self) -> None:
+        html = _wrap(
+            head=(
+                '<link rel="preload" as="script" href="https://store.myshopify.com/assets/app.js">'
+            )
+        )
         assert "Shopify" in detect_tech_stack(html)
+
+    def test_myshopify_canonical_link_does_not_fire(self) -> None:
+        # rel=canonical names a URL without loading it — not evidence the
+        # current page runs Shopify. Same for alternate / preconnect /
+        # dns-prefetch / icon / manifest.
+        html = _wrap(head='<link rel="canonical" href="https://store.myshopify.com/">')
+        assert "Shopify" not in detect_tech_stack(html)
+
+    def test_shopify_preconnect_does_not_fire(self) -> None:
+        html = _wrap(head='<link rel="preconnect" href="https://cdn.shopify.com">')
+        assert "Shopify" not in detect_tech_stack(html)
+
+    def test_shopify_alternate_feed_does_not_fire(self) -> None:
+        html = _wrap(
+            head=(
+                '<link rel="alternate" type="application/rss+xml" '
+                'href="https://store.myshopify.com/feed.xml">'
+            )
+        )
+        assert "Shopify" not in detect_tech_stack(html)
 
     def test_prose_mention_does_not_fire(self) -> None:
         html = _wrap(body_html="<p>We evaluated Shopify for e-commerce.</p>")
@@ -132,6 +155,10 @@ class TestSquarespace:
     def test_sqs_site_prefix_class_fires(self) -> None:
         html = _wrap(body_attrs='class="sqs-site-canvas extra"')
         assert "Squarespace" in detect_tech_stack(html)
+
+    def test_squarespace_preconnect_does_not_fire(self) -> None:
+        html = _wrap(head='<link rel="preconnect" href="https://static1.squarespace.com">')
+        assert "Squarespace" not in detect_tech_stack(html)
 
     def test_prose_mention_does_not_fire(self) -> None:
         html = _wrap(body_html="<p>Squarespace for templates was one option.</p>")
@@ -168,6 +195,10 @@ class TestWebflow:
     def test_website_files_cdn_fires(self) -> None:
         html = _wrap(head='<link rel="stylesheet" href="https://assets.website-files.com/app.css">')
         assert "Webflow" in detect_tech_stack(html)
+
+    def test_website_files_dns_prefetch_does_not_fire(self) -> None:
+        html = _wrap(head='<link rel="dns-prefetch" href="https://assets.website-files.com">')
+        assert "Webflow" not in detect_tech_stack(html)
 
     def test_prose_mention_does_not_fire(self) -> None:
         html = _wrap(body_html="<p>Webflow for design control was on the list.</p>")

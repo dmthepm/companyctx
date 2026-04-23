@@ -220,9 +220,16 @@ only**. A detection now requires one of three things:
 
 1. **`<meta name="generator">` content** — the canonical platform
    declaration.
-2. **Framework-owned asset hostname / path** in `<script src>` or
-   `<link href>`. A matching URL means the page is *loading* the
-   framework, not just naming it.
+2. **Framework-owned asset hostname / path** in a *load-bearing*
+   resource URL: `<script src>`, `<link rel="stylesheet">`,
+   `<link rel="preload" as="script|style">`, or
+   `<link rel="modulepreload">`. Hint-style (`preconnect`,
+   `dns-prefetch`), pointer-style (`canonical`, `alternate`), and
+   chrome-adjacent (`icon`, `apple-touch-icon`, `manifest`)
+   relations name a URL without loading it and do not count — a
+   `<link rel="preconnect" href="https://cdn.shopify.com">` or a
+   canonical pointing at a `.myshopify.com` feed is not evidence the
+   page runs Shopify.
 3. **Framework-specific class token or `data-*` attribute** on
    `<html>` / `<body>`. Class tokens match exact (`wix-site`,
    `sqs-site`, `wp-elementor`) or as a hyphen-delimited prefix

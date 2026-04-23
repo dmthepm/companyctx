@@ -117,13 +117,41 @@ def detect_tech_stack(html: str) -> list[str]:
         if isinstance(content, str):
             generator = content.lower()
 
+    # Load-bearing resource URLs only. ``<script src>`` is always a load;
+    # ``<link>`` is only a load when ``rel`` names one of the fetch-type
+    # relations (``stylesheet``, ``preload`` with a script/style ``as``
+    # hint, ``modulepreload``). Hint-style relations (``preconnect``,
+    # ``dns-prefetch``), pointer-style relations (``canonical``,
+    # ``alternate``), and chrome-adjacent relations (``icon``,
+    # ``apple-touch-icon``, ``manifest``) name a URL without loading it —
+    # a preconnect to ``cdn.shopify.com`` or a canonical pointing at a
+    # ``.myshopify.com`` feed is not evidence the page runs Shopify.
+    _LOAD_BEARING_LINK_RELS = {"stylesheet", "preload", "modulepreload"}
     asset_urls: list[str] = []
     for tag in soup.find_all(["script", "link"]):
         if not isinstance(tag, Tag):
             continue
-        src = tag.get("src") or tag.get("href")
-        if isinstance(src, str) and src:
-            asset_urls.append(src.lower())
+        if tag.name == "script":
+            src = tag.get("src")
+            if isinstance(src, str) and src:
+                asset_urls.append(src.lower())
+            continue
+        rel_raw = tag.get("rel")
+        rels: list[str] = []
+        if isinstance(rel_raw, list):
+            rels = [str(r).lower() for r in rel_raw]
+        elif isinstance(rel_raw, str):
+            rels = [rel_raw.lower()]
+        if not any(r in _LOAD_BEARING_LINK_RELS for r in rels):
+            continue
+        if "preload" in rels:
+            as_attr = tag.get("as")
+            as_val = as_attr.lower() if isinstance(as_attr, str) else ""
+            if as_val not in {"script", "style"}:
+                continue
+        href = tag.get("href")
+        if isinstance(href, str) and href:
+            asset_urls.append(href.lower())
 
     html_tag = soup.html if isinstance(soup.html, Tag) else None
     body_tag = soup.body if isinstance(soup.body, Tag) else None

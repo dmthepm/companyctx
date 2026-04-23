@@ -295,14 +295,16 @@ agents don't re-litigate the design.
   single site, three mutually-exclusive platforms asserting co-presence.
 - **New detector accepts three high-confidence signal classes only:**
   (1) `<meta name="generator">` declarations, (2) framework-owned asset
-  hostnames / paths in `<script src>` / `<link href>` (e.g.
-  `cdn.shopify.com`, `/wp-content/`, `static1.squarespace.com`,
-  `wixstatic.com`, `assets.website-files.com`), and (3) framework-
-  specific class tokens or `data-*` attributes on `<html>` / `<body>`
-  (e.g. `wp-elementor`, `elementor-*`, `sqs-site`, `wix-site`,
-  `data-wf-site`). Class-token matches require an exact token or a
-  hyphen-delimited prefix so substrings like `content-elementor-like`
-  don't fire.
+  hostnames / paths in *load-bearing* resource URLs (`<script src>`,
+  `<link rel="stylesheet">`, `<link rel="preload" as="script|style">`,
+  `<link rel="modulepreload">`) — hint-style `preconnect` /
+  `dns-prefetch` and pointer-style `canonical` / `alternate` / `icon`
+  links name a URL without loading it and do NOT count — and
+  (3) framework-specific class tokens or `data-*` attributes on
+  `<html>` / `<body>` (e.g. `wp-elementor`, `elementor-*`, `sqs-site`,
+  `wix-site`, `data-wf-site`). Class-token matches require an exact
+  token or a hyphen-delimited prefix so substrings like
+  `content-elementor-like` don't fire.
 - **`tech_stack: list[str]` shape preserved.** No schema_version bump;
   this is a detector correctness fix, not an envelope surface change.
 - **FP-reproduction fixture pinned.** `fixtures/tech-fp-mentions-only/`
