@@ -72,7 +72,6 @@ NOT_CONFIGURED_SUGGESTION = (
 # partial billing never reads as free and the integer ``cost_incurred``
 # never undercounts real spend. Source: Google's "Places API Pricing"
 # (legacy) and "Place Data Fields (Legacy)" docs — cited in COX-5 review.
-_TENTHS_OF_CENT_PER_DOLLAR = 1000  # 1$ = 100c = 1000 tenths
 _TEXT_SEARCH_TENTHS = 32  # $32/1k → 3.2c → 32 tenths of a cent per call
 _DETAILS_BASIC_ATMOSPHERE_TENTHS = 17 + 5  # Basic+Atmosphere = $22/1k = 22 tenths
 

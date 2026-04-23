@@ -20,14 +20,14 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from curl_cffi import requests
 
 from companyctx import core
 from companyctx.http import DEFAULT_TIMEOUT_S, DEFAULT_USER_AGENT
-from companyctx.providers.base import FetchContext, ProviderBase
+from companyctx.providers.base import FetchContext
 from companyctx.providers.reviews_google_places import (
     _DETAILS_BASIC_ATMOSPHERE_TENTHS,
     _TEXT_SEARCH_TENTHS,
@@ -38,6 +38,9 @@ from companyctx.providers.reviews_google_places import (
     _cost_cents,
 )
 from companyctx.providers.site_text_trafilatura import Provider as TrafilaturaProvider
+
+if TYPE_CHECKING:
+    from companyctx.providers.base import ProviderBase
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 FIXED_WHEN = datetime(2026, 4, 22, tzinfo=timezone.utc)
