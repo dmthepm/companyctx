@@ -273,27 +273,43 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   - `backfill-2026-04-16-command-message-167f63bc.md:1473`
   - `backfill-2026-04-18-command-message-05ed4365.md:3669`
 - **Agent recovery.** Accepted thin data, pivoted script angles to lean
-  on Apollo firmographics. This is the right pattern to mirror.
-- **Waterfall layer.** Attempt 1 succeeds fetch-wise; no later layer
-  helps. The fetch worked; the site just has nothing to extract.
-- **Envelope mapping.**
-  - Providers that succeed at their extractor job return
-    `ProviderRunMetadata.status = "ok"` — the fetch worked; the site
-    just has nothing to extract. Empty-but-extracted is valid data.
-  - Providers whose job is to *find* a specific sub-field that isn't
-    present (e.g. `social_discovery_site` finds no handles;
-    `signals_site_heuristic` finds no `team_size_claim`) can
-    legitimately return `status = "degraded"` with an `error` explaining
-    that the source content didn't contain the target.
+  on Apollo firmographics. Under v0.3.1 the envelope now names this
+  case honestly rather than laundering it as `ok`; agents branch on
+  `error.code == "empty_response"` rather than guessing from byte
+  length.
+- **Waterfall layer.** Attempt 1 succeeds fetch-wise; Attempt 2 (smart-
+  proxy) deliberately does NOT retry on `empty_response` — the fetch
+  worked; the site just has nothing to extract, and re-fetching through
+  a residential proxy won't invent content.
+- **Envelope mapping (v0.3.1, COX-52 / #91).**
+  - A fetch that extracts **≥ 1024 UTF-8 bytes** returns
+    `ProviderRunMetadata.status = "ok"` — the fetch worked and the
+    site had enough content for a legitimate brief. Empty-but-not-thin
+    outputs (e.g. `signals_site_heuristic` finds no `team_size_claim`)
+    can still legitimately return `status = "degraded"` with an
+    `error` explaining that the source content didn't contain the
+    target sub-field.
+  - A fetch that extracts **< 1024 UTF-8 bytes** — the FM-7 thin-body
+    class the v0.2 partner-integration validation measured at 19.6 %
+    of `ok` envelopes — returns `ProviderRunMetadata.status = "failed"`
+    with `error = "empty_response"`. The orchestrator maps that to
+    top-level `error.code: "empty_response"` with a suggestion that
+    points at `--ignore-robots` or manual browser inspection (NOT a
+    proxy retry). Pre-v0.3.1 this class was silent-success `ok` with
+    thin `homepage_text` — now partner agents can branch on
+    `error.code` without byte-counting themselves.
   - Top-level `status`:
-    - `"ok"` if every provider returned `ok` (empty outputs are valid).
+    - `"ok"` if every provider returned `ok`.
     - `"partial"` if any heuristic provider reported `degraded` because
       the heuristic didn't hit — per SPEC §73, `partial` requires at
       least one provider to be degraded / failed / not_configured.
-  - **Do not map the fetch itself to `degraded` or `failed`.** The
-    distinction between "site blocked us" (FM-1) and "site had nothing"
-    (FM-7) is load-bearing; it lives in the per-provider `status`
-    values, not in a flattened quality score.
+    - `"degraded"` when the only `site_text` provider returns
+      `empty_response` and no other provider succeeded.
+  - **The FM-1 vs FM-7 distinction is preserved in the structured
+    error code**, not in a flattened quality score: `FM-1 →
+    error.code: "blocked_by_antibot"`; `FM-7 → error.code:
+    "empty_response"`. Both land on `status != "ok"`; agents branch on
+    `error.code` to decide next action.
 
 ## FM-8 — Upstream vertical tag disagrees with homepage-inferred vertical
 

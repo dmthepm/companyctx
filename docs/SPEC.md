@@ -102,26 +102,31 @@ blocked_by_antibot | path_traversal_rejected | response_too_large |
 no_provider_succeeded | misconfigured_provider | empty_response`. See
 `docs/SCHEMA.md` for the shape.
 
-#### `empty_response` (v0.3)
+#### `empty_response` (v0.3, floor raised in v0.3.1)
 
-Closes the silent-success-on-empty gap called out in v0.2.0 Known
-Limitations. When the zero-key `site_text` provider completes a fetch but
-the extracted homepage text is shorter than `EMPTY_RESPONSE_BYTES = 64`
-UTF-8 bytes (tunable in `companyctx/extract.py`), the provider row
-surfaces as `status: "failed"`, `error: "empty_response"`. The
-orchestrator maps that to top-level `error.code: "empty_response"` with
-an actionable suggestion (`"site returned HTTP 200 with effectively no
-content; try --ignore-robots or check with a browser"`).
+Closes the silent-success-on-empty and silent-success-on-thin gaps
+called out in v0.2.0 Known Limitations. When the zero-key `site_text`
+provider completes a fetch but the extracted homepage text is shorter
+than `EMPTY_RESPONSE_BYTES = 1024` UTF-8 bytes (tunable in
+`companyctx/extract.py`), the provider row surfaces as
+`status: "failed"`, `error: "empty_response"`. The orchestrator maps
+that to top-level `error.code: "empty_response"` with an actionable
+suggestion (`"site returned HTTP 200 with effectively no content; try
+--ignore-robots or check with a browser"`).
 
-The 64-byte cutoff is stricter than FM-7's 1024-byte "thin extract"
-threshold in `docs/RISK-REGISTER.md`. FM-7 describes legitimate
-one-page / brochureware sites that extract to thin-but-real content —
-those stay `status: ok` with a short `homepage_text`. `empty_response`
-is the 0-to-64-byte UTF-8-byte case where the fetch worked but the
-site returned nothing useful (blank body, login-wall stub, JS-only
-landing with no SSR content). The gate measures **UTF-8 bytes**, not
-character count, so multibyte scripts (CJK, accented Latin, Cyrillic)
-don't false-positive as empty.
+The 1024-byte cutoff (v0.3.1) supersedes the v0.3.0 64-byte floor. The
+v0.3.0 floor caught truly-empty bodies only; the v0.2 partner-
+integration validation (`research/2026-04-22-v0.2-joel-integration-
+validation.md` §3, n=209) measured 41 / 209 = 19.6 % of `status: ok`
+envelopes returning under 1 KiB of extracted text — "FM-7 thin-body"
+— concentrated in partner-active niches. Those cases are partial data
+wearing an `ok` label. v0.3.1 merges the `empty_response` code with
+FM-7's thin-extract threshold so both classes surface honestly. A
+legitimate one-page brochure site that clears 1 KiB stays `ok`; a
+4xx-but-HTTP-200 maintenance stub or a JS-only SPA shell trips the
+gate. The gate measures **UTF-8 bytes**, not character count, so
+multibyte scripts (CJK, accented Latin, Cyrillic) don't false-positive
+as empty.
 
 The gate applies to **both waterfall attempts**: Attempt 1
 (`site_text_trafilatura`) and Attempt 2 (smart-proxy recovery) run the

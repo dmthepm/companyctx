@@ -5,6 +5,61 @@ All notable changes to `companyctx` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v0.3.1
+
+### Changed — FM-7 floor correction (COX-52 / #91)
+
+- **`EMPTY_RESPONSE_BYTES` raised 64 → 1024.** The v0.3.0 floor caught
+  truly-empty bodies but not thin bodies; the v0.2 partner-integration
+  validation (`research/2026-04-22-v0.2-joel-integration-validation.md`
+  §3, n=209) measured `status: ok` + `<1 KiB` extracted text at **41 /
+  209 = 19.6 %**, concentrated in partner-active niches (gutter
+  installation 6/14, real-estate photography 5/11, virtual staging
+  4/11). Those envelopes returned "partial data wearing an `ok` label"
+  — the single biggest partner-breaking gap still live on a
+  freshly-tagged release. v0.3.1 raises the floor so the FM-7 thin-body
+  class surfaces as `error.code: "empty_response"` instead of silent
+  success. Extracted-text p50 on successful runs is 2.29 KiB (well
+  above the new floor), so ~0 legitimate `ok` envelopes are lost;
+  research-modeled projection is a post-fix FM-7 rate under 5 %.
+  Retires the v0.2.0 Known Limitations disclosure in behavior, not
+  just name.
+- **No schema change.** `EnvelopeErrorCode` literal set is unchanged,
+  `schema_version` stays at `"0.3.0"`, strict-typing consumers need no
+  update. Path A (bump the existing floor) was chosen over Path B
+  (introduce a separate `thin_response` code) for the v0.3.1 release
+  gate; Path B stays deferred unless downstream agent feedback asks
+  for the distinction.
+- **Synthetic corpus homepage template inflated.** The 30-prospect
+  synthetic fixtures extracted to ~350–400 bytes on v0.3.0 — they
+  would have tripped the new floor on every run. The homepage
+  template in `scripts/build-fixtures.py` now carries differentiator,
+  audience, and credentials prose so extraction lands comfortably
+  above 1 KiB, matching the p50 of real-world sites the validation
+  measured. Every committed `expected.json` in `fixtures/<synthetic>/`
+  regenerated in lockstep.
+- **FM-7 thin-body regression fixtures.** 19 new pseudonymized
+  fixtures under `fixtures/fm7-thin-*/`, each with a `homepage.html`
+  that extracts to between 64 and 1024 UTF-8 bytes and an
+  `expected.json` asserting the post-fix envelope shape
+  (`status: degraded`, `error.code: "empty_response"`). 2 seeds each
+  for the 4 thin-dominated niches (virtual staging, real-estate
+  photography, gutter installation, real-estate staging) + 1 seed for
+  each of 11 occasional-FM-7 niches. Pinned in `test_regression_corpus.py`
+  for byte-diff regression. Recipe table lives in
+  `scripts/promote-fm7-thin-fixtures.py`.
+
+### Added
+
+- **COX-52 acceptance test suite** (`tests/test_cox52_thin_body_acceptance.py`).
+  Three focused tests: a ~500-byte HTML payload through
+  `site_text_trafilatura` emits `status: failed` + `error: "empty_response"`;
+  the same payload through `smart_proxy_http` recovery tags the proxy row
+  identically (so Attempt 2 cannot launder a thin body past the gate);
+  the orchestrator envelope lands as `status: degraded` +
+  `error.code: "empty_response"` + actionable `suggestion`. These
+  mirror the acceptance checklist on #91 exactly.
+
 ## [0.3.0] — 2026-04-23
 
 ### Changed — envelope schema bump (v0.3)

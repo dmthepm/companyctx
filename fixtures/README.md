@@ -91,19 +91,36 @@ shapes where the fetch returns HTTP 200 with effectively no body:
 | `fm7-maintenance-page`     | "Temporarily unavailable"| Extractor inventing text when the body carries only a maintenance notice. |
 | `empty-response`           | 0-byte body, COX-44 pin  | Silent-success slipping back in if the `empty_response` provider gate regresses. |
 
-Under v0.3 (COX-44 / #79), all three extract to fewer than
-`EMPTY_RESPONSE_BYTES` (64) characters and trip the provider's
-empty-response honesty check, so the envelope surfaces as
-`status: degraded`, `error.code: "empty_response"` instead of the
-v0.2 silent-success `status: ok` with zero-length `homepage_text`.
-Distinct from FM-7 in `docs/RISK-REGISTER.md`, which covers legitimate
-one-page brochure sites with thin-but-real content (≥ 64 chars) — those
-still return `status: ok`. These fixtures carry only `homepage.html` +
+Under v0.3 (COX-44 / #79) the provider gate trips on extracted UTF-8
+byte length below `EMPTY_RESPONSE_BYTES`, so the envelope surfaces as
+`status: degraded`, `error.code: "empty_response"` instead of the v0.2
+silent-success `status: ok` with zero-length `homepage_text`. The
+floor was 64 bytes in v0.3.0 and raised to **1024 bytes in v0.3.1**
+(COX-52 / #91) to include the FM-7 thin-body class the v0.2 partner-
+integration validation measured at 19.6 % of `ok` envelopes. These
+three fixtures all extract well under the current floor and trip the
+gate either way. These fixtures carry only `homepage.html` +
 `expected.json` (no about/services/provider JSON), so they bypass the
 30-synthetic-dirs invariant; the test suite filters them via
 `FAILURE_FIXTURE_SLUGS` in `tests/test_fixtures_corpus.py` and includes
 them in the byte-diff regression suite via
 `tests/test_regression_corpus.py`.
+
+### FM-7 thin-body regressions — COX-52 / #91
+
+19 pseudonymized regression fixtures under `fixtures/fm7-thin-*/` seed
+the v0.3.1 floor raise with realistic thin-body homepages drawn (in
+shape, never verbatim) from the 41 FM-7 cases measured in
+`research/2026-04-22-v0.2-joel-integration-validation.md` §3. Each
+homepage extracts to somewhere in `(64, 1024)` UTF-8 bytes — cleared
+the v0.3.0 floor (would have been silent-success) and now trips the
+v0.3.1 floor. Distribution: 2 seeds for each of the 4 thin-dominated
+niches (virtual staging, real-estate photography, gutter installation,
+real-estate staging) + 1 seed for each of 11 occasional-FM-7 niches.
+The deterministic recipe table lives in
+`scripts/promote-fm7-thin-fixtures.py` — re-runs are byte-identical.
+Wired through `FM7_THIN_FIXTURE_SLUGS` in `tests/test_fixtures_corpus.py`
+and pinned in `tests/test_regression_corpus.py::REGRESSION_SLUGS`.
 
 ### Network-failure regressions — the `fixture-block.txt` sentinel
 
