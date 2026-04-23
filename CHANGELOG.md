@@ -178,6 +178,20 @@ agents don't re-litigate the design.
   `07-inbound-webhook-enrichment/main.py`, and `08-support-ticket-context.py`
   run clean from any CWD.
 
+### Fixed
+
+- **NXDOMAIN / unresolvable hostnames no longer classify as
+  `ssrf_rejected`** (COX-49 / #86). The SSRF pre-flight now raises a
+  distinct `DNSResolutionError` (subclass of `UnsafeURLError`) when DNS
+  resolution produces no A-records, and providers surface it with a
+  `dns_resolve_failure:` prefix instead of the generic `unsafe_url:`.
+  The envelope classifier routes `dns_resolve_failure` to
+  `no_provider_succeeded`, so `companyctx fetch this-does-not-exist.example`
+  now returns `error.code: "no_provider_succeeded"` — matching agents'
+  branch-on-code expectation for "the site is just unreachable." Top-level
+  `status` is unchanged (still `partial` / `degraded`); this is a
+  code-bucket honesty fix, not a schema change.
+
 ## [0.2.0] — 2026-04-22
 
 ### Changed — BREAKING (envelope schema)
