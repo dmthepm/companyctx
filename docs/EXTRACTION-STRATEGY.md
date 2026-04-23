@@ -202,6 +202,55 @@ server-rendered + aggregator-dependent + social-discoverable +
 CDN-blocked + brochureware. The five cases map one-to-one to the top
 five rows above.
 
+## Tech fingerprint confidence
+
+`pages.tech_stack` is an observation field, not an inference field. The
+v0.2 detector substring-matched a lowercased copy of the full HTML for
+framework names and emitted a detection on any hit. That ran afoul of
+invariant #7 ("raw observations only, no inference") and surfaced a
+diagnostic false-positive during the v0.2.0 RC dogfood —
+`tech_stack: [WordPress, Shopify, Squarespace]` on a single site, three
+mutually-exclusive platforms asserting co-presence. The FP class:
+third-party share-widget `<script src>` URLs whose path happened to
+contain a framework name, legacy HTML comments documenting platform
+migrations, and blog-post prose comparing website builders.
+
+Under COX-43 the detector is tightened to **high-confidence signals
+only**. A detection now requires one of three things:
+
+1. **`<meta name="generator">` content** — the canonical platform
+   declaration.
+2. **Framework-owned asset hostname / path** in `<script src>` or
+   `<link href>`. A matching URL means the page is *loading* the
+   framework, not just naming it.
+3. **Framework-specific class token or `data-*` attribute** on
+   `<html>` / `<body>`. Class tokens match exact (`wix-site`,
+   `sqs-site`, `wp-elementor`) or as a hyphen-delimited prefix
+   (`elementor-default` matches `elementor`, `sqs-site-canvas` matches
+   `sqs-site`). Substring-inside-token matches do **not** fire — a
+   class of `content-elementor-like` no longer triggers an Elementor
+   detection.
+
+Per-tech signal set:
+
+| Tech        | Generator meta                        | Asset URL contains                                                                | Class token / attr                              |
+| ----------- | ------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------- |
+| WordPress   | `wordpress`                           | `/wp-content/`, `/wp-includes/`                                                   | —                                               |
+| Elementor   | `elementor`                           | `/plugins/elementor/`                                                             | class token `elementor*` or `wp-elementor*`     |
+| Shopify     | `shopify`                             | `cdn.shopify.com`, `.myshopify.com`                                               | —                                               |
+| Squarespace | `squarespace`                         | `.squarespace.com`                                                                | class token `sqs-site*`                         |
+| Wix         | `wix.com`, `wix website`              | `wixstatic.com`                                                                   | class token `wix-site*`                         |
+| Webflow     | `webflow`                             | `.webflow.com`, `assets.website-files.com`, `uploads-ssl.webflow.com`             | `data-wf-site` or `data-wf-page` on html/body   |
+
+Any other class of signal (HTML comments, prose text, third-party
+script paths, arbitrary substring-in-HTML) is intentionally excluded.
+The detector's observation-only contract: when it emits a tech, the
+page is physically loading or declaring itself as that platform.
+
+The regression fixture `fixtures/tech-fp-mentions-only/` reproduces the
+v0.2 FP class deterministically and is pinned in the byte-diff
+regression suite.
+
 ## References
 
 - `docs/SPEC.md` — envelope contract and provider-plugin interface.

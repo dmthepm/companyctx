@@ -281,6 +281,41 @@ agents don't re-litigate the design.
   `07-inbound-webhook-enrichment/main.py`, and `08-support-ticket-context.py`
   run clean from any CWD.
 
+### Fixed — tech-stack false positives (COX-43 / #78)
+
+- **`detect_tech_stack` tightened to high-confidence signals only.** The
+  v0.2 implementation substring-matched a lowercased copy of the full
+  HTML for framework names ("wordpress", "shopify", "squarespace", …)
+  and emitted the tech on any hit. That crossed into inference per
+  invariant #7: a third-party share-widget `<script src>` path, a
+  legacy HTML comment naming a prior platform, or a blog-post sentence
+  discussing website builders all fired detections the site wasn't
+  actually running. The RC dogfood surfaced the diagnostic signature —
+  `tech_stack: [WordPress, Shopify, Squarespace]` simultaneously on a
+  single site, three mutually-exclusive platforms asserting co-presence.
+- **New detector accepts three high-confidence signal classes only:**
+  (1) `<meta name="generator">` declarations, (2) framework-owned asset
+  hostnames / paths in `<script src>` / `<link href>` (e.g.
+  `cdn.shopify.com`, `/wp-content/`, `static1.squarespace.com`,
+  `wixstatic.com`, `assets.website-files.com`), and (3) framework-
+  specific class tokens or `data-*` attributes on `<html>` / `<body>`
+  (e.g. `wp-elementor`, `elementor-*`, `sqs-site`, `wix-site`,
+  `data-wf-site`). Class-token matches require an exact token or a
+  hyphen-delimited prefix so substrings like `content-elementor-like`
+  don't fire.
+- **`tech_stack: list[str]` shape preserved.** No schema_version bump;
+  this is a detector correctness fix, not an envelope surface change.
+- **FP-reproduction fixture pinned.** `fixtures/tech-fp-mentions-only/`
+  carries an HTML page that mentions every detectable platform in
+  prose, legacy comments, and third-party widget src URLs without
+  loading any of them. The v0.2 detector emits all six; the v0.3
+  detector emits `tech_stack: []`. Wired into both
+  `tests/test_fixtures_corpus.py` (shape-check) and
+  `tests/test_regression_corpus.py` (byte-diff regression).
+- **`docs/EXTRACTION-STRATEGY.md`** gains a "Tech fingerprint
+  confidence" section naming the three signal classes and the per-tech
+  selectors.
+
 ## [0.2.0] — 2026-04-22
 
 ### Changed — BREAKING (envelope schema)
