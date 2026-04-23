@@ -8,9 +8,11 @@ backwards-compatible; removing or renaming a field — or changing the shape of
 an existing one — is a schema-version bump. Always branch on the top-level
 `schema_version` field to detect envelope evolution.
 
-v0.3.0 adds the `empty_response` error code to the closed `EnvelopeError.code`
-Literal — a minor bump from v0.2.0. See `docs/SPEC.md` §empty_response for
-the threshold and semantics.
+v0.3.0 adds two error codes to the closed `EnvelopeError.code` Literal:
+`empty_response` (the silent-success-on-empty gate) and `cache_corrupted`
+(emitted on `--from-cache` when the cache opens but the row can't be
+deserialized). See `docs/SPEC.md` §empty_response and §cache_corrupted
+for the semantics.
 
 Consumers can pull the live JSON Schema with:
 
@@ -60,6 +62,7 @@ class EnvelopeError(BaseModel):
         "no_provider_succeeded",
         "misconfigured_provider",
         "empty_response",
+        "cache_corrupted",
     ]
     message: str                     # human-readable — logs / UI
     suggestion: str | None = None    # actionable next step

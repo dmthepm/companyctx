@@ -1,13 +1,16 @@
-"""Tests for ``companyctx schema`` verb and CLI honesty-pass behaviors.
+"""Tests for ``companyctx schema`` verb and remaining CLI honesty-pass behaviors.
 
-Covers the v0.2 additions driven by COX-37:
+Covers the v0.2 additions driven by COX-37 plus the v0.3 cache wiring (#9):
 
 - ``companyctx schema`` dumps Draft 2020-12 JSON Schema on stdout.
 - The schema validates every regression-fixture envelope.
-- ``--from-cache`` / ``--refresh`` / ``--no-cache`` / ``--config`` raise
-  ``typer.BadParameter`` with an issue-link message (was silent-ignore).
-- ``batch`` / ``cache list`` / ``cache clear`` print a loud "not implemented"
-  message on stderr + exit non-zero (was silent exit 2).
+- ``--config`` still raises ``typer.BadParameter`` (TOML loader deferred).
+- ``batch`` still prints a loud "not implemented" banner.
+
+The ``--from-cache`` / ``--refresh`` / ``--no-cache`` / ``cache list`` /
+``cache clear`` honesty-pass tests retired with the cache wiring — those
+flags and subcommands ship in v0.3, so behavior tests live in
+``test_cache.py``.
 """
 
 from __future__ import annotations
@@ -17,7 +20,6 @@ import re
 from pathlib import Path
 
 import jsonschema
-import pytest
 from typer.testing import CliRunner
 
 from companyctx.cli import app
@@ -83,30 +85,6 @@ def test_schema_verb_validates_regression_fixture_envelope() -> None:
     jsonschema.validate(instance=envelope, schema=envelope_schema)
 
 
-@pytest.mark.parametrize(
-    "flag",
-    ["--from-cache", "--refresh", "--no-cache"],
-)
-def test_fetch_rejects_silent_cache_flag(flag: str) -> None:
-    runner = CliRunner()
-    result = runner.invoke(
-        app,
-        [
-            "fetch",
-            "acme-bakery.example",
-            flag,
-            "--mock",
-            "--json",
-            "--fixtures-dir",
-            str(FIXTURES_DIR),
-        ],
-    )
-    assert result.exit_code != 0
-    plain = _plain(result.output)
-    assert flag in plain
-    assert "not implemented" in plain or "issues/9" in plain
-
-
 def test_fetch_rejects_silent_config_flag(tmp_path: Path) -> None:
     runner = CliRunner()
     config_path = tmp_path / "settings.toml"
@@ -130,24 +108,14 @@ def test_fetch_rejects_silent_config_flag(tmp_path: Path) -> None:
     assert "not implemented" in plain or "issues/9" in plain
 
 
-@pytest.mark.parametrize(
-    ("argv", "needle"),
-    [
-        (
-            ["batch", "fixtures/seeds.csv", "--out", "/tmp/companyctx-batch", "--mock"],
-            "batch",
-        ),
-        (["cache", "list"], "cache list"),
-        (["cache", "clear"], "cache clear"),
-    ],
-)
-def test_stubs_fail_loudly(argv: list[str], needle: str) -> None:
+def test_batch_stub_fails_loudly() -> None:
+    """``batch`` is still deferred — it must exit non-zero with an issue link."""
     runner = CliRunner()
-    result = runner.invoke(app, argv)
+    result = runner.invoke(
+        app,
+        ["batch", "fixtures/seeds.csv", "--out", "/tmp/companyctx-batch", "--mock"],
+    )
     assert result.exit_code == 2
-    # Click/Typer 0.12+: stderr is separated; ``result.output`` is the merged
-    # stream, ``result.stderr`` the stderr-only view. The stub writes its
-    # "not implemented" banner via ``typer.secho(..., err=True)``.
     plain = _plain(result.output)
-    assert needle in plain
-    assert "not implemented in v0.2.0" in plain
+    assert "batch" in plain
+    assert "not implemented" in plain

@@ -28,24 +28,24 @@ layer that consumes the JSON. No people data in v0.1 (company side only).
 
 Built with Typer. Conforms to clig.dev.
 
-Shipped in v0.2:
+Shipped in v0.3:
 
 | Command | Behavior |
 |---|---|
-| `companyctx fetch <site>` | Run the Deterministic Waterfall for one site; emit one envelope. |
+| `companyctx fetch <site>` | Run the Deterministic Waterfall for one site; emit one envelope. Reads the SQLite cache by default. |
 | `companyctx schema` | Emit the envelope's Draft 2020-12 JSON Schema to stdout. |
 | `companyctx validate <path>` | Round-trip a JSON envelope through the Pydantic schema. |
 | `companyctx providers list [--json]` | Enumerate registered providers — slug, waterfall tier, category, cost hint, config status, reason. |
+| `companyctx cache list [--json]` | Latest cached envelope per host (one row per host). |
+| `companyctx cache clear --site X` / `--older-than 7d` | Prune cached rows; at least one filter is required. |
 
-Reserved in the CLI surface but **not wired** in v0.2 — invoking them
+Reserved in the CLI surface but **not wired** in v0.3 — invoking them
 prints a tracking-issue pointer to stderr and exits non-zero, so agents
 don't build on a contract we don't honour yet:
 
 | Command / flag | Why reserved | Tracking |
 |---|---|---|
-| `companyctx batch <csv>` | Fan-out wrapper over `fetch`; lands alongside the cache so re-runs are cheap. | #9 |
-| `companyctx cache list` | Vertical Memory surface; needs the SQLite layer. | #9 |
-| `companyctx cache clear [--site X] [--older-than 7d]` | Same. | #9 |
+| `companyctx batch <csv>` | Fan-out wrapper over `fetch`; deferred to a follow-up slice now that the cache makes re-runs cheap. | #9 |
 
 Flags on `fetch`:
 
@@ -58,14 +58,18 @@ Flags on `fetch`:
   with `--fixtures-dir` (default `./fixtures`).
 - `--verbose` — per-provider run-log to stderr.
 - `--ignore-robots` — explicit CLI-only; **not** settable via TOML or env.
+- `--refresh` — ignore the cached read; force-write a fresh row. Old rows
+  stay (audit trail).
+- `--from-cache` — return only the cached payload; never hit the network.
+  Exits non-zero on miss. Cannot be combined with `--refresh` or
+  `--no-cache`.
+- `--no-cache` — bypass the cache read path; the fresh result is still
+  written back.
 
-Reserved but **not wired** — `fetch` rejects these with a `typer.BadParameter`
-pointing at #9 so pipelines can't silently rely on cache behavior:
+Reserved but **not wired** — `fetch` rejects this with a
+`typer.BadParameter` pointing at the tracking issue:
 
-- `--no-cache`
-- `--refresh`
-- `--from-cache`
-- `--config <toml>`
+- `--config <toml>` — TOML loader still deferred (#9).
 
 ## Output contract
 
@@ -99,8 +103,8 @@ Status semantics:
 
 `EnvelopeError.code` is one of `ssrf_rejected | network_timeout |
 blocked_by_antibot | path_traversal_rejected | response_too_large |
-no_provider_succeeded | misconfigured_provider | empty_response`. See
-`docs/SCHEMA.md` for the shape.
+no_provider_succeeded | misconfigured_provider | empty_response |
+cache_corrupted`. See `docs/SCHEMA.md` for the shape.
 
 #### `empty_response` (v0.3)
 
@@ -345,18 +349,66 @@ and in `--mock` fixture output until their respective providers land.
 `data.reviews` populates once `reviews_google_places` is configured (see
 above). The envelope shape is stable regardless.
 
-## Cache (Vertical Memory) — reserved, not wired in v0.2
+## Cache (Vertical Memory) — shipped in v0.3
 
-The SQLite fetch cache is a **design invariant** but not implemented in
-v0.2. The CLI surface reserves `--refresh` / `--from-cache` / `--no-cache`
-/ `--config` and rejects them with a `typer.BadParameter` until #9 lands.
-Tracked shape when wired:
+Every `fetch` run persists the assembled envelope to a local SQLite file.
+Subsequent runs against the same host serve from cache by default until
+the row expires.
 
-- Storage: SQLite under XDG-compliant paths (`platformdirs`).
-- Key: `(normalized_host, provider_set_hash, provider_slug)` + per-provider TTL.
-- Payload: the full normalized `CompanyContext` + `provenance` (not raw HTML).
-- Schema is versioned alongside the Pydantic model; migrations are first-class.
-- A `companyctx query ...` DSL over the cache is future scope, not v0.2.
+- **Storage.** SQLite at `default_cache_dir() / "companyctx.sqlite3"` —
+  XDG-compliant via `platformdirs`. Linux: `~/.cache/companyctx/`,
+  macOS: `~/Library/Caches/companyctx/`, Windows:
+  `%LOCALAPPDATA%\companyctx\Cache`.
+- **Tables.** `companies` (latest envelope per host),
+  `raw_payloads` (full envelope JSON per run, audit-friendly),
+  `provenance` (per-provider metadata mirroring `ProviderRunMetadata`),
+  `schema_version` (single-row migration ledger managed by the runner).
+- **Read key.** `(normalized_host, provider_set_hash)` plus TTL.
+  `provider_set_hash` is a 16-char SHA-256 prefix of sorted
+  `(slug, provider_version)` pairs from the **installed** registry —
+  bumping a provider's `version` invalidates stale rows without an
+  explicit DELETE. **Runtime-env-configured availability is NOT part
+  of the key.** A `smart_proxy_http` row whose `required_env` is
+  unset (`status: not_configured`) hashes the same as one whose env
+  is set (`status: ready`), so a cached partial created before
+  `COMPANYCTX_SMART_PROXY_URL` was exported will keep winning even
+  after the proxy becomes available. This is deliberate — keying on
+  env-shape would invalidate the cache every time a user toggled a
+  shell — but the consequence is real: **`--refresh` is the
+  documented remedy** when you change provider env config and want
+  stale partials evicted. `cache list` shows what's currently
+  cached; `cache clear --site <host>` evicts a single host.
+- **TTL.** 30 days global default. Per-provider TTLs are M4+.
+- **Migrations.** Numbered SQL files under
+  `companyctx/migrations/NNNN_<slug>.sql`, applied in ascending order at
+  open time, each in its own transaction. No implicit `ALTER TABLE` at
+  startup.
+- **Flags.** `--refresh` / `--from-cache` / `--no-cache` (see above).
+- **Audit trail.** `--refresh` writes a shadow row, never replaces the
+  prior one. Old rows survive until `cache clear` reaps them.
+
+### `cache_corrupted` (v0.3)
+
+Closes the "cache crash takes the CLI down" gap caught in code
+review of #9. Cache failures must follow the same boundary contract
+as provider failures — branch on `status`, never on a Python
+traceback.
+
+- **Default `fetch` path.** Cache open / read failures degrade to
+  `cache=None` and the orchestrator runs providers normally. The
+  envelope reflects the actual fetch outcome (`ok` / `partial` /
+  `degraded` per the standard rules); no `cache_corrupted` code is
+  emitted because the cache outage didn't change the user-visible
+  result.
+- **`--from-cache` path.** Open failure or row deserialisation
+  failure (Pydantic ValidationError, JSON parse error, sqlite read
+  error) emits `status: degraded` + `error.code: cache_corrupted`
+  with `suggestion: "run \`companyctx cache clear --site <host>\` to
+  evict the stale entry"`. Exit code stays `2` so existing
+  pipelines that branch on the shell return code keep working; the
+  structured envelope is additive.
+
+A `companyctx query ...` DSL over the cache is future scope, not v0.3.
 
 ## Observability
 
