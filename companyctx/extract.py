@@ -11,7 +11,9 @@ regression corpus a meaningful guard rail.
 
 from __future__ import annotations
 
-from bs4 import BeautifulSoup
+import re
+
+from bs4 import BeautifulSoup, Tag
 
 from companyctx.schema import SiteSignals
 
@@ -80,21 +82,130 @@ def extract_services(html: str) -> list[str]:
 
 
 def detect_tech_stack(html: str) -> list[str]:
-    """Minimal, deterministic tech fingerprinting from the HTML surface."""
+    """Deterministic, high-confidence tech fingerprinting from the HTML surface.
+
+    "High-confidence" means signals the site physically asserts about its
+    own stack:
+
+    1. ``<meta name="generator">`` — the canonical platform declaration.
+    2. Framework-owned asset hostnames / paths in ``<script src>`` /
+       ``<link href>`` (e.g. ``cdn.shopify.com``, ``/wp-content/``,
+       ``wixstatic.com``, ``static1.squarespace.com``). A matching URL
+       there means the page is *loading* the framework, not just naming
+       it.
+    3. Framework-specific class tokens or ``data-*`` attributes on the
+       ``<html>`` / ``<body>`` element (e.g. ``wp-elementor``,
+       ``sqs-site``, ``data-wf-site``). These are author-controlled
+       page-shell markers, not incidental strings.
+
+    Bare mentions of a framework name in prose, legacy HTML comments,
+    unrelated third-party widget src URLs, or a blog post body do **not**
+    count. That was the false-positive vector that produced
+    ``["WordPress", "Shopify", "Squarespace"]`` on a single page during
+    the v0.2.0 RC dogfood (#78 / COX-43) — three mutually-exclusive
+    platforms asserting co-presence is the diagnostic signature of a
+    substring match laundering *mention* as *presence*, which crosses
+    into inference (invariant #7).
+    """
+    soup = BeautifulSoup(html, "lxml")
     hits: list[str] = []
-    lowered = html.lower()
-    if "wp-content" in lowered or "wordpress" in lowered or "wp-elementor" in lowered:
+
+    generator = ""
+    generator_meta = soup.find("meta", attrs={"name": re.compile(r"^generator$", re.I)})
+    if isinstance(generator_meta, Tag):
+        content = generator_meta.get("content")
+        if isinstance(content, str):
+            generator = content.lower()
+
+    asset_urls: list[str] = []
+    for tag in soup.find_all(["script", "link"]):
+        if not isinstance(tag, Tag):
+            continue
+        src = tag.get("src") or tag.get("href")
+        if isinstance(src, str) and src:
+            asset_urls.append(src.lower())
+
+    html_tag = soup.html if isinstance(soup.html, Tag) else None
+    body_tag = soup.body if isinstance(soup.body, Tag) else None
+
+    def _class_tokens(tag: Tag | None) -> list[str]:
+        if tag is None:
+            return []
+        raw = tag.get("class")
+        if isinstance(raw, list):
+            return [str(c).lower() for c in raw]
+        if isinstance(raw, str):
+            return [raw.lower()]
+        return []
+
+    def _attr_names(tag: Tag | None) -> list[str]:
+        if tag is None:
+            return []
+        return [name.lower() for name in tag.attrs]
+
+    body_classes = _class_tokens(body_tag)
+    html_classes = _class_tokens(html_tag)
+    html_attr_names = _attr_names(html_tag)
+    body_attr_names = _attr_names(body_tag)
+
+    def _in_assets(needle: str) -> bool:
+        return any(needle in url for url in asset_urls)
+
+    def _class_token_matches(*prefixes: str) -> bool:
+        """Match full class token exactly, or as a hyphen-delimited prefix.
+
+        ``class="wp-elementor"`` matches ``wp-elementor`` exactly; ``class=
+        "elementor-default"`` matches prefix ``elementor`` (token starts with
+        ``elementor-``). ``class="content-elementor-like"`` matches neither,
+        so arbitrary substrings containing a framework name don't fire.
+        """
+        for tok in body_classes + html_classes:
+            for p in prefixes:
+                if tok == p or tok.startswith(f"{p}-"):
+                    return True
+        return False
+
+    def _has_attr(name: str) -> bool:
+        return name in html_attr_names or name in body_attr_names
+
+    if "wordpress" in generator or _in_assets("/wp-content/") or _in_assets("/wp-includes/"):
         hits.append("WordPress")
-    if "elementor" in lowered:
+
+    if (
+        "elementor" in generator
+        or _class_token_matches("elementor", "wp-elementor")
+        or _in_assets("/plugins/elementor/")
+    ):
         hits.append("Elementor")
-    if "shopify" in lowered:
+
+    if "shopify" in generator or _in_assets("cdn.shopify.com") or _in_assets(".myshopify.com"):
         hits.append("Shopify")
-    if "squarespace" in lowered or "sqs-site" in lowered:
+
+    if (
+        "squarespace" in generator
+        or _in_assets(".squarespace.com")
+        or _class_token_matches("sqs-site")
+    ):
         hits.append("Squarespace")
-    if "wix-site" in lowered or "wixsite" in lowered:
+
+    if (
+        "wix.com" in generator
+        or "wix website" in generator
+        or _in_assets("wixstatic.com")
+        or _class_token_matches("wix-site")
+    ):
         hits.append("Wix")
-    if "webflow" in lowered:
+
+    if (
+        "webflow" in generator
+        or _has_attr("data-wf-site")
+        or _has_attr("data-wf-page")
+        or _in_assets(".webflow.com")
+        or _in_assets("assets.website-files.com")
+        or _in_assets("uploads-ssl.webflow.com")
+    ):
         hits.append("Webflow")
+
     seen: set[str] = set()
     out: list[str] = []
     for tech in hits:
