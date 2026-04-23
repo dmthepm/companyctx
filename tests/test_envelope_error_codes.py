@@ -130,3 +130,62 @@ def test_no_provider_succeeded_code_for_unclassified_reason() -> None:
 
 def test_empty_response_code_from_provider_error_string() -> None:
     assert _run_with_error("empty_response") == "empty_response"
+
+
+def test_nxdomain_routes_to_no_provider_succeeded() -> None:
+    """COX-49 / #86 — DNS-resolution failure is not an SSRF attempt.
+
+    Pre-v0.4.0 the SSRF guardrail raised ``unsafe_url: DNS resolution
+    failed ...`` and the classifier's substring match on ``unsafe_url``
+    won before any DNS-specific path ran, so NXDOMAIN silently routed
+    to ``ssrf_rejected``. Under v0.4.0 the guardrail tags the error
+    with ``category="dns_resolve_failure"`` and the provider wrappers
+    emit the category-prefixed string ``unsafe_url:dns_resolve_failure:
+    ...``; the classifier now routes that to
+    ``no_provider_succeeded``. Private-IP / metadata-host / scheme
+    rejections still land on ``ssrf_rejected``.
+    """
+    # NXDOMAIN shape as the security guardrail emits it.
+    assert (
+        _run_with_error(
+            "unsafe_url:dns_resolve_failure: DNS resolution failed for "
+            "definitely-does-not-resolve-host.example: [Errno 8] nodename nor "
+            "servname provided, or not known"
+        )
+        == "no_provider_succeeded"
+    )
+    # Private-IP rejection must still classify as ssrf_rejected.
+    assert (
+        _run_with_error(
+            "unsafe_url:private_ip: host 10.0.0.1 resolves to non-public address 10.0.0.1"
+        )
+        == "ssrf_rejected"
+    )
+    # Metadata host rejection must still classify as ssrf_rejected.
+    assert (
+        _run_with_error("unsafe_url:metadata_host: metadata host not allowed: 169.254.169.254")
+        == "ssrf_rejected"
+    )
+
+
+def test_nxdomain_cli_path_returns_no_provider_succeeded() -> None:
+    """Close-the-loop integration test: a non-resolving host through the
+    real orchestrator + real site_text_trafilatura provider (not a stub)
+    lands as ``error.code: "no_provider_succeeded"``. Uses a host in the
+    reserved ``.invalid`` TLD (RFC 2606 §2) so the test never hits the
+    network — the guardrail's DNS lookup fails locally with NXDOMAIN
+    and the v0.4.0 routing fix sees the ``dns_resolve_failure`` tag.
+    """
+    from companyctx.providers.site_text_trafilatura import Provider as TrafilaturaProvider
+
+    env = core.run(
+        "definitely-does-not-resolve-host.invalid",
+        providers=_reg(site_text_trafilatura=TrafilaturaProvider),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.status == "degraded"
+    assert env.error is not None
+    assert env.error.code == "no_provider_succeeded"
+    provider_error = env.provenance["site_text_trafilatura"].error
+    assert provider_error is not None
+    assert "unsafe_url:dns_resolve_failure" in provider_error

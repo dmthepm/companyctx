@@ -615,6 +615,15 @@ def _classify_error_code(
     """
     del envelope_status  # Reserved for future per-status heuristics.
     lower = message.lower()
+    # COX-49 / #86: NXDOMAIN (and any other DNS-resolution failure) is not
+    # an SSRF attempt — it's a dead or mistyped host. Route it to
+    # ``no_provider_succeeded`` so agents don't mis-branch on a false SSRF
+    # signal. The ``dns_resolve_failure`` token is emitted by the security
+    # guardrail's error category (see ``security.UnsafeURLError``); the
+    # provider wrappers embed it as ``unsafe_url:dns_resolve_failure: ...``.
+    # Must be checked BEFORE the generic ``unsafe_url`` branch.
+    if "unsafe_url:dns_resolve_failure" in lower:
+        return "no_provider_succeeded"
     if "unsafe_url" in lower or "unsupported scheme" in lower or "invalid site" in lower:
         return "ssrf_rejected"
     if "fixture path escapes" in lower or "fixture file escapes" in lower:

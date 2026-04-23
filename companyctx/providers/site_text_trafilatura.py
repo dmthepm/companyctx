@@ -248,7 +248,10 @@ def _ensure_safe_for_fetch(url: str, ctx: FetchContext) -> None:
     try:
         validate_public_http_url(url)
     except UnsafeURLError as exc:
-        raise _BlockedError(f"unsafe_url: {exc}") from exc
+        # Carry the category token so the classifier can distinguish
+        # ``dns_resolve_failure`` (NXDOMAIN, not an SSRF attempt — COX-49)
+        # from genuine SSRF rejections (``private_ip``, ``metadata_host``, ...).
+        raise _BlockedError(f"unsafe_url:{exc.category}: {exc}") from exc
     if not ctx.ignore_robots and not is_allowed(url, user_agent=ctx.user_agent):
         raise _BlockedError("blocked_by_robots")
 
