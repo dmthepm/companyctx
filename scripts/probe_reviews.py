@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """COX-64 Slice B — reviews-provider probe harness.
 
-Runs one call per ``(slug, provider)`` cell against the three finalists
+Runs one call per ``(slug, provider)`` cell against the five finalists
 named in ``research/2026-04-23-reviews-extraction-method-survey.md`` and
 appends one JSONL row per cell to a raw-evidence file.
 
@@ -24,7 +24,7 @@ Usage (Slice B, once keys are provisioned)::
 Until ``--confirm-spend-usd`` is passed (with a value at least as large
 as the estimated cost), the harness prints the estimated spend and
 exits without making any network calls. This is the safety gate that
-keeps Slice A from accidentally spending partner money.
+keeps Slice A from accidentally spending real money.
 
 The slug map CSV is ``slug,host,query_name`` — ``query_name`` is the
 business display-name string used for Text Search / Yelp business-match
@@ -166,7 +166,7 @@ class GooglePlacesNewEnterpriseAdapter:
 
     Requesting ``reviews`` or ``reviewSummary`` would escalate to the
     Atmosphere SKU at $25/1k instead of Enterprise at $20/1k. The
-    partner's downstream consumes rating + count only; we pay
+    default downstream consumers use rating + count only; we pay
     Enterprise, not Atmosphere.
 
     Expected billed cost per successful cell: Text Search Enterprise
@@ -344,14 +344,14 @@ def load_slug_map(path: Path) -> list[tuple[str, str, str]]:
     """Parse the gitignored ``slug,host,query_name`` CSV.
 
     The map lives at ``research/.slug-map-cox64.local.csv`` by convention
-    so it never leaks the partner's seed list into public git history.
+    so real hostnames never leak into public git history.
     """
     if not path.exists():
         raise SystemExit(
             f"slug map not found at {path}. Build it by sampling "
-            "deterministically from the 209-site v0.4 corpus "
-            "(4 medical-aesthetic, 3 home-services, "
-            "2 no-website-just-Facebook, 1 obscure)."
+            "deterministically from the tool's historical test corpus "
+            "with category labels: 4 small-local-business, 3 "
+            "service-area-business, 2 social-only, 1 obscure."
         )
     rows: list[tuple[str, str, str]] = []
     with path.open() as fh:
