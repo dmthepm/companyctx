@@ -12,6 +12,7 @@ See ``docs/ARCHITECTURE.md`` for the three-attempt waterfall shape.
 
 from __future__ import annotations
 
+import os
 import time
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
@@ -52,7 +53,8 @@ DEFAULT_TIMEOUT_S = 10.0
 CORE_PROVIDER_VERSION = __version__
 DISCOVERY_PROVIDER_SLUG = "_provider_discovery"
 ORCHESTRATOR_PROVIDER_SLUG = "_orchestrator"
-GENERIC_SUGGESTION = "configure a smart-proxy provider key or skip this prospect"
+GENERIC_SUGGESTION = "configure the missing provider's env key or skip this prospect"
+SMART_PROXY_SUGGESTION = "configure a smart-proxy provider key or skip this prospect"
 
 # Only ``site_text`` recovers through the smart-proxy path. The recovery
 # extractor (:func:`extract.site_signals_from_homepage_bytes`) produces a
@@ -106,8 +108,19 @@ def run(
     )
 
     when = fetched_at if fetched_at is not None else datetime.now(timezone.utc)
+    # ``explicit_registry`` is True when the caller handed us a provider set
+    # directly (library-API form). That's an explicit opt-in: we must not
+    # silently filter out unconfigured providers — the caller expects every
+    # slug they passed to appear in provenance, even if its row is
+    # ``not_configured``, so the envelope still carries the misconfiguration
+    # signal. Only the discovery path (no ``providers=`` kwarg) applies the
+    # required-env skip filter, which is what preserves the CLI's zero-key
+    # default-path promise (see COX-5 review).
+    explicit_registry = providers is not None
     try:
-        registry = providers if providers is not None else discover()
+        registry: Mapping[str, type[ProviderBase]] = (
+            providers if providers is not None else discover()
+        )
     except Exception as exc:  # noqa: BLE001 - deliberate boundary
         return _fallback_envelope(
             site=site,
@@ -121,10 +134,22 @@ def run(
             registry={},
         )
 
+    # Skip primary providers whose declared ``required_env`` is unmet —
+    # but ONLY on the discovery path (no explicit ``providers=`` kwarg).
+    # This keeps the zero-key CLI default at ``status: "ok"`` when an
+    # opt-in direct-API provider (e.g. ``reviews_google_places``) is
+    # registered but not wired, mirroring how the smart-proxy stays off
+    # provenance on a clean zero-key run. When the caller hands us a
+    # provider set explicitly (library API), we honour their opt-in:
+    # every slug they passed runs, and its ``not_configured`` row still
+    # lands on the envelope so the misconfiguration signal isn't silently
+    # dropped. ``providers list`` surfaces unconfigured slugs independently
+    # via its own env check either way.
     primary_registry = {
         slug: cls
         for slug, cls in registry.items()
         if getattr(cls, "category", None) != _SMART_PROXY_CATEGORY
+        and (explicit_registry or _required_env_satisfied(cls))
     }
     smart_proxy_registry = {
         slug: cls
@@ -195,6 +220,18 @@ def run(
             provider_version=CORE_PROVIDER_VERSION,
         )
         return _fallback_envelope(site=site, when=when, provenance=provenance, registry=registry)
+
+
+def _required_env_satisfied(cls: type[ProviderBase]) -> bool:
+    """Return True when every env var in ``cls.required_env`` is set + non-empty.
+
+    Shared between the orchestrator (skip invocation when unsatisfied) and
+    ``providers list`` (``not_configured`` surface). Strips whitespace so a
+    value like ``"  "`` reads as unset, matching how ``providers list``
+    already treats empty-string env values.
+    """
+    names = tuple(getattr(cls, "required_env", ()))
+    return all(os.environ.get(name, "").strip() for name in names)
 
 
 def _invoke(
@@ -419,12 +456,18 @@ def _build_envelope_error(
     per-provider rows still carry their own raw error strings in
     :attr:`ProviderRunMetadata.error`.
 
-    Selection rule: prefer ``empty_response`` when any row carries it
-    (COX-44 terminal signal — a proxy returning an empty body after an
-    ``blocked_by_antibot`` Attempt 1 means the terminal waterfall outcome
-    is "the site had nothing," not "blocked by antibot"). Otherwise fall
-    back to the first failing row in provenance order, which is the
-    Attempt-1 failure for runs without a smart-proxy.
+    Selection rule:
+
+    1. Prefer ``empty_response`` when any row carries it (COX-44 terminal
+       signal — a proxy returning an empty body after an
+       ``blocked_by_antibot`` Attempt 1 means the terminal waterfall
+       outcome is "the site had nothing," not "blocked by antibot").
+    2. Otherwise prefer a ``failed`` / ``degraded`` row over a
+       ``not_configured`` row (COX-5): an unconfigured Attempt-3
+       direct-API provider must not mask a real Attempt-1 failure when
+       both exist side-by-side in provenance.
+    3. Otherwise fall back to the first failing row in provenance order,
+       which is the Attempt-1 failure for runs without a smart-proxy.
     """
     if status == "ok":
         return None
@@ -433,9 +476,10 @@ def _build_envelope_error(
         for meta in provenance.values()
         if meta.status in ("failed", "not_configured", "degraded") and meta.error
     ]
+    real_failures = [row for row in failures if row[0] != "not_configured"]
     chosen = next(
         (row for row in failures if row[1] == _EMPTY_RESPONSE_ERROR),
-        failures[0] if failures else None,
+        (real_failures[0] if real_failures else (failures[0] if failures else None)),
     )
     failure_status: ProviderStatus | None = chosen[0] if chosen else None
     failure_reason: str | None = chosen[1] if chosen else None
@@ -443,20 +487,33 @@ def _build_envelope_error(
         "one or more providers failed" if status == "partial" else "no providers succeeded"
     )
     code = _classify_error_code(message, failure_status, status)
-    return EnvelopeError(code=code, message=message, suggestion=_suggestion_for(code))
+    return EnvelopeError(
+        code=code,
+        message=message,
+        suggestion=_suggestion_for(code, failure_status=failure_status),
+    )
 
 
-def _suggestion_for(code: EnvelopeErrorCode) -> str:
+def _suggestion_for(
+    code: EnvelopeErrorCode,
+    *,
+    failure_status: ProviderStatus | None = None,
+) -> str:
     """Per-code actionable suggestion.
 
-    Most codes share the generic "configure a smart-proxy or skip" fix.
     ``empty_response`` gets its own line because smart-proxy retry is not
     the right remediation — the fetch already worked, the site returned
-    nothing.
+    nothing. ``misconfigured_provider`` routes to a provider-agnostic
+    hint ("configure the missing provider's env key") since the actual
+    env-var name already lives in ``error.message`` (the provider's own
+    error string is preserved verbatim). Everything else falls back to
+    the smart-proxy suggestion that applies to Attempt-1 blocks.
     """
     if code == "empty_response":
         return EMPTY_RESPONSE_SUGGESTION
-    return GENERIC_SUGGESTION
+    if code == "misconfigured_provider" or failure_status == "not_configured":
+        return GENERIC_SUGGESTION
+    return SMART_PROXY_SUGGESTION
 
 
 def _classify_error_code(

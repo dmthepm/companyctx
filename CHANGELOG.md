@@ -43,6 +43,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`reviews_google_places` provider (Attempt 3, direct-API)** — COX-5 / #7.
+  Resolves a site hostname via legacy Google Places Text Search, accepts
+  Google's prominence-ordered first result (the legacy Text Search
+  response doesn't include `website`, so picking by domain match would
+  require an extra Details billing hit per candidate for no gain), and
+  reads `user_ratings_total` + `rating` via Place Details. Populates
+  `data.reviews.{count, rating, source="reviews_google_places"}`. Never
+  raises: missing `GOOGLE_PLACES_API_KEY` → orchestrator skips invocation
+  entirely (no provenance row, zero-key status stays `ok`); 401 / 403 /
+  `REQUEST_DENIED` / `OVER_QUERY_LIMIT` → `status: failed` with
+  `blocked_by_antibot` prefix. Cost charged in integer US cents via
+  `ProviderRunMetadata.cost_incurred`: Text Search Basic ($32/1k) + Place
+  Details Basic+Atmosphere ($22/1k; `rating`/`user_ratings_total` are
+  Atmosphere-tier SKUs) = 6¢/happy-path; constants live in the provider
+  module as tenths-of-a-cent and ceil-sum at emission. `--mock` reads a
+  `fixtures/<slug>/google_places.json` file and always charges 0 cents.
+  Scope stays tight to count + rating; hours / phone / categories /
+  individual review text are out-of-scope per issue-7 guidance.
 - **`companyctx providers list --json`** — registry introspection as a JSON
   array (one dict per provider). Columns: `slug`, `tier`
   (`zero-key` / `smart-proxy` / `direct-api`), `category`, `cost_hint`,
@@ -54,6 +72,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Orchestrator skips primary providers whose `required_env` is unmet
+  — discovery path only (COX-5).** When the CLI (or any caller that
+  lets us run `discover()`) finds an opt-in direct-API provider
+  registered via entry points but not wired, the orchestrator skips
+  invocation: no provenance row, zero-key envelope stays `ok`. Mirrors
+  how the smart-proxy stays off provenance on a clean zero-key run and
+  preserves the README's "Zero keys on the default path" promise.
+  Callers who pass a provider set explicitly via
+  `core.run(providers={...})` (library-API form) bypass this filter:
+  every slug they hand us runs, and a `not_configured` row still lands
+  on the envelope so the misconfiguration signal isn't silently
+  dropped — the caller explicitly opted in, so we honour it.
+  `providers list` surfaces unconfigured slugs either way via its
+  independent env check.
+- **Envelope-error suggestion routes to provider-agnostic guidance when
+  `error.code == "misconfigured_provider"` (COX-5).** Prior generic
+  "configure a smart-proxy provider key" suggestion misled users whose
+  actual gap was a missing direct-API key (Places, Yelp, etc.). The
+  specific env-var name still lives verbatim in `error.message`
+  (copied from the provider's own error string); the suggestion line
+  is now a tier-agnostic "configure the missing provider's env key."
+  Smart-proxy suggestion wording preserved for the Attempt-1-block
+  codes where it remains correct.
 - **Docs honesty pass (post-v0.2-tag).** README hero envelope, status
   block, provider tables, `docs/SPEC.md`, `docs/SCHEMA.md`, `SKILL.md`,
   and every file in `examples/` now describe the actual shipped v0.2

@@ -187,11 +187,21 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   (`reviews_google_places`, Google Places API) is the only deterministic
   path.** Second-strongest transcript argument for Attempt 3.
 - **Envelope mapping.**
-  - `reviews_google_places` with no key: `status = "not_configured"`,
-    `suggestion = "enable Google Places API via GOOGLE_PLACES_API_KEY"`.
-  - With key but API rejects: `status = "failed"`.
-  - Top-level `status = "partial"`; `data.reviews` left `None` (or
-    carrying a non-Google source if one succeeded). The provenance
+  - Default (CLI / discovery) path with no key: the orchestrator skips
+    `reviews_google_places` entirely — no provenance row, no
+    envelope-status downgrade (the zero-key default stays `ok`).
+    `companyctx providers list` still surfaces the slug as
+    `not_configured` with a reason pointing at `GOOGLE_PLACES_API_KEY`
+    so operators see the wiring gap independently of a run.
+  - Library API (`core.run(providers={...})`) with no key: honours the
+    caller's explicit opt-in — the provider runs and lands a
+    `status = "not_configured"` row on the envelope, top-level
+    `status = "partial"` with `error.code = "misconfigured_provider"`.
+  - With key but API rejects (401 / 403 / `REQUEST_DENIED` /
+    `OVER_QUERY_LIMIT`): `status = "failed"`, top-level status
+    `partial` or `degraded` depending on what else succeeded.
+  - `data.reviews` is left `None` in every unsuccessful path (or carries
+    a non-Google source if one ever succeeds alongside). The provenance
     entry is where downstream reads *why* Google wasn't filled.
 
 ## FM-5 — "Under construction" or redirect to parent brand

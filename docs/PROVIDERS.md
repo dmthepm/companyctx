@@ -17,7 +17,7 @@ the same envelope shape (see [`docs/SCHEMA.md`](SCHEMA.md)).
 | `site_meta_extruct`        | Zero-key        | `site_meta`      | —                     | free      | stub | ✓ |
 | `social_discovery_site`    | Zero-key        | `social_discovery` | —                   | free      | stub | ✓ |
 | `signals_site_heuristic`   | Zero-key        | `signals`        | —                     | free      | stub | ✓ |
-| `reviews_google_places`    | Direct-API      | `reviews`        | `GOOGLE_PLACES_API_KEY` | per-1k | stub | ✓ |
+| `reviews_google_places`    | Direct-API      | `reviews`        | `GOOGLE_PLACES_API_KEY` | per-1k | stub | ✓ *(shipped v0.3)* |
 | `reviews_yelp_fusion`      | Direct-API      | `reviews`        | `YELP_API_KEY`        | per-call | stub | ✓ |
 | `social_counts_youtube`    | Direct-API      | `social_counts`  | `YOUTUBE_API_KEY`     | free w/ quota | stub | ✓ |
 | `mentions_brave_stub`      | Direct-API      | `mentions`       | `BRAVE_SEARCH_API_KEY`| per-call | stub | stub |
@@ -75,6 +75,63 @@ entry-point line in `pyproject.toml` or override at runtime.
 > A **named reference adapter** — a shim over a specific vendor, shipped as
 > an optional extra — lands after the vendor eval spike. No vendor is named
 > here until that measurement is in.
+
+## `reviews_google_places` (Attempt 3, direct-API) — shipped v0.3
+
+Attempt 3 provider landed in COX-5. Two legacy Places API calls per
+successful lookup:
+
+1. **Text Search (Legacy)** — `textsearch/json?query=<hostname>` resolves
+   the site to candidate Places.
+2. **Place Details (Legacy)** — `details/json?place_id=<id>&fields=
+   place_id,rating,user_ratings_total` reads the aggregate fields on the
+   chosen candidate.
+
+**Candidate picker.** The legacy Text Search response doesn't include
+`website` (see Google's "Place Data Fields (Legacy)" — `website` is in
+the Details Contact bundle), so we deliberately take Google's first
+result (prominence ordering) and surface the `place_id` in provenance.
+Verifying a pick via per-candidate Details lookups would multiply
+billing with no gain over prominence for small-local-biz ICPs.
+
+**Skip-unless-configured.** The provider only runs when
+`GOOGLE_PLACES_API_KEY` is set + non-empty. Without a key the
+orchestrator skips invocation entirely (no provenance row, no envelope
+status downgrade); `companyctx providers list` still surfaces the slug
+as `not_configured` so users see the wiring gap independently.
+
+**Fields populated.** `data.reviews = ReviewsSignals{count, rating,
+source="reviews_google_places"}`. Count and rating only — the provider
+intentionally does not populate hours / categories / individual review
+text. That stays out-of-scope per the COX-5 comment thread; the external
+brief-pipeline downstream of companyctx reads only count + rating today.
+
+**Failure modes (never raises).**
+
+- Missing env → provider skipped at the orchestrator (no provenance row).
+  `providers list` shows the slug as `not_configured` with an actionable
+  suggestion pointing at `GOOGLE_PLACES_API_KEY`.
+- HTTP 401 / 403 → `status="failed"` with `blocked_by_antibot` prefix
+  (classifies into envelope `error.code="blocked_by_antibot"`).
+- Places API `REQUEST_DENIED` / `OVER_QUERY_LIMIT` → same.
+- Text Search `ZERO_RESULTS` → `status="failed"` naming the hostname.
+- Network timeout → `status="failed"` classified as `network_timeout`.
+
+**Cost accounting.** `ProviderRunMetadata.cost_incurred` is integer US
+cents. Sourced from Google's published legacy Places pricing at COX-5
+measurement time:
+
+- Text Search (Basic): $32/1k = 3.2¢/call.
+- Place Details (Basic + Atmosphere): $17 + $5 = $22/1k = 2.2¢/call.
+  The `rating` + `user_ratings_total` fields sit in the Atmosphere
+  bundle, not Basic.
+
+Fractional cents are summed per leg and ceiled to an integer at
+emission so partial billing never reads as free. Happy path: ceil(3.2 +
+2.2) = **6 cents**. Text-Search-only (`ZERO_RESULTS` / quota) bills
+ceil(3.2) = **4 cents**. Constants live as module-level integers (tenths
+of a cent) in `companyctx/providers/reviews_google_places.py` — bump
+them when Google changes pricing. `--mock` runs always charge 0 cents.
 
 ## Provider rules (non-negotiable)
 

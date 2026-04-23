@@ -266,7 +266,7 @@ entry points:
 site_text_trafilatura  = "companyctx.providers.trafilatura_site:Provider"
 site_text_readability  = "companyctx.providers.readability_site:Provider"
 site_meta_extruct      = "companyctx.providers.extruct_meta:Provider"
-reviews_google_places  = "companyctx.providers.google_places:Provider"
+reviews_google_places  = "companyctx.providers.reviews_google_places:Provider"
 reviews_yelp_fusion    = "companyctx.providers.yelp_fusion:Provider"
 social_discovery_site  = "companyctx.providers.social_discovery:Provider"
 social_counts_youtube  = "companyctx.providers.youtube_counts:Provider"
@@ -293,7 +293,7 @@ Providers sit on the **Deterministic Waterfall** (see `docs/ARCHITECTURE.md`):
 Every attempt maps to the same `CompanyContext` shape. Pipelines never branch
 on which attempt succeeded — they branch on the envelope's `status`.
 
-### Providers shipped in v0.2
+### Providers shipped in v0.3
 
 - **`site_text_trafilatura`** (Attempt 1, zero-key). Stealth fetch via
   `curl_cffi` pinned to `impersonate="chrome146"` + `trafilatura`
@@ -306,6 +306,22 @@ on which attempt succeeded — they branch on the envelope's `status`.
   actionable suggestion. On success the recovered bytes flow through the
   same shared extractor and populate `data.pages.*`. The named-vendor
   adapter lands after the smart-proxy vendor eval spike (#63).
+- **`reviews_google_places`** (Attempt 3, direct-API). Google Places via
+  `curl_cffi` + the legacy Places web-service API. Text Search resolves
+  site hostname → candidate place_ids (we accept Google's prominence-
+  ordered first result; the legacy Text Search response doesn't include
+  `website`, so picking by domain match isn't available at that layer
+  without an extra Details billing hit per candidate). Place Details
+  reads `user_ratings_total` + `rating` on the chosen place_id.
+  Populates `data.reviews.{count, rating, source}` only — hours / phone
+  / categories / individual review text stay out-of-scope per COX-5.
+  **Skips invocation entirely when `GOOGLE_PLACES_API_KEY` is unset**
+  (no provenance row, no envelope status downgrade); `providers list`
+  still surfaces the slug as `not_configured`. Configured but upstream
+  401 / 403 / `REQUEST_DENIED` / `OVER_QUERY_LIMIT` → `status:
+  "failed"` with structured error. Cost charged in integer US cents via
+  `ProviderRunMetadata.cost_incurred`: Text Search Basic ($32/1k) +
+  Place Details Basic+Atmosphere ($22/1k) = 6¢/happy-path.
 
 ### Providers deferred
 
@@ -313,8 +329,6 @@ on which attempt succeeded — they branch on the envelope's `status`.
   alongside the fallback-selection logic in a future milestone.
 - **`site_meta_extruct`** — JSON-LD / microdata / OpenGraph / RDFa /
   `sameAs` social-handle discovery.
-- **`reviews_google_places`** (direct-API) — Google Places via
-  `googlemaps`. Tracking: #7.
 - **`reviews_yelp_fusion`** (direct-API) — Yelp Fusion via `yelpapi`.
 - **`social_discovery_site`** (zero-key) — BeautifulSoup + regex +
   extruct `sameAs`.
@@ -326,9 +340,10 @@ on which attempt succeeded — they branch on the envelope's `status`.
 - **`mentions_brave_stub`** (direct-API) — press / awards / podcast
   discovery. Tracking: #58.
 
-Until a direct-API provider registers, `data.reviews` / `data.social` /
-`data.mentions` / `data.signals` stay `null` on live runs and in
-`--mock` fixture output. The envelope shape is stable regardless.
+`data.social` / `data.mentions` / `data.signals` stay `null` on live runs
+and in `--mock` fixture output until their respective providers land.
+`data.reviews` populates once `reviews_google_places` is configured (see
+above). The envelope shape is stable regardless.
 
 ## Cache (Vertical Memory) — reserved, not wired in v0.2
 

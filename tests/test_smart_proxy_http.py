@@ -525,10 +525,16 @@ def test_cli_fetch_blocked_fixture_partial_without_env(
 def test_cli_fetch_blocked_fixture_ok_with_env(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """End-to-end via the CLI — blocked fixture + env set → ok, exit 0."""
+    """End-to-end via the CLI — blocked fixture + env set → ok, exit 0.
+
+    GOOGLE_PLACES_API_KEY stays unset so the Places provider skips
+    invocation and the envelope status reflects the smart-proxy
+    recovery outcome on its own.
+    """
     slug = "clifix02"
     _blocked_fixture(tmp_path, slug, with_homepage=True)
     monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+    monkeypatch.delenv("GOOGLE_PLACES_API_KEY", raising=False)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -546,6 +552,9 @@ def test_cli_fetch_blocked_fixture_ok_with_env(
     env = Envelope.model_validate(json.loads(result.stdout))
     assert env.status == "ok"
     assert env.data.pages is not None
+    assert env.provenance["site_text_trafilatura"].status == "failed"
+    assert env.provenance["smart_proxy_http"].status == "ok"
+    assert "reviews_google_places" not in env.provenance
 
 
 # ---------------------------------------------------------------------------
