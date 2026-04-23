@@ -43,6 +43,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`reviews_google_places` provider (Attempt 3, direct-API)** — COX-5 / #7.
+  Resolves a site hostname via Google Places Text Search, picks the best
+  candidate by `website` match (falling back to Google's prominence
+  ordering when no candidate exposes a matching website), and reads
+  `user_ratings_total` + `rating` via Place Details. Populates
+  `data.reviews.{count, rating, source="reviews_google_places"}`. Never
+  raises: missing `GOOGLE_PLACES_API_KEY` → `status: not_configured`
+  with actionable suggestion; 401 / 403 / `REQUEST_DENIED` /
+  `OVER_QUERY_LIMIT` → `status: failed` with `blocked_by_antibot`
+  prefix. Cost charged in integer US cents via
+  `ProviderRunMetadata.cost_incurred` (Text Search $32/1k + Place
+  Details basic-fields $17/1k ≈ 5¢/happy-path; constants live in the
+  provider module and bump on pricing change). `--mock` reads a
+  `fixtures/<slug>/google_places.json` file and always charges 0 cents.
+  Scope stays tight to count + rating; hours / phone / categories /
+  individual review text are out-of-scope per issue-7 guidance.
 - **`companyctx providers list --json`** — registry introspection as a JSON
   array (one dict per provider). Columns: `slug`, `tier`
   (`zero-key` / `smart-proxy` / `direct-api`), `category`, `cost_hint`,
@@ -54,6 +70,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Envelope-error classifier now prefers real failures over
+  `not_configured` rows (COX-5).** When both a `failed` / `degraded`
+  row and a `not_configured` row coexist in provenance (e.g.
+  `site_text_trafilatura` timed out + `reviews_google_places` was
+  never wired), `_build_envelope_error` picks the real failure for
+  the top-level `error.code` so an unconfigured Attempt-3 provider
+  can't mask an Attempt-1 failure. Pre-existing `empty_response`
+  preference is unchanged. All synthetic + real-golden +
+  failure-shape fixtures regenerated to include the new
+  `reviews_google_places` provenance row; status aggregates stay
+  semantically equivalent (missing direct-API key reads as
+  `partial`, same shape as a missing smart-proxy key).
 - **Docs honesty pass (post-v0.2-tag).** README hero envelope, status
   block, provider tables, `docs/SPEC.md`, `docs/SCHEMA.md`, `SKILL.md`,
   and every file in `examples/` now describe the actual shipped v0.2

@@ -17,7 +17,7 @@ the same envelope shape (see [`docs/SCHEMA.md`](SCHEMA.md)).
 | `site_meta_extruct`        | Zero-key        | `site_meta`      | —                     | free      | stub | ✓ |
 | `social_discovery_site`    | Zero-key        | `social_discovery` | —                   | free      | stub | ✓ |
 | `signals_site_heuristic`   | Zero-key        | `signals`        | —                     | free      | stub | ✓ |
-| `reviews_google_places`    | Direct-API      | `reviews`        | `GOOGLE_PLACES_API_KEY` | per-1k | stub | ✓ |
+| `reviews_google_places`    | Direct-API      | `reviews`        | `GOOGLE_PLACES_API_KEY` | per-1k | stub | ✓ *(shipped v0.3)* |
 | `reviews_yelp_fusion`      | Direct-API      | `reviews`        | `YELP_API_KEY`        | per-call | stub | ✓ |
 | `social_counts_youtube`    | Direct-API      | `social_counts`  | `YOUTUBE_API_KEY`     | free w/ quota | stub | ✓ |
 | `mentions_brave_stub`      | Direct-API      | `mentions`       | `BRAVE_SEARCH_API_KEY`| per-call | stub | stub |
@@ -75,6 +75,46 @@ entry-point line in `pyproject.toml` or override at runtime.
 > A **named reference adapter** — a shim over a specific vendor, shipped as
 > an optional extra — lands after the vendor eval spike. No vendor is named
 > here until that measurement is in.
+
+## `reviews_google_places` (Attempt 3, direct-API) — shipped v0.3
+
+Attempt 3 provider landed in COX-5. Two Places API calls per successful
+lookup:
+
+1. **Text Search** — `textsearch/json?query=<hostname>` resolves the site
+   to candidate Places.
+2. **Place Details** — `details/json?place_id=<id>&fields=place_id,rating,
+   user_ratings_total,website` reads the aggregate fields on the winning
+   candidate.
+
+**Candidate picker.** The first candidate whose `website` hostname matches
+the input site wins. If no candidate exposes a matching website, we fall
+back to Google's prominence ordering (first result).
+
+**Fields populated.** `data.reviews = ReviewsSignals{count, rating,
+source="reviews_google_places"}`. Count and rating only — the provider
+intentionally does not populate hours / categories / individual review
+text. That stays out-of-scope per the COX-5 comment thread; the external
+brief-pipeline downstream of companyctx reads only count + rating today.
+
+**Failure modes (never raises).**
+
+- Missing env → `status="not_configured"` with a suggestion pointing at
+  `GOOGLE_PLACES_API_KEY`.
+- HTTP 401 / 403 → `status="failed"` with `blocked_by_antibot` prefix
+  (classifies into envelope `error.code="blocked_by_antibot"`).
+- Places API `REQUEST_DENIED` / `OVER_QUERY_LIMIT` → same.
+- Text Search `ZERO_RESULTS` → `status="failed"` naming the hostname.
+- Network timeout → `status="failed"` classified as `network_timeout`.
+
+**Cost accounting.** `ProviderRunMetadata.cost_incurred` is integer US
+cents. Current constants (sourced from Google's published Places rates at
+COX-5 measurement time: Text Search $32/1k + Place Details basic-fields
+$17/1k ≈ 5¢/happy-path) live as module constants in
+`companyctx/providers/reviews_google_places.py`. Bump the constants (not
+the `cost_hint` surface) when Google changes pricing. `--mock` runs
+always charge 0 cents — the real charge is a real-network concern, and
+byte-identical deterministic mock runs are the contract.
 
 ## Provider rules (non-negotiable)
 
