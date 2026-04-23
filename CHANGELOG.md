@@ -188,9 +188,13 @@ agents don't re-litigate the design.
   The envelope classifier routes `dns_resolve_failure` to
   `no_provider_succeeded`, so `companyctx fetch this-does-not-exist.example`
   now returns `error.code: "no_provider_succeeded"` — matching agents'
-  branch-on-code expectation for "the site is just unreachable." Top-level
-  `status` is unchanged (still `partial` / `degraded`); this is a
-  code-bucket honesty fix, not a schema change.
+  branch-on-code expectation for "the site is just unreachable." The
+  envelope's `error.suggestion` also gets a DNS-specific line
+  ("hostname did not resolve in DNS; verify the site spelling") instead
+  of the default "configure a smart-proxy" remediation, since no proxy
+  resolves NXDOMAIN on the user's behalf. Top-level `status` is unchanged
+  (still `partial` / `degraded`); this is a code-bucket + suggestion
+  honesty fix, not a schema change.
 
 ## [0.2.0] — 2026-04-22
 
