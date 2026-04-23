@@ -6,12 +6,15 @@ Every model sets ``extra="forbid"`` so schema drift is loud. See
 frozen spec snapshot.
 
 v0.2.0 introduced the schema-locked envelope (top-level ``schema_version``
-plus structured :class:`EnvelopeError`). v0.3.0 adds two new error codes:
+plus structured :class:`EnvelopeError`). v0.3.0 added two new error codes:
 ``empty_response`` (so agents can branch on "site returned HTTP 200 with
 effectively no content" instead of mistaking a silent-success for ok data)
 and ``cache_corrupted`` (emitted on the ``--from-cache`` CLI path when the
-cache opens but the row can't be deserialized). Both fold into the v0.3.0
-release; per the closed-set rule, adding codes is a minor schema bump.
+cache opens but the row can't be deserialized). v0.4.0 renames
+``path_traversal_rejected`` → ``fixture_path_traversal_rejected`` to match
+the code's actual scope (``--mock`` fixture-slug escapes only; it does not
+guard URL-path traversal). Renaming a code is schema-breaking, so
+``schema_version`` bumps minor even in the 0.x series.
 """
 
 from __future__ import annotations
@@ -21,7 +24,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-SCHEMA_VERSION = "0.3.0"
+SCHEMA_VERSION = "0.4.0"
 
 EnvelopeStatus = Literal["ok", "partial", "degraded"]
 ProviderStatus = Literal["ok", "degraded", "failed", "not_configured"]
@@ -30,7 +33,7 @@ EnvelopeErrorCode = Literal[
     "ssrf_rejected",
     "network_timeout",
     "blocked_by_antibot",
-    "path_traversal_rejected",
+    "fixture_path_traversal_rejected",
     "response_too_large",
     "no_provider_succeeded",
     "misconfigured_provider",
@@ -143,8 +146,11 @@ class EnvelopeError(BaseModel):
     Agents branch on :attr:`code`; humans read :attr:`message`. :attr:`suggestion`
     is an actionable next step (e.g. "configure COMPANYCTX_SMART_PROXY_URL").
 
-    Codes are a closed set. New codes are added in minor releases and bump
-    :data:`SCHEMA_VERSION`; removing or renaming a code is a major bump.
+    Codes are a closed set. Adding, renaming, or removing a code all bump
+    :data:`SCHEMA_VERSION`. In the pre-1.0 (0.x) series, any closed-set
+    change — additive or breaking — lands as a MINOR bump; rename and
+    removal are called out as BREAKING in CHANGELOG. Post-1.0, renames
+    and removals will require a MAJOR bump.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -159,7 +165,7 @@ class Envelope(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["0.3.0"]
+    schema_version: Literal["0.4.0"]
     status: EnvelopeStatus
     data: CompanyContext
     provenance: dict[str, ProviderRunMetadata] = Field(default_factory=dict)
