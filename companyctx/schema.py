@@ -6,12 +6,22 @@ Every model sets ``extra="forbid"`` so schema drift is loud. See
 frozen spec snapshot.
 
 v0.2.0 introduced the schema-locked envelope (top-level ``schema_version``
-plus structured :class:`EnvelopeError`). v0.3.0 adds two new error codes:
+plus structured :class:`EnvelopeError`). v0.3.0 adds two error codes:
 ``empty_response`` (so agents can branch on "site returned HTTP 200 with
 effectively no content" instead of mistaking a silent-success for ok data)
 and ``cache_corrupted`` (emitted on the ``--from-cache`` CLI path when the
-cache opens but the row can't be deserialized). Both fold into the v0.3.0
-release; per the closed-set rule, adding codes is a minor schema bump.
+cache opens but the row can't be deserialized). v0.4.0 keeps the same
+Literal set but bumps ``SCHEMA_VERSION`` to close the drift the cache
+merge introduced (added ``cache_corrupted`` to the Literal without
+bumping the version constant), and lands alongside the COX-52 FM-7
+floor correction (``EMPTY_RESPONSE_BYTES`` 64 → 1024 — same ``Literal``
+members, tighter threshold for ``empty_response``) and the COX-49
+NXDOMAIN routing fix (``unsafe_url:dns_resolve_failure`` →
+``no_provider_succeeded`` instead of ``ssrf_rejected``; no Literal
+change, classifier-only). Per the closed-set rule, any observable
+change in what ``error.code`` an agent can receive on the same input
+is a minor schema bump — not because the Literal set grew but because
+the mapping from input to code did.
 """
 
 from __future__ import annotations
@@ -21,7 +31,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-SCHEMA_VERSION = "0.3.0"
+SCHEMA_VERSION = "0.4.0"
 
 EnvelopeStatus = Literal["ok", "partial", "degraded"]
 ProviderStatus = Literal["ok", "degraded", "failed", "not_configured"]
@@ -159,7 +169,7 @@ class Envelope(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["0.3.0"]
+    schema_version: Literal["0.4.0"]
     status: EnvelopeStatus
     data: CompanyContext
     provenance: dict[str, ProviderRunMetadata] = Field(default_factory=dict)

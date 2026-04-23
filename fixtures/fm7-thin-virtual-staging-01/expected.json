@@ -1,0 +1,27 @@
+{
+  "data": {
+    "fetched_at": "2026-04-20T00:00:00Z",
+    "mentions": null,
+    "pages": null,
+    "reviews": null,
+    "signals": null,
+    "site": "fm7-thin-virtual-staging-01.example",
+    "social": null
+  },
+  "error": {
+    "code": "empty_response",
+    "message": "empty_response",
+    "suggestion": "site returned HTTP 200 with effectively no content; try --ignore-robots or check with a browser"
+  },
+  "provenance": {
+    "site_text_trafilatura": {
+      "cost_incurred": 0,
+      "error": "empty_response",
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "failed"
+    }
+  },
+  "schema_version": "0.4.0",
+  "status": "degraded"
+}

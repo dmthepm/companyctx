@@ -15,16 +15,25 @@ from bs4 import BeautifulSoup
 
 from companyctx.schema import SiteSignals
 
-# Empty-response honesty threshold (COX-44). The measure is UTF-8 byte
-# length, not ``len(text)`` — a 40-character CJK or accented homepage
-# that extracts to ~120 UTF-8 bytes should NOT be misclassified as
-# effectively empty. A legitimate one-page brochure site clears 64
-# bytes easily; below that the fetch worked but the site returned
-# nothing useful (blank body, login-wall stub, JS-only landing with no
-# SSR content). Both the zero-key provider and the smart-proxy recovery
-# path consult this gate so Attempt 1 and Attempt 2 enforce the same
-# contract.
-EMPTY_RESPONSE_BYTES = 64
+# Empty-response honesty threshold (COX-44 + COX-52). The measure is
+# UTF-8 byte length, not ``len(text)`` — a 40-character CJK or accented
+# homepage that extracts to ~120 UTF-8 bytes is fine; raw character
+# count would mis-flag multibyte scripts. Below the cutoff the fetch
+# worked but the site returned too little to synthesise a brief from
+# (blank body, login-wall stub, JS-only landing with no SSR content,
+# Wix/SPA shell that only renders after JS). The v0.3.0 cutoff of 64
+# bytes only caught truly-empty bodies; the v0.2 partner-integration
+# validation (n=209, `research/2026-04-22-v0.2-joel-integration-
+# validation.md` §3) measured 41 / 209 = 19.6 % of `status: ok`
+# envelopes returning <1 KiB of extracted text — "FM-7 thin-body."
+# These were `ok`-but-partner-unusable. v0.4.0 raises the floor to
+# 1024 bytes so the thin-body class surfaces as structured
+# `empty_response` instead of silent success. The p50 extracted-text
+# size on successful runs in that validation was 2.29 KiB, well above
+# the new floor, so raising it loses ~0 legitimate `ok` envelopes.
+# Both the zero-key provider and the smart-proxy recovery path consult
+# this gate so Attempt 1 and Attempt 2 enforce the same contract.
+EMPTY_RESPONSE_BYTES = 1024
 EMPTY_RESPONSE_ERROR = "empty_response"
 
 

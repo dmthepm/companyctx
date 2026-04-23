@@ -325,6 +325,8 @@ def _pinned_blog_date(idx: int) -> str:
 
 def render_homepage(p: Prospect) -> str:
     services_li = "\n".join(f"      <li>{svc}</li>" for svc in p.niche.services)
+    services_sentence = ", ".join(svc.lower() for svc in p.niche.services[:-1])
+    last_service = p.niche.services[-1].lower()
     sameas = json.dumps(
         [
             f"https://instagram.com/{p.ig_handle.lstrip('@')}",
@@ -346,6 +348,12 @@ def render_homepage(p: Prospect) -> str:
         },
         sort_keys=True,
     )
+    # The synthetic homepage must clear EMPTY_RESPONSE_BYTES (1024) comfortably
+    # — a realistic brochure homepage should carry differentiator, audience,
+    # and credentials prose, not just a nav + service bullets. A thin render
+    # here would trip the v0.4.0 empty-response gate on every synthetic
+    # fixture and the whole corpus would fail as FM-7. Keep the prose
+    # deterministic and stack-agnostic so the generator stays byte-stable.
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -363,10 +371,44 @@ def render_homepage(p: Prospect) -> str:
       {p.name} is a {p.niche.label.lower()} in {p.niche.city}, {p.niche.region}.
       Founded {p.founded}. We're a {p.team_claim}.
     </p>
+    <h2>Why {p.niche.city} chooses us</h2>
+    <p>
+      For more than {2026 - p.founded} years {p.name} has served
+      {p.niche.city} and the surrounding {p.niche.region} region with
+      dependable, locally-operated {p.niche.label.lower()} work. Our
+      {p.team_claim} knows the neighborhoods, the buildings, and the
+      seasonal rhythms that shape what our clients actually need — the
+      kind of practical knowledge you only build by showing up in the
+      same zip codes year after year.
+    </p>
+    <h2>Who we serve</h2>
+    <p>
+      We work with homeowners, small businesses, and repeat commercial
+      accounts across {p.niche.city}. Whether you've worked with a
+      {p.niche.label.lower()} before or this is your first project, we
+      walk every new client through the process step by step: what to
+      expect, what options exist at your price point, and what we'd
+      recommend if the job were on our own property. No hard sell, no
+      upsell theatre, no contracts you can't cancel.
+    </p>
     <h2>What we do</h2>
+    <p>
+      Our core offerings cover {services_sentence}, and {last_service}.
+      Every engagement starts with a site walkthrough and a written
+      scope so there are no surprises on invoice day.
+    </p>
     <ul class="services">
 {services_li}
     </ul>
+    <h2>Credentials &amp; proof</h2>
+    <p>
+      {p.name} is fully insured and holds every permit and certification
+      the state of {p.niche.region} requires for our trade. Our {p.team_claim}
+      collectively brings decades of hands-on experience, and we publish
+      before-and-after galleries, customer reviews, and project case
+      studies so prospective clients can see the actual work — not just
+      marketing renders.
+    </p>
     <h2>Get in touch</h2>
     <p>Email: {PLACEHOLDER_EMAIL} · Phone: {PLACEHOLDER_PHONE}</p>
   </main>

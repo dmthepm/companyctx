@@ -36,7 +36,28 @@ _METADATA_HOSTS: frozenset[str] = frozenset(
 
 
 class UnsafeURLError(ValueError):
-    """Raised when a URL fails the public-HTTP guardrail."""
+    """Raised when a URL fails the public-HTTP guardrail.
+
+    Carries a ``category`` attribute so the classifier can distinguish
+    DNS-resolution failures (not an SSRF attempt; the user typed a bad
+    host) from genuine SSRF concerns (private IP, metadata host,
+    loopback). Provider wrappers embed the category in the error string
+    as ``unsafe_url:<category>: <detail>``. See ``core._classify_error_code``
+    and COX-49 / #86.
+    """
+
+    # Category tokens kept in a closed vocabulary so the classifier's
+    # substring match is stable and greppable.
+    CATEGORY_DNS = "dns_resolve_failure"
+    CATEGORY_PRIVATE_IP = "private_ip"
+    CATEGORY_METADATA = "metadata_host"
+    CATEGORY_SCHEME = "unsupported_scheme"
+    CATEGORY_EMPTY_HOST = "empty_host"
+    CATEGORY_PARSE = "parse_error"
+
+    def __init__(self, message: str, *, category: str = "other") -> None:
+        super().__init__(message)
+        self.category = category
 
 
 def validate_public_http_url(url: str) -> str:
@@ -45,11 +66,14 @@ def validate_public_http_url(url: str) -> str:
     Returns the URL unchanged on success. Raises :class:`UnsafeURLError` if
     any of the following holds:
 
-    - scheme is not ``http`` or ``https``;
-    - hostname is empty;
-    - hostname is a known cloud-metadata vanity hostname;
+    - scheme is not ``http`` or ``https`` (``category="unsupported_scheme"``);
+    - hostname is empty (``category="empty_host"``);
+    - hostname is a known cloud-metadata vanity hostname (``category="metadata_host"``);
+    - DNS lookup returns no addresses or raises ``OSError``
+      (``category="dns_resolve_failure"``);
     - DNS resolves the hostname to an IP that is loopback, link-local,
-      private (RFC 1918), multicast, reserved, or otherwise non-global.
+      private (RFC 1918), multicast, reserved, or otherwise non-global
+      (``category="private_ip"``).
 
     The DNS resolution happens here once; the caller should re-invoke this
     on every redirect hop. This does not defend against active DNS rebinding
@@ -58,21 +82,33 @@ def validate_public_http_url(url: str) -> str:
     """
     split = urlsplit(url)
     if split.scheme not in ALLOWED_SCHEMES:
-        raise UnsafeURLError(f"unsupported scheme: {split.scheme or '<empty>'!s}")
+        raise UnsafeURLError(
+            f"unsupported scheme: {split.scheme or '<empty>'!s}",
+            category=UnsafeURLError.CATEGORY_SCHEME,
+        )
     host = split.hostname
     if not host:
-        raise UnsafeURLError("URL has no host")
+        raise UnsafeURLError("URL has no host", category=UnsafeURLError.CATEGORY_EMPTY_HOST)
     lowered = host.lower()
     if lowered in _METADATA_HOSTS:
-        raise UnsafeURLError(f"metadata host not allowed: {lowered}")
+        raise UnsafeURLError(
+            f"metadata host not allowed: {lowered}",
+            category=UnsafeURLError.CATEGORY_METADATA,
+        )
 
     for ip_text in _resolve_all(host):
         try:
             ip = ipaddress.ip_address(ip_text)
         except ValueError as exc:
-            raise UnsafeURLError(f"could not parse resolved IP {ip_text!r}") from exc
+            raise UnsafeURLError(
+                f"could not parse resolved IP {ip_text!r}",
+                category=UnsafeURLError.CATEGORY_PARSE,
+            ) from exc
         if not _is_public(ip):
-            raise UnsafeURLError(f"host {lowered} resolves to non-public address {ip_text}")
+            raise UnsafeURLError(
+                f"host {lowered} resolves to non-public address {ip_text}",
+                category=UnsafeURLError.CATEGORY_PRIVATE_IP,
+            )
     return url
 
 
@@ -82,11 +118,19 @@ def _resolve_all(host: str) -> list[str]:
     A literal IP in the host position — e.g. ``http://127.0.0.1/`` — also
     goes through :func:`socket.getaddrinfo`, which returns the literal back;
     that keeps the blocklist check uniform for hostnames and IPs both.
+
+    DNS failures carry ``category="dns_resolve_failure"`` so the downstream
+    classifier routes NXDOMAIN / no-such-host to ``no_provider_succeeded``
+    rather than ``ssrf_rejected`` (COX-49 / #86). An unresolvable domain is
+    not an SSRF attempt — it's a dead or mistyped host.
     """
     try:
         infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
     except OSError as exc:
-        raise UnsafeURLError(f"DNS resolution failed for {host}: {exc}") from exc
+        raise UnsafeURLError(
+            f"DNS resolution failed for {host}: {exc}",
+            category=UnsafeURLError.CATEGORY_DNS,
+        ) from exc
     seen: set[str] = set()
     addrs: list[str] = []
     for info in infos:
@@ -101,7 +145,10 @@ def _resolve_all(host: str) -> list[str]:
             seen.add(ip)
             addrs.append(ip)
     if not addrs:
-        raise UnsafeURLError(f"no addresses for {host}")
+        raise UnsafeURLError(
+            f"no addresses for {host}",
+            category=UnsafeURLError.CATEGORY_DNS,
+        )
     return addrs
 
 

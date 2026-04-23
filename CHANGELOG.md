@@ -5,6 +5,109 @@ All notable changes to `companyctx` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v0.4.0
+
+v0.4.0 bundles the COX-52 FM-7 floor correction, the COX-49 NXDOMAIN
+routing fix, and a schema-version bump that closes the drift the
+v0.3.0 cache merge introduced (the `cache_corrupted` Literal was added
+without bumping `SCHEMA_VERSION`). Package version stays at `0.3.0`
+until the separate release-runbook PR cuts the tag.
+
+### Changed — envelope schema bump (v0.4)
+
+- **`schema_version` bumped to `"0.4.0"`.** The Literal set didn't
+  grow in this release, but the mapping from provider input to
+  `error.code` did change (COX-52 and COX-49, see below). Per the
+  closed-set rule documented in `docs/SPEC.md`, any observable
+  change in what `error.code` an agent can receive on the same input
+  is a minor schema bump. Also closes the v0.3.0 drift: PR #93 added
+  `"cache_corrupted"` to the `EnvelopeErrorCode` Literal without
+  bumping `SCHEMA_VERSION`, so v0.3.0 on PyPI already advertised a
+  subset of codes vs. what `main` emitted. All call sites use the
+  `SCHEMA_VERSION` constant (per the COX-47 refactor in #88), so
+  there are no source edits at call sites — only the constant +
+  `Literal["0.4.0"]` in `companyctx/schema.py`, plus every pinned
+  test and every committed `expected.json`.
+
+### Changed — FM-7 floor correction (COX-52 / #91)
+
+- **`EMPTY_RESPONSE_BYTES` raised 64 → 1024.** The v0.3.0 floor caught
+  truly-empty bodies but not thin bodies; the v0.2 partner-integration
+  validation (`research/2026-04-22-v0.2-joel-integration-validation.md`
+  §3, n=209) measured `status: ok` + `<1 KiB` extracted text at **41 /
+  209 = 19.6 %**, concentrated in partner-active niches (gutter
+  installation 6/14, real-estate photography 5/11, virtual staging
+  4/11). Those envelopes returned "partial data wearing an `ok` label"
+  — the single biggest partner-breaking gap still live on a
+  freshly-tagged release. v0.4.0 raises the floor so the FM-7
+  thin-body class surfaces as `error.code: "empty_response"` instead
+  of silent success. Retires the v0.2.0 Known Limitations disclosure
+  in behavior, not just name.
+- **Post-fix rate verified: 0.0 %.** Re-classifying the full 209-site
+  v0.2 validation corpus against the new floor lands the post-fix
+  FM-7 rate at **0 / 209** (acceptance threshold was <5 %). Analysis
+  + per-niche breakdown committed as
+  `research/2026-04-23-cox-52-post-fix-reclassification.md`. Not a
+  live re-run (the 209-site COX-46 harness stored the byte counts the
+  gate reads from; re-classification is deterministic against the
+  archived data); a live re-run on fresh network is a post-tag
+  follow-up if partner behavior changes.
+- **Path A chosen over Path B.** Raising the existing floor preserves
+  the closed Literal set for `EnvelopeErrorCode`; a separate
+  `thin_response` code (Path B) was deferred to a future minor only
+  if agent feedback asks for the distinction.
+- **Synthetic corpus homepage template inflated.** The 30-prospect
+  synthetic fixtures extracted to ~350–400 bytes on v0.3.0 — they
+  would have tripped the new floor on every run. The homepage
+  template in `scripts/build-fixtures.py` now carries differentiator,
+  audience, and credentials prose so extraction lands comfortably
+  above 1 KiB, matching the p50 of real-world sites the validation
+  measured. Every committed `expected.json` in `fixtures/<synthetic>/`
+  regenerated in lockstep.
+- **FM-7 thin-body regression fixtures.** 19 new pseudonymized
+  fixtures under `fixtures/fm7-thin-*/`, each with a `homepage.html`
+  that extracts to between 64 and 1024 UTF-8 bytes and an
+  `expected.json` asserting the post-fix envelope shape
+  (`status: degraded`, `error.code: "empty_response"`). 2 seeds each
+  for the 4 thin-dominated niches (virtual staging, real-estate
+  photography, gutter installation, real-estate staging) + 1 seed for
+  each of 11 occasional-FM-7 niches. Pinned in `test_regression_corpus.py`
+  for byte-diff regression. Recipe table lives in
+  `scripts/promote-fm7-thin-fixtures.py`.
+
+### Fixed — NXDOMAIN routing (COX-49 / #86)
+
+- **`unsafe_url:dns_resolve_failure` now routes to
+  `no_provider_succeeded`.** Pre-v0.4.0 the SSRF guardrail raised a
+  bare `unsafe_url: DNS resolution failed ...` on NXDOMAIN, and the
+  classifier's substring match on `unsafe_url` won before any
+  DNS-specific branch — so a non-resolving host silently appeared as
+  an SSRF attempt to downstream agents. Under v0.4.0 the guardrail
+  tags every `UnsafeURLError` with a `category` token; provider
+  wrappers emit category-prefixed strings of the shape
+  `unsafe_url:<category>: <detail>`. The classifier checks for
+  `unsafe_url:dns_resolve_failure` first and routes it to
+  `no_provider_succeeded`. Private-IP, metadata-host, scheme, and
+  parse rejections keep their existing `ssrf_rejected` routing.
+  Closes #86.
+
+### Added
+
+- **COX-52 acceptance test suite** (`tests/test_cox52_thin_body_acceptance.py`).
+  Three focused tests: a ~500-byte HTML payload through
+  `site_text_trafilatura` emits `status: failed` + `error: "empty_response"`;
+  the same payload through `smart_proxy_http` recovery tags the proxy row
+  identically (so Attempt 2 cannot launder a thin body past the gate);
+  the orchestrator envelope lands as `status: degraded` +
+  `error.code: "empty_response"` + actionable `suggestion`. These
+  mirror the acceptance checklist on #91 exactly.
+- **COX-49 regression tests** — `tests/test_envelope_error_codes.py`
+  gains `test_nxdomain_routes_to_no_provider_succeeded` (unit: the
+  classifier's substring rules) and
+  `test_nxdomain_cli_path_returns_no_provider_succeeded` (integration:
+  a `.invalid` host through the real `site_text_trafilatura` provider
+  + orchestrator lands on `no_provider_succeeded`).
+
 ## [0.3.0] — 2026-04-23
 
 ### Added — Vertical Memory cache (COX-6 / #9)

@@ -65,6 +65,33 @@ REGRESSION_SLUGS = (
     # zero-content trigger so the pin survives a future fm7-* semantic
     # rename. See docs/SPEC.md §empty_response.
     "empty-response",
+    # COX-52 FM-7 thin-body regressions — 19 pseudonymized seeds from
+    # the v0.2 partner-integration validation (`research/2026-04-22-v0.2-
+    # joel-integration-validation.md` §3). Each extracts to 64-1023
+    # UTF-8 bytes: cleared the v0.3.0 64-byte floor (silent-success) and
+    # now trips the v0.4.0 1024-byte floor. Pinned as byte-diff fixtures
+    # so the envelope shape they produce is frozen — any regression in
+    # the empty-response classifier or the thin-body gate breaks the
+    # byte-diff here before it reaches a partner release.
+    "fm7-thin-bariatric-01",
+    "fm7-thin-botox-01",
+    "fm7-thin-chiropractic-01",
+    "fm7-thin-dentistry-01",
+    "fm7-thin-dermatology-01",
+    "fm7-thin-gutters-01",
+    "fm7-thin-gutters-02",
+    "fm7-thin-inspection-01",
+    "fm7-thin-medspa-01",
+    "fm7-thin-orthodontics-01",
+    "fm7-thin-plastic-surgery-01",
+    "fm7-thin-re-photography-01",
+    "fm7-thin-re-photography-02",
+    "fm7-thin-re-staging-01",
+    "fm7-thin-re-staging-02",
+    "fm7-thin-virtual-staging-01",
+    "fm7-thin-virtual-staging-02",
+    "fm7-thin-waste-01",
+    "fm7-thin-window-door-01",
     # FM-13 network-failure regression. Driven by the fixture-block.txt
     # sentinel honoured by site_text_trafilatura._from_fixture: the file's
     # contents become the BlockedError reason verbatim, the provider maps

@@ -4,7 +4,7 @@
     "mentions": null,
     "pages": {
       "about_text": "Pinewood Marketing Agency has served Brooklyn, NY since 2022. Today we're a team of 3.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-07-10.",
-      "homepage_text": "Pinewood Marketing Agency is a marketing agency in Brooklyn, NY. Founded 2022. We're a team of 3.\nWhat we do\n- Brand strategy\n- Web design\n- Paid social\n- Content production\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nPinewood Marketing Agency is a marketing agency in Brooklyn, NY. Founded 2022. We're a team of 3.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
+      "homepage_text": "Pinewood Marketing Agency is a marketing agency in Brooklyn, NY. Founded 2022. We're a team of 3.\nWhy Brooklyn chooses us\nFor more than 4 years Pinewood Marketing Agency has served Brooklyn and the surrounding NY region with dependable, locally-operated marketing agency work. Our team of 3 knows the neighborhoods, the buildings, and the seasonal rhythms that shape what our clients actually need \u2014 the kind of practical knowledge you only build by showing up in the same zip codes year after year.\nWho we serve\nWe work with homeowners, small businesses, and repeat commercial accounts across Brooklyn. Whether you've worked with a marketing agency before or this is your first project, we walk every new client through the process step by step: what to expect, what options exist at your price point, and what we'd recommend if the job were on our own property. No hard sell, no upsell theatre, no contracts you can't cancel.\nWhat we do\nOur core offerings cover brand strategy, web design, paid social, and content production. Every engagement starts with a site walkthrough and a written scope so there are no surprises on invoice day.\n- Brand strategy\n- Web design\n- Paid social\n- Content production\nCredentials & proof\nPinewood Marketing Agency is fully insured and holds every permit and certification the state of NY requires for our trade. Our team of 3 collectively brings decades of hands-on experience, and we publish before-and-after galleries, customer reviews, and project case studies so prospective clients can see the actual work \u2014 not just marketing renders.\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
       "services": [
         "Brand strategy",
         "Web design",
@@ -30,6 +30,6 @@
       "status": "ok"
     }
   },
-  "schema_version": "0.3.0",
+  "schema_version": "0.4.0",
   "status": "ok"
 }

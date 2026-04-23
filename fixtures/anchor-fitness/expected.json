@@ -4,7 +4,7 @@
     "mentions": null,
     "pages": {
       "about_text": "Anchor Boutique Fitness has served Seattle, WA since 2015. Today we're a team of 10.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-02-24.",
-      "homepage_text": "Anchor Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2015. We're a team of 10.\nWhat we do\n- Small-group strength\n- Private training\n- Mobility classes\n- Corporate wellness\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nAnchor Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2015. We're a team of 10.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
+      "homepage_text": "Anchor Boutique Fitness is a boutique fitness in Seattle, WA. Founded 2015. We're a team of 10.\nWhy Seattle chooses us\nFor more than 11 years Anchor Boutique Fitness has served Seattle and the surrounding WA region with dependable, locally-operated boutique fitness work. Our team of 10 knows the neighborhoods, the buildings, and the seasonal rhythms that shape what our clients actually need \u2014 the kind of practical knowledge you only build by showing up in the same zip codes year after year.\nWho we serve\nWe work with homeowners, small businesses, and repeat commercial accounts across Seattle. Whether you've worked with a boutique fitness before or this is your first project, we walk every new client through the process step by step: what to expect, what options exist at your price point, and what we'd recommend if the job were on our own property. No hard sell, no upsell theatre, no contracts you can't cancel.\nWhat we do\nOur core offerings cover small-group strength, private training, mobility classes, and corporate wellness. Every engagement starts with a site walkthrough and a written scope so there are no surprises on invoice day.\n- Small-group strength\n- Private training\n- Mobility classes\n- Corporate wellness\nCredentials & proof\nAnchor Boutique Fitness is fully insured and holds every permit and certification the state of WA requires for our trade. Our team of 10 collectively brings decades of hands-on experience, and we publish before-and-after galleries, customer reviews, and project case studies so prospective clients can see the actual work \u2014 not just marketing renders.\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
       "services": [
         "Small-group strength",
         "Private training",
@@ -31,6 +31,6 @@
       "status": "ok"
     }
   },
-  "schema_version": "0.3.0",
+  "schema_version": "0.4.0",
   "status": "ok"
 }

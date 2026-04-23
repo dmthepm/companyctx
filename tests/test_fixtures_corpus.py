@@ -48,12 +48,46 @@ FM7_FIXTURE_FILES = ("homepage.html", "expected.json")
 # fixtures (``homepage.html`` + ``expected.json``).
 EMPTY_RESPONSE_FIXTURE_SLUGS = ("empty-response",)
 EMPTY_RESPONSE_FIXTURE_FILES = ("homepage.html", "expected.json")
+# FM-7 thin-body fixtures (COX-52) — 19 pseudonymized regression seeds
+# drawn from the 41 FM-7 cases in the v0.2 partner-integration validation
+# (`research/2026-04-22-v0.2-joel-integration-validation.md` §3). Each
+# homepage extracts to somewhere in (64, 1024) UTF-8 bytes so it tripped
+# silently under the v0.3.0 64-byte floor and now correctly surfaces as
+# ``empty_response`` under the v0.4.0 1024-byte floor. 2 seeds × 4 thin-
+# dominated niches (virtual staging, real-estate photography, gutter
+# installation, real-estate staging) + 1 seed × 11 occasional-FM-7
+# niches. See ``scripts/promote-fm7-thin-fixtures.py`` for the
+# deterministic recipe table.
+FM7_THIN_FIXTURE_SLUGS = (
+    "fm7-thin-bariatric-01",
+    "fm7-thin-botox-01",
+    "fm7-thin-chiropractic-01",
+    "fm7-thin-dentistry-01",
+    "fm7-thin-dermatology-01",
+    "fm7-thin-gutters-01",
+    "fm7-thin-gutters-02",
+    "fm7-thin-inspection-01",
+    "fm7-thin-medspa-01",
+    "fm7-thin-orthodontics-01",
+    "fm7-thin-plastic-surgery-01",
+    "fm7-thin-re-photography-01",
+    "fm7-thin-re-photography-02",
+    "fm7-thin-re-staging-01",
+    "fm7-thin-re-staging-02",
+    "fm7-thin-virtual-staging-01",
+    "fm7-thin-virtual-staging-02",
+    "fm7-thin-waste-01",
+    "fm7-thin-window-door-01",
+)
+FM7_THIN_FIXTURE_FILES = ("homepage.html", "expected.json")
 # Block-style fixtures use the `fixture-block.txt` sentinel honored by
 # site_text_trafilatura._from_fixture (issue #40). They carry no
 # homepage.html — the sentinel raises before any HTML is read.
 BLOCK_FIXTURE_SLUGS = ("fm13-timeout-smb-01",)
 BLOCK_FIXTURE_FILES = ("fixture-block.txt", "expected.json")
-FAILURE_FIXTURE_SLUGS = FM7_FIXTURE_SLUGS + EMPTY_RESPONSE_FIXTURE_SLUGS + BLOCK_FIXTURE_SLUGS
+FAILURE_FIXTURE_SLUGS = (
+    FM7_FIXTURE_SLUGS + EMPTY_RESPONSE_FIXTURE_SLUGS + FM7_THIN_FIXTURE_SLUGS + BLOCK_FIXTURE_SLUGS
+)
 
 # Real-golden fixtures (issue #24) live alongside the 30 synthetic dirs but
 # are hand-curated, not generated. They carry a ``.hand-curated`` marker and
@@ -118,6 +152,11 @@ def test_failure_fixtures_have_minimum_files() -> None:
         site_dir = FIXTURES_DIR / slug
         assert site_dir.is_dir(), slug
         missing = [f for f in EMPTY_RESPONSE_FIXTURE_FILES if not (site_dir / f).exists()]
+        assert not missing, f"{slug} missing {missing}"
+    for slug in FM7_THIN_FIXTURE_SLUGS:
+        site_dir = FIXTURES_DIR / slug
+        assert site_dir.is_dir(), slug
+        missing = [f for f in FM7_THIN_FIXTURE_FILES if not (site_dir / f).exists()]
         assert not missing, f"{slug} missing {missing}"
     for slug in BLOCK_FIXTURE_SLUGS:
         site_dir = FIXTURES_DIR / slug

@@ -365,13 +365,33 @@ def test_ignore_robots_bypasses_robots_check(monkeypatch: pytest.MonkeyPatch) ->
         "companyctx.providers.site_text_trafilatura.is_allowed",
         lambda url, user_agent: False,
     )
-    # Keep the body comfortably above ``EMPTY_RESPONSE_BYTES`` (COX-44)
-    # so this test stays about the robots-bypass path, not the
-    # empty-response honesty check.
-    body_text = "Hello from the ignore-robots smoke path — this is long enough to clear the cutoff."
+    # Keep the body comfortably above ``EMPTY_RESPONSE_BYTES`` (COX-44
+    # / COX-52, now 1024) so this test stays about the robots-bypass
+    # path, not the empty-response honesty check.
+    marker_sentence = "Hello from the ignore-robots smoke path."
+    body_paragraphs = (
+        f"{marker_sentence} This body is intentionally long enough to clear the "
+        "v0.4.0 empty-response cutoff so the envelope lands on status=ok and this "
+        "test keeps probing the robots-bypass wiring, not the thin-body gate.",
+        "A legitimate homepage easily carries multiple paragraphs of "
+        "differentiator, audience, and credentials prose; anything much shorter "
+        "would rightly trip empty_response under the v0.4.0 floor raise for FM-7.",
+        "This fixture stands in for a normal SSR-rendered page returned by the "
+        "zero-key provider. The business is fictional, based in Portland, and has "
+        "operated in the metro area for over a decade with a team of nine.",
+        "We work with homeowners, small businesses, and repeat commercial "
+        "accounts. Every engagement starts with a site walkthrough and a written "
+        "scope so there are no surprises on invoice day.",
+        "We publish before-and-after galleries, customer reviews, and project "
+        "case studies on the site so prospective clients can see the actual "
+        "work our team has delivered, not just marketing renders. The extra "
+        "paragraph is padding prose that keeps the extracted body above the "
+        "FM-7 floor even after trafilatura trims boilerplate.",
+    )
+    body_html = "".join(f"<p>{p}</p>" for p in body_paragraphs)
     monkeypatch.setattr(
         "companyctx.providers.site_text_trafilatura.requests.get",
-        lambda *args, **kwargs: _FakeResponse(f"<html><body><p>{body_text}</p></body></html>"),
+        lambda *args, **kwargs: _FakeResponse(f"<html><body>{body_html}</body></html>"),
     )
     env = core.run(
         "https://example.com",
@@ -381,7 +401,7 @@ def test_ignore_robots_bypasses_robots_check(monkeypatch: pytest.MonkeyPatch) ->
     )
     assert env.status == "ok"
     assert env.data.pages is not None
-    assert body_text in env.data.pages.homepage_text
+    assert marker_sentence in env.data.pages.homepage_text
 
 
 def test_provider_rejects_unsupported_scheme() -> None:
@@ -573,14 +593,33 @@ def test_cli_validate_rejects_extra_field(tmp_path: Path) -> None:
     ("homepage_html", "expect_empty"),
     [
         # Zero visible body — trafilatura returns nothing, BS fallback also
-        # yields "". 0 < 64 → empty_response trips.
+        # yields "". 0 < 1024 → empty_response trips.
         ("<!DOCTYPE html><html><head></head><body></body></html>", True),
-        # Login-wall stub shape: visible text is under the 64-byte cutoff.
+        # Login-wall stub shape: visible text is well under the 1024-byte
+        # v0.4.0 cutoff (also under the prior 64-byte floor).
         ("<html><body><p>Please sign in</p></body></html>", True),
-        # Just above the cutoff: ~80 bytes of visible prose. Must NOT trip.
+        # FM-7 thin-body shape: ~500 bytes of visible prose — cleared the
+        # old 64-byte floor (would have been silent-success under v0.3.0)
+        # but fails the v0.4.0 1024-byte floor. This case is the reason
+        # COX-52 exists.
         (
             "<html><body><p>"
-            + ("We bake bread in Portland. We cater weddings and supply local cafes daily." * 1)
+            + ("We bake bread in Portland. We cater weddings and supply local cafes. " * 7)
+            + "</p></body></html>",
+            True,
+        ),
+        # Legitimate brochure: comfortably above 1024 bytes of prose. Must
+        # NOT trip the gate.
+        (
+            "<html><body><p>"
+            + (
+                "We bake bread in Portland. We cater weddings and supply local cafes "
+                "with sourdough loaves, brioche buns, and seasonal specials. Our team "
+                "of nine has served the city for over a decade, delivering to shops "
+                "from St. Johns to Sellwood every morning before seven. Visit our "
+                "Division Street location for fresh pastries and espresso. "
+            )
+            * 5
             + "</p></body></html>",
             False,
         ),
@@ -589,11 +628,12 @@ def test_cli_validate_rejects_extra_field(tmp_path: Path) -> None:
 def test_empty_response_trips_honesty_check(
     tmp_path: Path, homepage_html: str, expect_empty: bool
 ) -> None:
-    """COX-44 — extracted text below EMPTY_RESPONSE_BYTES surfaces as
-    ``error.code == "empty_response"`` instead of a silent ``status: ok``.
+    """COX-44 / COX-52 — extracted text below EMPTY_RESPONSE_BYTES surfaces
+    as ``error.code == "empty_response"`` instead of a silent ``status: ok``.
     Above the cutoff the envelope stays ``ok``. Regression guard on the
-    exact threshold behavior that retires the v0.2 Known Limitations
-    disclosure.
+    exact threshold behavior: v0.4.0 raises the floor 64 → 1024 so the
+    FM-7 thin-body class (status ok + <1 KiB of extracted text) now
+    surfaces honestly.
     """
     slug = "emptyprobe"
     site_dir = tmp_path / slug
@@ -692,15 +732,18 @@ def test_empty_response_applies_to_smart_proxy_recovery(tmp_path: Path) -> None:
 def test_empty_response_gate_measures_utf8_bytes_not_chars(tmp_path: Path) -> None:
     """Multibyte prose must not false-positive as empty.
 
-    30 Japanese characters encode to 90 UTF-8 bytes — comfortably above
-    the 64-byte cutoff. Counting ``len(text)`` instead of
-    ``len(text.encode("utf-8"))`` would mis-flag this as empty_response.
+    Under the v0.4.0 1024-byte floor, a ~400-char CJK homepage that
+    encodes to ~1200 UTF-8 bytes must stay ``ok`` — counting
+    ``len(text)`` instead of ``len(text.encode("utf-8"))`` would
+    mis-flag it as empty_response because the char count (400) is under
+    the byte threshold (1024). The gate has to measure bytes.
     """
     slug = "cjkprobe"
     site_dir = tmp_path / slug
     site_dir.mkdir()
-    # 30 katakana chars = 90 UTF-8 bytes; extractor passes them through.
-    body_text = "カタカナ" * 8  # 32 chars, 96 bytes
+    # 400 katakana chars = 1200 UTF-8 bytes: char count under 1024,
+    # byte count over. The gate must read bytes to keep this ``ok``.
+    body_text = "カタカナ" * 100  # 400 chars, 1200 bytes
     (site_dir / "homepage.html").write_text(
         f"<html><body><p>{body_text}</p></body></html>", encoding="utf-8"
     )

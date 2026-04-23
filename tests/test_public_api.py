@@ -32,7 +32,7 @@ from companyctx import (
 
 
 def test_top_level_reexports_are_importable() -> None:
-    assert SCHEMA_VERSION == "0.3.0"
+    assert SCHEMA_VERSION == "0.4.0"
     assert Envelope.__name__ == "Envelope"
     assert EnvelopeError.__name__ == "EnvelopeError"
     for cls in (

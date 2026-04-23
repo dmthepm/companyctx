@@ -4,7 +4,7 @@
     "mentions": null,
     "pages": {
       "about_text": "Ironworks Home Contractor has served Denver, CO since 2014. Today we're a team of 9.\nContact: the Owner. Reach us at hello@example.test.\nOur last post went up on 2026-07-13.",
-      "homepage_text": "Ironworks Home Contractor is a home contractor in Denver, CO. Founded 2014. We're a team of 9.\nWhat we do\n- Kitchen remodels\n- Bathroom remodels\n- Additions\n- Deck & patio\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100\nIronworks Home Contractor is a home contractor in Denver, CO. Founded 2014. We're a team of 9.\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
+      "homepage_text": "Ironworks Home Contractor is a home contractor in Denver, CO. Founded 2014. We're a team of 9.\nWhy Denver chooses us\nFor more than 12 years Ironworks Home Contractor has served Denver and the surrounding CO region with dependable, locally-operated home contractor work. Our team of 9 knows the neighborhoods, the buildings, and the seasonal rhythms that shape what our clients actually need \u2014 the kind of practical knowledge you only build by showing up in the same zip codes year after year.\nWho we serve\nWe work with homeowners, small businesses, and repeat commercial accounts across Denver. Whether you've worked with a home contractor before or this is your first project, we walk every new client through the process step by step: what to expect, what options exist at your price point, and what we'd recommend if the job were on our own property. No hard sell, no upsell theatre, no contracts you can't cancel.\nWhat we do\nOur core offerings cover kitchen remodels, bathroom remodels, additions, and deck & patio. Every engagement starts with a site walkthrough and a written scope so there are no surprises on invoice day.\n- Kitchen remodels\n- Bathroom remodels\n- Additions\n- Deck & patio\nCredentials & proof\nIronworks Home Contractor is fully insured and holds every permit and certification the state of CO requires for our trade. Our team of 9 collectively brings decades of hands-on experience, and we publish before-and-after galleries, customer reviews, and project case studies so prospective clients can see the actual work \u2014 not just marketing renders.\nGet in touch\nEmail: hello@example.test \u00b7 Phone: (555) 555-0100",
       "services": [
         "Kitchen remodels",
         "Bathroom remodels",
@@ -30,6 +30,6 @@
       "status": "ok"
     }
   },
-  "schema_version": "0.3.0",
+  "schema_version": "0.4.0",
   "status": "ok"
 }

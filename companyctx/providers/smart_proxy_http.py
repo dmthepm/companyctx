@@ -198,7 +198,9 @@ def _ensure_safe_for_fetch(url: str, ctx: FetchContext) -> None:
     try:
         validate_public_http_url(url)
     except UnsafeURLError as exc:
-        raise _ProxyError(f"unsafe_url: {exc}") from exc
+        # Carry the category token (COX-49) so the classifier routes NXDOMAIN
+        # through ``no_provider_succeeded`` rather than ``ssrf_rejected``.
+        raise _ProxyError(f"unsafe_url:{exc.category}: {exc}") from exc
     if not ctx.ignore_robots and not is_allowed(url, user_agent=ctx.user_agent):
         raise _ProxyError("blocked_by_robots")
 

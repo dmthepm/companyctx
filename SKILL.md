@@ -21,7 +21,7 @@ schema-locked JSON envelope out. Zero keys on the default path.
 
 - Companies only. Never extract people data.
 - Branch on `status` (`ok | partial | degraded`), not on try/except.
-- Every envelope carries `schema_version`. v0.3 is `"0.3.0"`.
+- Every envelope carries `schema_version`. v0.4 is `"0.4.0"`.
 - When `status != "ok"`, `error` is a structured `{code, message, suggestion}`;
   switch on `error.code` (one of `ssrf_rejected | network_timeout |
   blocked_by_antibot | path_traversal_rejected | response_too_large |
@@ -63,7 +63,7 @@ schema-locked JSON envelope out. Zero keys on the default path.
       "status": "ok"
     }
   },
-  "schema_version": "0.3.0",
+  "schema_version": "0.4.0",
   "status": "ok"
 }
 ```
