@@ -316,16 +316,19 @@ Envelope enums and semantics (see `docs/SPEC.md` §56–78, §110–118):
   [`research/2026-04-23-cox-54-post-v0.4-threshold-fit.md`](../research/2026-04-23-cox-54-post-v0.4-threshold-fit.md)
   measured the 1024 floor against a fresh, thin-biased sample. The
   floor itself is correctly calibrated (0 / 30 legitimate
-  thin-but-usable sites incorrectly demoted) — but 6 of 7
-  `empty_response` classifications in the sample were on content-
-  bearing sites whose content did not survive the zero-key fetch +
-  trafilatura path (browser-view spot-checks showed 3-20 KB of
-  visible text). Mechanism is either CDN fingerprint-filtering, a
-  JS-rendered content shell, or trafilatura dropping the raw body.
+  thin-but-usable sites incorrectly demoted) — but an LLM-assisted
+  pre-review of the 7 `empty_response` rows flagged 6 as likely
+  content-bearing (3-20 KB visible to a browser-class fetch) that did
+  not survive the zero-key curl_cffi + trafilatura path. Human
+  sanity-check on those pre-review judgments is still pending (see
+  the research doc's "LLM-assisted pre-review" section for the
+  deferred acceptance). Mechanism is either CDN fingerprint-filtering,
+  a JS-rendered content shell, or trafilatura dropping the raw body.
   From a partner-agent's perspective the current
   `error.code = "empty_response"` frames all three cases as "the
-  site has nothing" when in 6/7 observed cases "our fetch couldn't
-  see what a browser can" would be more honest. Follow-up
+  site has nothing" when "our fetch couldn't see what a browser can"
+  would be more honest for a meaningful fraction of fires (exact rate
+  pending human confirmation). Follow-up
   [#109](https://github.com/dmthepm/companyctx/issues/109) proposes
   splitting the code so Attempt-2 smart-proxy escalation
   (currently explicitly *not* retried on `empty_response`) becomes
