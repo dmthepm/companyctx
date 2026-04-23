@@ -103,8 +103,8 @@ Status semantics:
 
 `EnvelopeError.code` is one of `ssrf_rejected | network_timeout |
 blocked_by_antibot | path_traversal_rejected | response_too_large |
-no_provider_succeeded | misconfigured_provider | empty_response`. See
-`docs/SCHEMA.md` for the shape.
+no_provider_succeeded | misconfigured_provider | empty_response |
+cache_corrupted`. See `docs/SCHEMA.md` for the shape.
 
 #### `empty_response` (v0.3)
 
@@ -365,9 +365,19 @@ the row expires.
   `schema_version` (single-row migration ledger managed by the runner).
 - **Read key.** `(normalized_host, provider_set_hash)` plus TTL.
   `provider_set_hash` is a 16-char SHA-256 prefix of sorted
-  `(slug, provider_version)` pairs from the live registry — bumping a
-  provider's `version` invalidates stale rows without an explicit
-  DELETE.
+  `(slug, provider_version)` pairs from the **installed** registry —
+  bumping a provider's `version` invalidates stale rows without an
+  explicit DELETE. **Runtime-env-configured availability is NOT part
+  of the key.** A `smart_proxy_http` row whose `required_env` is
+  unset (`status: not_configured`) hashes the same as one whose env
+  is set (`status: ready`), so a cached partial created before
+  `COMPANYCTX_SMART_PROXY_URL` was exported will keep winning even
+  after the proxy becomes available. This is deliberate — keying on
+  env-shape would invalidate the cache every time a user toggled a
+  shell — but the consequence is real: **`--refresh` is the
+  documented remedy** when you change provider env config and want
+  stale partials evicted. `cache list` shows what's currently
+  cached; `cache clear --site <host>` evicts a single host.
 - **TTL.** 30 days global default. Per-provider TTLs are M4+.
 - **Migrations.** Numbered SQL files under
   `companyctx/migrations/NNNN_<slug>.sql`, applied in ascending order at
@@ -376,6 +386,27 @@ the row expires.
 - **Flags.** `--refresh` / `--from-cache` / `--no-cache` (see above).
 - **Audit trail.** `--refresh` writes a shadow row, never replaces the
   prior one. Old rows survive until `cache clear` reaps them.
+
+### `cache_corrupted` (v0.3)
+
+Closes the "cache crash takes the CLI down" gap caught in code
+review of #9. Cache failures must follow the same boundary contract
+as provider failures — branch on `status`, never on a Python
+traceback.
+
+- **Default `fetch` path.** Cache open / read failures degrade to
+  `cache=None` and the orchestrator runs providers normally. The
+  envelope reflects the actual fetch outcome (`ok` / `partial` /
+  `degraded` per the standard rules); no `cache_corrupted` code is
+  emitted because the cache outage didn't change the user-visible
+  result.
+- **`--from-cache` path.** Open failure or row deserialisation
+  failure (Pydantic ValidationError, JSON parse error, sqlite read
+  error) emits `status: degraded` + `error.code: cache_corrupted`
+  with `suggestion: "run \`companyctx cache clear --site <host>\` to
+  evict the stale entry"`. Exit code stays `2` so existing
+  pipelines that branch on the shell return code keep working; the
+  structured envelope is additive.
 
 A `companyctx query ...` DSL over the cache is future scope, not v0.3.
 

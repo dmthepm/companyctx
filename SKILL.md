@@ -25,7 +25,8 @@ schema-locked JSON envelope out. Zero keys on the default path.
 - When `status != "ok"`, `error` is a structured `{code, message, suggestion}`;
   switch on `error.code` (one of `ssrf_rejected | network_timeout |
   blocked_by_antibot | path_traversal_rejected | response_too_large |
-  no_provider_succeeded | misconfigured_provider | empty_response`).
+  no_provider_succeeded | misconfigured_provider | empty_response |
+  cache_corrupted`).
 - Pipe stdout; don't parse logs. The JSON envelope is the contract.
 - The `data.site` field is the identifier; `data.pages` holds homepage-
   derived content (`homepage_text`, `about_text`, `services`, `tech_stack`).

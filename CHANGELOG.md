@@ -44,6 +44,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   envelope is the product, persistence is opportunistic. Cache reads
   are similarly best-effort — a corrupted row falls through to a
   fresh fetch.
+- **Cache failures degrade, never crash.** A cache-open failure on
+  the default `fetch` path warns to stderr (under `--verbose`) and
+  continues with `cache=None`; the user gets a normal envelope from
+  the fresh fetch. The `--from-cache` path can't fall back to the
+  network by definition, so an open or read failure there emits a
+  structured envelope with the new `cache_corrupted` error code
+  (`status: degraded`, `error.suggestion` points at
+  `cache clear --site`). Exit code stays `2` so existing pipelines
+  keep working; the structured envelope is additive.
+- **`cache_corrupted` joins the `EnvelopeError.code` Literal.** Same
+  closed-set rule as `empty_response`: agents branch on
+  `error.code`, humans read `error.message`. Folded into the v0.3.0
+  bump rather than minting a separate v0.3.1 — v0.3.0 is unreleased
+  on PyPI (still at `0.2.0`), so the cumulative `[Unreleased]` block
+  carries it.
+
+### Known cache-key behavior — `--refresh` is the documented remedy
+
+The cache key hashes `(slug, provider_version)` for **installed**
+providers, not their runtime-env-configured availability. A
+`smart_proxy_http` registry hashes the same whether
+`COMPANYCTX_SMART_PROXY_URL` is set or not — so a cached partial
+created before the env var was exported keeps winning even after
+the proxy becomes available. This is deliberate: keying on env
+shape would invalidate the cache every time a user toggled a shell.
+The consequence is real, though, so document the workaround:
+**run `companyctx fetch <site> --refresh`** when you change provider
+env config and want stale partials evicted. Tracked here so future
+agents don't re-litigate the design.
 
 ### Changed — envelope schema bump (v0.3)
 
