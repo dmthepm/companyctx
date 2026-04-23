@@ -12,6 +12,7 @@ See ``docs/ARCHITECTURE.md`` for the three-attempt waterfall shape.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import time
 from collections.abc import Iterable, Mapping
@@ -19,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from companyctx import __version__
+from companyctx.cache import DEFAULT_TTL_SECONDS, FetchCache
 from companyctx.extract import (
     EMPTY_RESPONSE_ERROR as _EMPTY_RESPONSE_ERROR,
 )
@@ -91,6 +93,10 @@ def run(
     timeout_s: float = DEFAULT_TIMEOUT_S,
     providers: Mapping[str, type[ProviderBase]] | None = None,
     fetched_at: datetime | None = None,
+    cache: FetchCache | None = None,
+    read_cache: bool = True,
+    write_cache: bool = True,
+    cache_ttl_seconds: int = DEFAULT_TTL_SECONDS,
 ) -> Envelope:
     """Run every registered provider for ``site`` and emit one envelope.
 
@@ -98,6 +104,17 @@ def run(
     key, timeout, unhandled exception inside a provider) is captured as a
     ``ProviderRunMetadata`` row and surfaced on the envelope. The caller only
     ever sees a well-formed ``Envelope``.
+
+    Cache behavior (when ``cache`` is provided):
+
+    - ``read_cache=True`` (default): a fresh non-expired envelope for the
+      site short-circuits the run; providers don't execute.
+    - ``write_cache=True`` (default): the freshly produced envelope is
+      persisted at the end of the run, regardless of status — degraded /
+      partial envelopes cache too so a re-run gets the same shape without
+      re-incurring the network cost.
+    - Both flags default to True. The CLI flips them per the
+      ``--refresh`` / ``--no-cache`` / ``--from-cache`` contract.
     """
     ctx = FetchContext(
         user_agent=user_agent,
@@ -133,6 +150,18 @@ def run(
             },
             registry={},
         )
+
+    # Cache read happens BEFORE the required_env filter so the cache key
+    # (computed inside ``cache.get_envelope`` via
+    # ``provider_set_hash(registry)``) is stable across env-config toggles
+    # — the documented cache-key semantics (env-config is NOT part of the
+    # key; ``--refresh`` is the documented remedy after toggling provider
+    # env vars). Keeping both filtered and unfiltered registries hashing
+    # the same set of slugs is what makes that promise hold.
+    if cache is not None and read_cache:
+        cached = _try_cache_read(cache, site=site, registry=registry)
+        if cached is not None:
+            return cached
 
     # Skip primary providers whose declared ``required_env`` is unmet —
     # but ONLY on the discovery path (no explicit ``providers=`` kwarg).
@@ -206,20 +235,74 @@ def run(
         )
         status = _aggregate_status(provenance, registry, recovered_slugs)
         error = _build_envelope_error(status, provenance)
-        return Envelope(
+        envelope = Envelope(
             schema_version=SCHEMA_VERSION,
             status=status,
             data=data,
             provenance=provenance,
             error=error,
         )
+        if cache is not None and write_cache:
+            _try_cache_write(
+                cache,
+                envelope=envelope,
+                registry=registry,
+                ttl_seconds=cache_ttl_seconds,
+            )
+        return envelope
     except Exception as exc:  # noqa: BLE001 - deliberate boundary
         provenance = {slug: meta for slug, _, meta in results}
         provenance[ORCHESTRATOR_PROVIDER_SLUG] = _failed_metadata(
             error=f"orchestrator failed: {exc.__class__.__name__}: {exc}",
             provider_version=CORE_PROVIDER_VERSION,
         )
-        return _fallback_envelope(site=site, when=when, provenance=provenance, registry=registry)
+        envelope = _fallback_envelope(
+            site=site, when=when, provenance=provenance, registry=registry
+        )
+        if cache is not None and write_cache:
+            _try_cache_write(
+                cache,
+                envelope=envelope,
+                registry=registry,
+                ttl_seconds=cache_ttl_seconds,
+            )
+        return envelope
+
+
+def _try_cache_read(
+    cache: FetchCache,
+    *,
+    site: str,
+    registry: Mapping[str, type[ProviderBase]],
+) -> Envelope | None:
+    """Cache read at the orchestrator boundary — never raises.
+
+    A corrupted DB row, a schema-validation failure on cached JSON, or any
+    other read-path crash falls through as a miss. The orchestrator then
+    runs providers normally; the bad row stays in place for ``cache clear``
+    to reap (loud silence beats a fetch crash).
+    """
+    try:
+        return cache.get_envelope(site, registry=registry)
+    except Exception:  # noqa: BLE001 - deliberate boundary
+        return None
+
+
+def _try_cache_write(
+    cache: FetchCache,
+    *,
+    envelope: Envelope,
+    registry: Mapping[str, type[ProviderBase]],
+    ttl_seconds: int,
+) -> None:
+    """Cache write at the orchestrator boundary — never raises.
+
+    A write failure (full disk, locked file, schema regression) must not
+    take a successful fetch down with it. The envelope is the product;
+    persistence is opportunistic.
+    """
+    with contextlib.suppress(Exception):
+        cache.put_envelope(envelope, registry=registry, ttl_seconds=ttl_seconds)
 
 
 def _required_env_satisfied(cls: type[ProviderBase]) -> bool:
