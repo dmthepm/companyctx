@@ -419,12 +419,18 @@ def _build_envelope_error(
     per-provider rows still carry their own raw error strings in
     :attr:`ProviderRunMetadata.error`.
 
-    Selection rule: prefer ``empty_response`` when any row carries it
-    (COX-44 terminal signal — a proxy returning an empty body after an
-    ``blocked_by_antibot`` Attempt 1 means the terminal waterfall outcome
-    is "the site had nothing," not "blocked by antibot"). Otherwise fall
-    back to the first failing row in provenance order, which is the
-    Attempt-1 failure for runs without a smart-proxy.
+    Selection rule:
+
+    1. Prefer ``empty_response`` when any row carries it (COX-44 terminal
+       signal — a proxy returning an empty body after an
+       ``blocked_by_antibot`` Attempt 1 means the terminal waterfall
+       outcome is "the site had nothing," not "blocked by antibot").
+    2. Otherwise prefer a ``failed`` / ``degraded`` row over a
+       ``not_configured`` row (COX-5): an unconfigured Attempt-3
+       direct-API provider must not mask a real Attempt-1 failure when
+       both exist side-by-side in provenance.
+    3. Otherwise fall back to the first failing row in provenance order,
+       which is the Attempt-1 failure for runs without a smart-proxy.
     """
     if status == "ok":
         return None
@@ -433,9 +439,10 @@ def _build_envelope_error(
         for meta in provenance.values()
         if meta.status in ("failed", "not_configured", "degraded") and meta.error
     ]
+    real_failures = [row for row in failures if row[0] != "not_configured"]
     chosen = next(
         (row for row in failures if row[1] == _EMPTY_RESPONSE_ERROR),
-        failures[0] if failures else None,
+        (real_failures[0] if real_failures else (failures[0] if failures else None)),
     )
     failure_status: ProviderStatus | None = chosen[0] if chosen else None
     failure_reason: str | None = chosen[1] if chosen else None
