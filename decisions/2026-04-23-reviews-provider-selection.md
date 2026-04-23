@@ -132,13 +132,33 @@ effective-cost(Google New Enterprise) ≤ 1.5 × effective-cost(cheapest
 alternative).
 
 **Action:** Replace `companyctx/providers/reviews_google_places.py`
-with a New-API implementation (Text Search (New) + Place Details (New)
-with an explicit Enterprise-tier field mask). Same provider slug,
-same envelope shape, updated cost constants. Breaking change is
-internal only — no partner-facing env-var rename; the new provider
-reads the same `GOOGLE_PLACES_API_KEY` env var. CHANGELOG entry
-under v0.5 unreleased documents the Legacy → New migration and the
-unchanged envelope shape.
+with a New-API implementation using **Text Search (New) + Place Details
+(New) with an explicit Enterprise-tier field mask that deliberately
+excludes Atmosphere-tier fields**. The exact field mask is
+`id,displayName,rating,userRatingCount,websiteUri` — nothing else. The
+partner's downstream pipeline consumes rating + count only; requesting
+full `reviews` or `reviewSummary` would trigger the Atmosphere SKU at
+$25/1k instead of $20/1k Enterprise and produce data we do not use. The
+GPT deep-research pass (cross-reference in the research doc) explicitly
+documents this SKU split; Outcome A's action list encodes it as a hard
+constraint, not a nice-to-have:
+
+- Text Search (New) Enterprise: $35/1k, 1k/mo free. At partner
+  3k/mo volume after free cap: $70/mo.
+- Place Details (New) Enterprise: $20/1k, 1k/mo free. At partner
+  3k/mo after free cap: $40/mo.
+- **Combined post-free Google bill at 3k/mo: ~$110/mo**, vs. the
+  $175/mo the issue body estimates for Legacy Pro. Outcome A is the
+  migration path AND a ~37% cost reduction on the Google leg alone,
+  independent of any switch to a different provider.
+
+Same provider slug, same envelope shape, updated cost constants.
+Breaking change is internal only — no partner-facing env-var rename;
+the new provider reads the same `GOOGLE_PLACES_API_KEY` env var. A
+test must lock the field mask against regression — if a future edit
+widens it into the Atmosphere tier, pytest should fail. CHANGELOG
+entry under v0.5 unreleased documents the Legacy → New migration, the
+cost reduction, and the unchanged envelope shape.
 
 #### Outcome B — Switch default to Yelp Fusion Plus
 

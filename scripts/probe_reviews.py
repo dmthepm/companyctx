@@ -69,7 +69,11 @@ ProviderId = Literal[
 # These come from the desktop survey and are replaced by measured
 # ``cost_incurred_cents`` in the JSONL rows the harness emits.
 ESTIMATED_CENTS_PER_CALL: dict[str, int] = {
-    "google_places_new_enterprise": 4,  # Text Search + Details (Enterprise field mask)
+    # Text Search Enterprise $35/1k = 3.5c + Place Details Enterprise (rating,
+    # userRatingCount, websiteUri — no Atmosphere) $20/1k = 2c = 5.5c/site.
+    # 1k/mo free on each SKU, so the first 1k cells per SKU are $0. Round to
+    # 6 for probe-budget safety margin.
+    "google_places_new_enterprise": 6,
     "apify_compass_crawler": 5,  # ~$2.10/1k nominal + residential proxy
     "websearch_llm_parse": 2,  # ~1.5c WebSearch + agent tokens
     "dataforseo_reviews": 1,  # Claimed ~$0.00075/10 reviews — round up to 1c for safety
@@ -154,11 +158,22 @@ def _row(
 
 class GooglePlacesNewEnterpriseAdapter:
     """Slice B — real implementation wires Places API (New) Text Search +
-    Place Details with an Enterprise-tier field mask.
+    Place Details with an Enterprise-tier field mask that **explicitly
+    excludes Atmosphere-tier fields**.
 
-    Field mask must include ``rating`` and ``userRatingCount`` to trigger
-    the Enterprise SKU (that's the point of the probe — we're paying for
-    those exact fields).
+    Exact field mask for Place Details (New):
+    ``id,displayName,rating,userRatingCount,websiteUri``.
+
+    Requesting ``reviews`` or ``reviewSummary`` would escalate to the
+    Atmosphere SKU at $25/1k instead of Enterprise at $20/1k. The
+    partner's downstream consumes rating + count only; we pay
+    Enterprise, not Atmosphere.
+
+    Expected billed cost per successful cell: Text Search Enterprise
+    $0.035 + Place Details Enterprise $0.020 = $0.055 (5.5c). First 1k
+    cells/mo per SKU are free. The adapter must record the actual
+    billed cost from response headers / billing console, not the
+    estimate.
     """
 
     provider_id = "google_places_new_enterprise"
@@ -167,10 +182,10 @@ class GooglePlacesNewEnterpriseAdapter:
         self.api_key = api_key
 
     def fetch(self, slug: str, host: str, query_name: str) -> ProbeRow:
-        # Slice-B TODO: Text Search (New) -> Place Details (New) with
-        # field_mask="id,displayName,rating,userRatingCount,websiteUri".
-        # Enforce billing-safety: fail fast if the API key is missing or
-        # the field mask is ever altered to something outside Enterprise.
+        # Slice-B TODO: Text Search (New) -> Place Details (New).
+        # Lock field mask to ``id,displayName,rating,userRatingCount,websiteUri``.
+        # Fail-fast if a future edit tries to add ``reviews`` or
+        # ``reviewSummary`` (that would silently move billing to Atmosphere).
         raise NotImplementedError(
             "Slice B implementation pending key provisioning — see "
             "decisions/2026-04-23-reviews-provider-selection.md"

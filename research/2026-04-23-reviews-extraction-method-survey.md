@@ -84,7 +84,7 @@ signals; probe numbers replace them in Slice B.
 | 1 | **Google Places Legacy** (current) | First-party API | ~5.4¢ (Text Search 3.2¢ + Details Atmosphere 2.2¢) | Yes | Clean (first-party) | **Legacy** — cannot be enabled for new projects since 2025-03-01 | Probe as current baseline, but **migration-required regardless** |
 | 2 | **Google Places API (New) Essentials** | First-party API | ~$2/1k (0.2¢) | **No** — `rating`/`userRatingCount` are in Enterprise tier, not Essentials | Clean | Active | **Eliminated pre-probe** — missing required fields |
 | 3 | **Google Places API (New) Pro** | First-party API | ~$17/1k (1.7¢) — field mask | Partial — `displayName`, `primaryType`; **not** `rating` | Clean | Active | **Eliminated pre-probe** — missing required fields |
-| 4 | **Google Places API (New) Enterprise** | First-party API | ~$25/1k (2.5¢) + Text Search separate | **Yes** — `rating`, `userRatingCount`, `websiteUri`, hours | Clean | Active | **Finalist — probe slot #1** |
+| 4 | **Google Places API (New) Enterprise** (rating/count/website field mask) | First-party API | **Text Search Enterprise $35/1k + Place Details Enterprise $20/1k = $55/1k = 5.5¢/site**; 1k/mo free on each SKU (per GPT deep-research pass). At partner 3k/mo: ~$110/mo after free caps. | **Yes** — `rating`, `userRatingCount`, `websiteUri`, phone (Enterprise tier only; **do NOT request `reviews` or `reviewSummary` — those trigger the pricier Atmosphere tier at $25/1k**) | Clean | Active | **Finalist — probe slot #1** |
 | 5 | **Apify `compass/crawler-google-places`** (and peers) | Scraper actor | ~$2.10/1k nominal; +2-4¢ residential proxy after Feb-2026 lockdown | Yes (`reviewsCount`, `totalScore`) | Gray (Google ToS redistribution risk) | Active, multi-maintainer; breakage wave in Feb-2026 | **Finalist — probe slot #3** |
 | 6 | **Apify Yelp actors** (`tri_angle/yelp-scraper` etc.) | Scraper actor | ~$1/1k biz + $1 start (91.3% success) | Yes | Gray (Yelp ToS prohibits scraping) | Active, variable success | Evaluated; not finalist (duplicates Yelp Fusion's signal at worse ToS) |
 | 7 | **Outscraper Google Maps API** | Scraper-wrapper API | ~$1–3/1k | Yes | Gray (inherits scraper ToS + redistribution issue) | Aggregator, opaque source-chain | **Eliminated pre-probe** — wraps the same scraped data as Apify without adding ToS protection or control |
@@ -395,19 +395,21 @@ double-counts the signal.
 
 ## Cross-reference: external LLM research passes
 
-Devon ran the same COX-64 prompt through two external LLMs in parallel
-with this Claude pass: **Grok** (two passes, Pass 2 supersedes Pass 1)
-and **Gemini** (single long-form pass with Works Cited). All three
+Devon ran the same COX-64 prompt through three external LLMs in
+parallel with this Claude pass: **Grok** (two passes, Pass 2 supersedes
+Pass 1), **Gemini** (single long-form pass with Works Cited), and
+**GPT** (deep-research mode, citation-dense, scoped more broadly than
+COX-64 and overlapping COX-63 value-prop-audit territory). All four
 external drafts are preserved verbatim in the private research archive
 outside this repo. This section reconciles them against the decisions
 above. Keeping this reconciliation in the research doc rather than in a
-scratch note is deliberate: three LLMs landed on meaningfully different
+scratch note is deliberate: four LLMs landed on meaningfully different
 recommendations for the same prompt, and the diff is itself evidence
 about the reliability of single-pass LLM research — directly relevant
 to the kind of confidence the downstream partner should place in any
 one of them.
 
-### Convergences (all three external lines agree with this doc)
+### Convergences (external lines agree with this doc)
 
 - **The cost delta is real.** Grok puts it at ~10–20× between
   first-party (Google Enterprise) and scraper-family (Apify /
@@ -521,6 +523,84 @@ one of them.
    passes as the ADR directly would have meant shipping a recommendation
    backed by a table of invented numbers.
 
+### GPT deep-research pass — scope-mismatch + load-bearing pricing detail + anti-Outcome-E argument
+
+GPT's pass is different in character from the other three. The
+document frames itself as a *v0.4 honesty audit* — the COX-63 question
+("is companyctx worth it vs. direct HTML reading?") — rather than the
+COX-64 question specifically. Most of the doc compares
+`companyctx + synthesis` at ~6.5¢/site against direct-HTML-read-with-Haiku
+at ~0.34¢/site and argues the product is "several times more expensive
+than just letting a model read HTML" on the extraction-cost axis.
+That argument lives in COX-63's scope and is being picked up there
+(see the parallel audit ticket).
+
+The COX-64-specific material inside the pass is, however, the sharpest
+of the four external contributions on two axes:
+
+1. **Authoritative Google Places (New) SKU pricing, citation-backed.**
+   GPT's numbers directly cite Google's public SKU pricing page —
+   precise enough to replace my prior hand-wavy estimates:
+
+   | SKU | Price per 1k | Free monthly cap |
+   |---|---|---|
+   | Text Search Enterprise | **$35** | **1,000** |
+   | Place Details Enterprise (rating, userRatingCount, websiteUri, phone) | **$20** | **1,000** |
+   | Place Details Enterprise + Atmosphere (full reviews, reviewSummary) | **$25** | **1,000** |
+
+   The `rating + userRatingCount` fields we consume stay on **Enterprise
+   only** — there is no need to pay the Atmosphere tier unless we also
+   want review text or AI review summaries (which the partner does not
+   consume downstream). This is a concrete field-mask discipline that
+   locks our effective Google cost at ~5.5¢/site before free caps, NOT
+   ~7-8¢/site that an Atmosphere-inclusive call would produce.
+
+   Captured in the candidate matrix above (row 4, updated this pass) and
+   in the ADR's Outcome A (action item: explicit field mask excluding
+   `reviews`/`reviewSummary`). Captured in `scripts/probe_reviews.py`'s
+   `ESTIMATED_CENTS_PER_CALL["google_places_new_enterprise"]` setting of
+   6 cents (Text Search + Details Enterprise + rounding margin).
+
+2. **Direct vote against Outcome E (remove the reviews provider).**
+   GPT explicitly frames Google-backed review + rating signals as
+   *"the closest thing I found to an irreplaceable signal in the
+   current value stack"* and ranks them "High" partner-utility in a
+   table where homepage/about/services extraction is "Low to medium"
+   and deterministic JSON is "Medium to low."
+
+   This is the most direct external push-back this doc has received
+   against the Outcome-E branch (remove `reviews_google_places`
+   entirely and document the agentic pattern). It is worth engaging
+   with seriously rather than dismissing as scope-drift, because if
+   GPT's framing is right, removing the reviews provider collapses the
+   one capability the product has that is not a commodity.
+
+   **The tension this doc holds:**
+
+   - GPT's "irreplaceable signal" claim is an *a priori* argument — it
+     assumes Google Places is the only way to get rating + count
+     reliably. Outcome E's precondition is that **WebSearch + LLM
+     parsing hits the same signal at 85%+ coverage with JSON-format
+     10/10 compliance**, meaning the signal stops being irreplaceable.
+     The two framings are not in conflict — they are bets on different
+     empirical questions.
+   - GPT's argument dominates if the probe shows WebSearch+parse below
+     the Outcome-E thresholds. GPT's argument fails if the probe shows
+     WebSearch+parse above them.
+   - The pre-registered decision rule already encodes this: Outcome E
+     triggers only on specific empirical thresholds, and Outcome A
+     (migrate-in-place to Google New Enterprise) is the fallback if
+     those thresholds don't clear. **GPT's pass is essentially an
+     argument that the probe will not clear those thresholds and
+     Outcome A will win.** That's a prediction about probe results,
+     not a disagreement with the decision rule.
+
+   The ADR's Outcome A is tightened this pass to name the exact
+   field-mask discipline GPT's analysis implies: request `id`,
+   `displayName`, `rating`, `userRatingCount`, `websiteUri` — nothing
+   else. That keeps Outcome A at 5.5¢/site, not the ~7.5¢/site a
+   naive Atmosphere-inclusive call would produce.
+
 ### Additions taken from the external passes
 
 - **Foursquare Places API** added to the matrix above as an evaluated
@@ -599,6 +679,6 @@ on top of whichever provider ships.
 - Issue: [#116](https://github.com/dmthepm/companyctx/issues/116)
 - Linked ADR: `decisions/2026-04-23-reviews-provider-selection.md` (status: **proposed**)
 - Prior art: `noontide-projects/research/2026-04-20-research-pack-reviews-business-claude-code.md` (private)
-- External LLM parallel passes: Grok (passes 1 + 2) and Gemini (single long-form pass), all preserved verbatim in the private research archive outside this repo. Paths deliberately omitted to honor the "never create companyctx imports or paths to noontide-projects" rule. Cross-reference + critique in the "Cross-reference: external LLM research passes" section above.
+- External LLM parallel passes: Grok (passes 1 + 2), Gemini (single long-form pass with Works Cited), and GPT (deep-research mode, overlap with COX-63 scope), all preserved verbatim in the private research archive outside this repo. Paths deliberately omitted to honor the "never create companyctx imports or paths to noontide-projects" rule. Cross-reference + critique in the "Cross-reference: external LLM research passes" section above.
 - Partner posture: `new-signal-studio/logs/d100-run-*.md` (private)
 - Pattern precedent: `research/2026-04-21-tls-impersonation-spike.md`
