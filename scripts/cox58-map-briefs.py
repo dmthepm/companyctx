@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import re
 from pathlib import Path
 from urllib.parse import urlparse
@@ -84,14 +85,23 @@ def intersect_sample(sample_csv: Path, brief_map: dict[str, str]) -> list[dict[s
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    # Same portability rule as cox58-build-sample.py — no committed hard
+    # path to the private partner repo. Require --outputs-dir or env var.
     ap.add_argument(
         "--outputs-dir",
-        default="/Users/devonmeadows/Documents/GitHub/new-signal-studio/outputs",
+        default=os.environ.get("COX58_PARTNER_OUTPUTS_DIR"),
+        help="Dir with <date>-dream100-<name>/research-brief.md trees. "
+        "Defaults to $COX58_PARTNER_OUTPUTS_DIR.",
     )
     ap.add_argument("--sample", default=".context/cox-58/sample.csv")
     ap.add_argument("--out-map", default=".context/cox-58/brief-map.json")
     ap.add_argument("--out-intersect", default=".context/cox-58/sample-with-briefs.csv")
     args = ap.parse_args()
+    if not args.outputs_dir:
+        ap.error(
+            "--outputs-dir is required (or set COX58_PARTNER_OUTPUTS_DIR). "
+            "Point it at your new-signal-studio/outputs directory."
+        )
     hmap = build_map(Path(args.outputs_dir), Path(args.out_map))
     print(f"indexed {len(hmap)} briefs -> {args.out_map}")
     if Path(args.sample).exists():

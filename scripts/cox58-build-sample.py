@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import random
 import re
 from pathlib import Path
@@ -233,10 +234,15 @@ def build(trackers_dir: Path, out_path: Path, seed: int = 42) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    # --trackers-dir must be provided either via the flag or the
+    # COX58_PARTNER_OUTPUTS_DIR env var. No hardcoded default so the script
+    # stays portable (this repo is public; the partner repo is not, and the
+    # path is contributor-specific).
     ap.add_argument(
         "--trackers-dir",
-        default="/Users/devonmeadows/Documents/GitHub/new-signal-studio/outputs",
-        help="Dir containing dream100-<niche>-tracker.md files",
+        default=os.environ.get("COX58_PARTNER_OUTPUTS_DIR"),
+        help="Dir containing dream100-<niche>-tracker.md files. "
+        "Defaults to $COX58_PARTNER_OUTPUTS_DIR.",
     )
     ap.add_argument(
         "--out",
@@ -245,6 +251,11 @@ def main() -> None:
     )
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
+    if not args.trackers_dir:
+        ap.error(
+            "--trackers-dir is required (or set COX58_PARTNER_OUTPUTS_DIR). "
+            "Point it at your new-signal-studio/outputs directory."
+        )
     build(Path(args.trackers_dir), Path(args.out), seed=args.seed)
 
 
