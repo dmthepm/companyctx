@@ -431,7 +431,12 @@ def _scrub_fetched_at(raw: bytes) -> bytes:
     return FETCHED_AT_RE.sub(b'"fetched_at": "<scrubbed>"', raw)
 
 
-def test_cli_fetch_emits_schema_valid_envelope() -> None:
+def test_cli_fetch_emits_schema_valid_envelope(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Exporting a key flips the reviews_google_places provider from
+    # ``not_configured`` → ``ok`` for the acme-bakery fixture (its
+    # ``google_places.json`` supplies deterministic count+rating), which
+    # is the shape users see once they've wired an API key.
+    monkeypatch.setenv("GOOGLE_PLACES_API_KEY", "test-key")
     runner = CliRunner()
     result = runner.invoke(
         app,
@@ -451,6 +456,8 @@ def test_cli_fetch_emits_schema_valid_envelope() -> None:
     assert env.status == "ok"
     assert env.data.pages is not None
     assert env.data.pages.homepage_text
+    assert env.data.reviews is not None
+    assert env.data.reviews.source == "reviews_google_places"
 
 
 def test_cli_fetch_partial_exits_zero(monkeypatch: pytest.MonkeyPatch) -> None:
