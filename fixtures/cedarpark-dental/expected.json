@@ -20,8 +20,19 @@
     "site": "cedarpark-dental.example",
     "social": null
   },
-  "error": null,
+  "error": {
+    "code": "misconfigured_provider",
+    "message": "missing env var: GOOGLE_PLACES_API_KEY \u2014 export GOOGLE_PLACES_API_KEY=<your-key> (see https://developers.google.com/maps/documentation/places/web-service/get-api-key)",
+    "suggestion": "configure a smart-proxy provider key or skip this prospect"
+  },
   "provenance": {
+    "reviews_google_places": {
+      "cost_incurred": 0,
+      "error": "missing env var: GOOGLE_PLACES_API_KEY \u2014 export GOOGLE_PLACES_API_KEY=<your-key> (see https://developers.google.com/maps/documentation/places/web-service/get-api-key)",
+      "latency_ms": 0,
+      "provider_version": "0.1.0",
+      "status": "not_configured"
+    },
     "site_text_trafilatura": {
       "cost_incurred": 0,
       "error": null,
@@ -31,5 +42,5 @@
     }
   },
   "schema_version": "0.3.0",
-  "status": "ok"
+  "status": "partial"
 }
