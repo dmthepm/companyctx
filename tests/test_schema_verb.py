@@ -51,6 +51,12 @@ def test_schema_verb_emits_draft_2020_12_json_schema() -> None:
     props = payload.get("properties", {})
     for field in ("schema_version", "status", "data", "provenance", "error"):
         assert field in props, field
+    # COX-47: schema_version MUST be in the ``required`` array. A missing
+    # ``required`` entry lets a v0.1 envelope (no ``schema_version``) pass as
+    # v0.2 — the honesty bug this issue fixes at the Pydantic layer must also
+    # show up in the externally-published JSON Schema.
+    required = payload.get("required", [])
+    assert "schema_version" in required, required
 
 
 def test_schema_verb_validates_regression_fixture_envelope() -> None:

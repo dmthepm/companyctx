@@ -28,6 +28,7 @@ from companyctx.extract import (
 from companyctx.providers import discover
 from companyctx.providers.base import FetchContext, ProviderBase
 from companyctx.schema import (
+    SCHEMA_VERSION,
     CompanyContext,
     Envelope,
     EnvelopeError,
@@ -181,6 +182,7 @@ def run(
         status = _aggregate_status(provenance, registry, recovered_slugs)
         error = _build_envelope_error(status, provenance)
         return Envelope(
+            schema_version=SCHEMA_VERSION,
             status=status,
             data=data,
             provenance=provenance,
@@ -567,6 +569,7 @@ def _fallback_envelope(
             suggestion=_suggestion_for("no_provider_succeeded"),
         )
     return Envelope(
+        schema_version=SCHEMA_VERSION,
         status=status,
         data=CompanyContext(site=site, fetched_at=when),
         provenance=dict(provenance),

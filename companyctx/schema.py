@@ -156,7 +156,7 @@ class Envelope(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["0.3.0"] = "0.3.0"
+    schema_version: Literal["0.3.0"]
     status: EnvelopeStatus
     data: CompanyContext
     provenance: dict[str, ProviderRunMetadata] = Field(default_factory=dict)

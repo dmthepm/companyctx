@@ -24,12 +24,16 @@ Every `companyctx fetch` invocation returns one wrapper around the payload:
 
 ```python
 class Envelope(BaseModel):
-    schema_version: Literal["0.3.0"] = "0.3.0"
+    schema_version: Literal["0.3.0"]    # required — no default
     status: Literal["ok", "partial", "degraded"]
     data: CompanyContext
     provenance: dict[str, ProviderRunMetadata]
     error: EnvelopeError | None = None
 ```
+
+`schema_version` is **required**. A missing, `null`, or empty-string
+value fails validation — a default would let pre-v0.2 envelopes silently
+validate as current. See `docs/SPEC.md` for the full rationale.
 
 Status semantics:
 

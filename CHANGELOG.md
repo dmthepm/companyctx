@@ -13,6 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code to the closed `EnvelopeError.code` Literal is a minor schema
   bump. v0.2.0 envelopes still validate under the old Literal but the
   orchestrator now emits `"0.3.0"` on every run.
+- **`Envelope.schema_version` is now required; the literal default has
+  been removed.** A missing, `null`, or empty-string `schema_version` now
+  fails `Envelope.model_validate_json` with a `ValidationError`, and every
+  `Envelope(...)` constructor site must pass `schema_version="0.3.0"`
+  explicitly. The prior default silently let pre-v0.2 envelopes (no
+  `schema_version`, bare-string `error`) validate as current, defeating
+  the whole point of a shape discriminator — agents saw the literal
+  stamped on a stale envelope and made wrong assumptions about
+  version-gated fields. The published JSON Schema (`companyctx schema`)
+  now lists `schema_version` in the `required` array. Lands with the v0.3
+  minor bump; downstream call sites that build envelopes programmatically
+  must pass the kwarg. Closes COX-47 / #84.
 - **New `empty_response` error code (COX-44 / #79).** Both waterfall
   attempts now gate on extracted-text UTF-8 byte length against
   `EMPTY_RESPONSE_BYTES = 64`. Zero-key `site_text_trafilatura`

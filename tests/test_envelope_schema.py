@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 
 import pytest
@@ -28,6 +29,7 @@ def _fixed_dt() -> datetime:
 
 def test_envelope_round_trips_through_json() -> None:
     env = Envelope(
+        schema_version="0.3.0",
         status="ok",
         data=CompanyContext(
             site="example.com",
@@ -69,6 +71,7 @@ def test_envelope_round_trips_through_json() -> None:
         (
             Envelope,
             {
+                "schema_version": "0.3.0",
                 "status": "ok",
                 "data": {"site": "x", "fetched_at": _fixed_dt().isoformat()},
                 "provenance": {},
@@ -129,12 +132,14 @@ def test_provider_run_metadata_is_frozen() -> None:
     [
         # status=partial but no structured error.
         {
+            "schema_version": "0.3.0",
             "status": "partial",
             "data": {"site": "x", "fetched_at": _fixed_dt().isoformat()},
             "provenance": {},
         },
         # status=degraded with a bare string in `error` (pre-v0.2 shape).
         {
+            "schema_version": "0.3.0",
             "status": "degraded",
             "data": {"site": "x", "fetched_at": _fixed_dt().isoformat()},
             "provenance": {},
@@ -142,6 +147,7 @@ def test_provider_run_metadata_is_frozen() -> None:
         },
         # status=ok must not carry an error.
         {
+            "schema_version": "0.3.0",
             "status": "ok",
             "data": {"site": "x", "fetched_at": _fixed_dt().isoformat()},
             "provenance": {},
@@ -159,13 +165,70 @@ def test_envelope_rejects_inconsistent_status_and_error(
         Envelope.model_validate(payload)
 
 
-def test_envelope_schema_version_defaults_to_03() -> None:
+def test_envelope_schema_version_set_explicitly() -> None:
     env = Envelope(
+        schema_version="0.3.0",
         status="ok",
         data=CompanyContext(site="x", fetched_at=_fixed_dt()),
         provenance={},
     )
     assert env.schema_version == "0.3.0"
+
+
+def test_envelope_requires_schema_version_keyword() -> None:
+    # COX-47: schema_version has no default. Omitting it at construction time
+    # must raise — silent "upgrade" of a v0.1-shaped envelope is the bug.
+    with pytest.raises(ValidationError) as excinfo:
+        Envelope(  # type: ignore[call-arg]
+            status="ok",
+            data=CompanyContext(site="x", fetched_at=_fixed_dt()),
+            provenance={},
+        )
+    assert "schema_version" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        # Field completely absent from the JSON payload (v0.1-shaped).
+        lambda body: body,
+        # Field present but explicit JSON null.
+        lambda body: {**body, "schema_version": None},
+        # Field present but empty string — fails the Literal["0.3.0"] check.
+        lambda body: {**body, "schema_version": ""},
+    ],
+    ids=["missing_field", "null_value", "empty_string"],
+)
+def test_envelope_rejects_missing_or_empty_schema_version(
+    mutate: object,
+) -> None:
+    # COX-47: the Literal rejected wrong values already; the default used to
+    # accept missing ones. All three variants must now fail at parse time.
+    body = {
+        "status": "ok",
+        "data": {"site": "x", "fetched_at": _fixed_dt().isoformat()},
+        "provenance": {},
+    }
+    payload = json.dumps(mutate(body))  # type: ignore[operator]
+    with pytest.raises(ValidationError) as excinfo:
+        Envelope.model_validate_json(payload)
+    assert "schema_version" in str(excinfo.value)
+
+
+def test_envelope_rejects_v0_1_shaped_payload() -> None:
+    # COX-47: A pre-v0.2 envelope (no schema_version, error as a bare string
+    # instead of a structured EnvelopeError) must not silently validate. The
+    # missing schema_version is the first tripwire; the bare-string error is
+    # rejected too under extra="forbid" / type mismatch.
+    v0_1_payload = {
+        "status": "degraded",
+        "data": {"site": "x", "fetched_at": _fixed_dt().isoformat()},
+        "provenance": {},
+        "error": "no providers succeeded",
+        "suggestion": "configure a smart-proxy provider key",
+    }
+    with pytest.raises(ValidationError):
+        Envelope.model_validate(v0_1_payload)
 
 
 def test_envelope_error_requires_a_valid_code() -> None:
@@ -180,6 +243,7 @@ def test_envelope_error_rejects_unknown_fields() -> None:
 
 def test_envelope_error_round_trips() -> None:
     env = Envelope(
+        schema_version="0.3.0",
         status="partial",
         data=CompanyContext(site="x", fetched_at=_fixed_dt()),
         provenance={},
