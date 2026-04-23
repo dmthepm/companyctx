@@ -76,8 +76,11 @@ class EnvelopeError(BaseModel):
 
 Agents should branch on `error.code`; humans read `error.message`.
 `suggestion` is *actionable*: `"configure a smart-proxy provider key"`,
-`"skip this prospect"`. Additional codes are added in minor releases and bump
-`schema_version`; removing or renaming a code is a major bump.
+`"skip this prospect"`. Any closed-set change — adding, renaming, or
+removing a code — bumps `schema_version`. In the pre-1.0 (0.x) series
+all three land as a MINOR bump; rename and removal are called out as
+BREAKING in the CHANGELOG so downstream consumers see the break
+explicitly. Post-1.0, renames and removals will require a MAJOR bump.
 
 ### Example — `ok`
 

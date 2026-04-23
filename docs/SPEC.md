@@ -172,14 +172,19 @@ source of truth — every call site must pass `schema_version="0.4.0"`
 explicitly. Published JSON Schema (`companyctx schema`) lists
 `schema_version` in the `required` array.
 
-Adding an optional envelope field is a PATCH (no `schema_version` bump);
-adding or renaming an `EnvelopeError.code` is a MINOR bump; changing or
-removing an existing field is a MAJOR bump. v0.3.0 added the
-`empty_response` and `cache_corrupted` codes to the closed set. v0.4.0
-renames `path_traversal_rejected` → `fixture_path_traversal_rejected` to
-match the validator's actual scope — renaming is treated as a MINOR bump
-in the pre-1.0 series. v0.1 envelopes lack the `schema_version` field
-and fail validation under `extra="forbid"` plus the required-field check.
+Adding an optional envelope field is a PATCH (no `schema_version`
+bump). Any change to the closed `EnvelopeError.code` Literal — adding,
+renaming, or removing — bumps `schema_version`. In the pre-1.0 (0.x)
+series all three land as a MINOR bump; rename and removal are called
+out as BREAKING in the CHANGELOG so downstream consumers see the break
+explicitly. Post-1.0, renames and removals will require a MAJOR bump.
+Changing or removing a non-Literal envelope field is always a MAJOR
+bump. v0.3.0 added the `empty_response` and `cache_corrupted` codes to
+the closed set. v0.4.0 renames `path_traversal_rejected` →
+`fixture_path_traversal_rejected` to match the validator's actual
+scope (BREAKING, MINOR bump per the pre-1.0 rule above). v0.1
+envelopes lack the `schema_version` field and fail validation under
+`extra="forbid"` plus the required-field check.
 
 ### `providers list` output shape
 
