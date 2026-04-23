@@ -81,6 +81,13 @@ EMPTY_RESPONSE_SUGGESTION = (
     "site returned HTTP 200 with effectively no content; "
     "try --ignore-robots or check with a browser"
 )
+# DNS-failure remediation: pointing the user at a smart-proxy is misleading
+# when the hostname simply does not exist — no proxy will resolve NXDOMAIN
+# back into a valid A-record. Keep the suggestion scoped to the actual
+# remediation: check the name, try again later if transient.
+DNS_RESOLVE_FAILURE_SUGGESTION = (
+    "hostname did not resolve in DNS; verify the site spelling (or retry later if transient)"
+)
 
 
 def run(
@@ -573,7 +580,7 @@ def _build_envelope_error(
     return EnvelopeError(
         code=code,
         message=message,
-        suggestion=_suggestion_for(code, failure_status=failure_status),
+        suggestion=_suggestion_for(code, failure_status=failure_status, message=message),
     )
 
 
@@ -581,6 +588,7 @@ def _suggestion_for(
     code: EnvelopeErrorCode,
     *,
     failure_status: ProviderStatus | None = None,
+    message: str | None = None,
 ) -> str:
     """Per-code actionable suggestion.
 
@@ -589,13 +597,21 @@ def _suggestion_for(
     nothing. ``misconfigured_provider`` routes to a provider-agnostic
     hint ("configure the missing provider's env key") since the actual
     env-var name already lives in ``error.message`` (the provider's own
-    error string is preserved verbatim). Everything else falls back to
-    the smart-proxy suggestion that applies to Attempt-1 blocks.
+    error string is preserved verbatim). DNS failure (COX-49) gets its
+    own line too — a smart-proxy cannot resolve an NXDOMAIN on the user's
+    behalf. Everything else falls back to the smart-proxy suggestion that
+    applies to Attempt-1 blocks.
     """
     if code == "empty_response":
         return EMPTY_RESPONSE_SUGGESTION
     if code == "misconfigured_provider" or failure_status == "not_configured":
         return GENERIC_SUGGESTION
+    if (
+        code == "no_provider_succeeded"
+        and message is not None
+        and "dns_resolve_failure" in message.lower()
+    ):
+        return DNS_RESOLVE_FAILURE_SUGGESTION
     return SMART_PROXY_SUGGESTION
 
 
