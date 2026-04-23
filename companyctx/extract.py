@@ -116,6 +116,7 @@ def detect_tech_stack(html: str) -> list[str]:
         content = generator_meta.get("content")
         if isinstance(content, str):
             generator = content.lower()
+    generator_tokens = set(re.findall(r"[a-z0-9.]+", generator))
 
     # Load-bearing resource URLs only. ``<script src>`` is always a load;
     # ``<link>`` is only a load when ``rel`` names one of the fetch-type
@@ -179,6 +180,12 @@ def detect_tech_stack(html: str) -> list[str]:
     def _in_assets(needle: str) -> bool:
         return any(needle in url for url in asset_urls)
 
+    def _generator_has_token(token: str) -> bool:
+        return token in generator_tokens
+
+    def _generator_has_all_tokens(*tokens: str) -> bool:
+        return all(token in generator_tokens for token in tokens)
+
     def _class_token_matches(*prefixes: str) -> bool:
         """Match full class token exactly, or as a hyphen-delimited prefix.
 
@@ -196,36 +203,44 @@ def detect_tech_stack(html: str) -> list[str]:
     def _has_attr(name: str) -> bool:
         return name in html_attr_names or name in body_attr_names
 
-    if "wordpress" in generator or _in_assets("/wp-content/") or _in_assets("/wp-includes/"):
+    if (
+        _generator_has_token("wordpress")
+        or _in_assets("/wp-content/")
+        or _in_assets("/wp-includes/")
+    ):
         hits.append("WordPress")
 
     if (
-        "elementor" in generator
+        _generator_has_token("elementor")
         or _class_token_matches("elementor", "wp-elementor")
         or _in_assets("/plugins/elementor/")
     ):
         hits.append("Elementor")
 
-    if "shopify" in generator or _in_assets("cdn.shopify.com") or _in_assets(".myshopify.com"):
+    if (
+        _generator_has_token("shopify")
+        or _in_assets("cdn.shopify.com")
+        or _in_assets(".myshopify.com")
+    ):
         hits.append("Shopify")
 
     if (
-        "squarespace" in generator
+        _generator_has_token("squarespace")
         or _in_assets(".squarespace.com")
         or _class_token_matches("sqs-site")
     ):
         hits.append("Squarespace")
 
     if (
-        "wix.com" in generator
-        or "wix website" in generator
+        _generator_has_token("wix.com")
+        or _generator_has_all_tokens("wix", "website")
         or _in_assets("wixstatic.com")
         or _class_token_matches("wix-site")
     ):
         hits.append("Wix")
 
     if (
-        "webflow" in generator
+        _generator_has_token("webflow")
         or _has_attr("data-wf-site")
         or _has_attr("data-wf-page")
         or _in_assets(".webflow.com")

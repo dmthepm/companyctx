@@ -486,7 +486,7 @@ def test_envelope_comparison_zero_key_only_vs_with_places(
         mock=True,
         fixtures_dir=FIXTURES_DIR,
         providers=cast(
-            "dict[str, type[ProviderBase]]", {"site_text_trafilatura": TrafilaturaProvider}
+            dict[str, type[ProviderBase]], {"site_text_trafilatura": TrafilaturaProvider}
         ),
         fetched_at=FIXED_WHEN,
     )
@@ -499,7 +499,7 @@ def test_envelope_comparison_zero_key_only_vs_with_places(
         mock=True,
         fixtures_dir=FIXTURES_DIR,
         providers=cast(
-            "dict[str, type[ProviderBase]]",
+            dict[str, type[ProviderBase]],
             {
                 "site_text_trafilatura": TrafilaturaProvider,
                 "reviews_google_places": Provider,
@@ -530,7 +530,7 @@ def test_explicit_providers_dict_preserves_not_configured_row(
         mock=True,
         fixtures_dir=FIXTURES_DIR,
         providers=cast(
-            "dict[str, type[ProviderBase]]",
+            dict[str, type[ProviderBase]],
             {
                 "site_text_trafilatura": TrafilaturaProvider,
                 "reviews_google_places": Provider,
