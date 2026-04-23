@@ -142,5 +142,29 @@ def test_dns_resolve_failure_routes_to_no_provider_succeeded() -> None:
     )
 
 
+def test_dns_resolve_failure_gets_dns_specific_suggestion() -> None:
+    """DNS failure routes to a DNS-specific suggestion, not the smart-proxy one.
+
+    Regression for COX-49 review feedback: ``no_provider_succeeded`` falls
+    back to ``SMART_PROXY_SUGGESTION`` by default, but a smart-proxy cannot
+    resolve NXDOMAIN. The classifier's message-aware suggestion dispatch
+    must surface the DNS-specific remediation instead.
+    """
+    provider = _make_failing_provider(
+        slug="errorprobe",
+        error="dns_resolve_failure: DNS resolution failed for nope.example",
+    )
+    env = core.run(
+        "probe.example",
+        mock=True,
+        providers=_reg(errorprobe=provider),
+        fetched_at=FIXED_WHEN,
+    )
+    assert env.error is not None
+    assert env.error.code == "no_provider_succeeded"
+    assert env.error.suggestion == core.DNS_RESOLVE_FAILURE_SUGGESTION
+    assert env.error.suggestion != core.SMART_PROXY_SUGGESTION
+
+
 def test_empty_response_code_from_provider_error_string() -> None:
     assert _run_with_error("empty_response") == "empty_response"

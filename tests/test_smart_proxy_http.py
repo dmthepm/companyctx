@@ -744,6 +744,38 @@ def test_smart_proxy_rejects_non_http_scheme(monkeypatch: pytest.MonkeyPatch) ->
     assert "unsafe_url" in meta.error
 
 
+def test_smart_proxy_emits_dns_resolve_failure_prefix_on_nxdomain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """NXDOMAIN pre-flight → ``dns_resolve_failure:`` row, proxy never contacted (COX-49).
+
+    Parity with ``site_text_trafilatura``: the smart-proxy wrapper must
+    catch :class:`DNSResolutionError` before the generic
+    :class:`UnsafeURLError` path so downstream envelope classification
+    routes the failure to ``no_provider_succeeded`` instead of
+    ``ssrf_rejected``.
+    """
+    monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
+
+    def _fake_getaddrinfo(host: str, *args: object, **kwargs: object) -> list[object]:
+        raise OSError("[Errno 8] nodename nor servname provided, or not known")
+
+    def _boom(*args: object, **kwargs: object) -> _FakeResponse:
+        raise AssertionError("proxy must not fire for unresolvable host")
+
+    monkeypatch.setattr("companyctx.security.socket.getaddrinfo", _fake_getaddrinfo)
+    monkeypatch.setattr("companyctx.providers.smart_proxy_http.requests.get", _boom)
+
+    body, meta = SmartProxyHttpProvider().fetch(
+        "http://this-does-not-exist-abc123xyz.example/", ctx=_ctx()
+    )
+    assert body is None
+    assert meta.status == "failed"
+    assert meta.error is not None
+    assert meta.error.startswith("dns_resolve_failure:")
+    assert "unsafe_url" not in meta.error
+
+
 def test_smart_proxy_rejects_metadata_host(monkeypatch: pytest.MonkeyPatch) -> None:
     """Cloud-metadata hostnames are refused before egress through the proxy."""
     monkeypatch.setenv(ENV_URL, "http://user:pass@host:7777")
