@@ -78,7 +78,7 @@ def _reject_config_flag(value: Path | None) -> Path | None:
     """Reject ``--config <path>`` until the TOML loader lands."""
     if value is not None:
         raise typer.BadParameter(
-            "--config is not implemented in v0.3 — "
+            "--config is not implemented yet — "
             f"see https://github.com/dmthepm/companyctx/issues/{_CONFIG_ISSUE}"
         )
     return value
@@ -87,7 +87,7 @@ def _reject_config_flag(value: Path | None) -> Path | None:
 def _fail_stub(command: str, issue: int) -> None:
     """Print a loud stderr message and exit non-zero for a not-yet-wired command."""
     typer.secho(
-        f"{command} is not implemented in v0.3 — "
+        f"{command} is not implemented yet — "
         f"see https://github.com/dmthepm/companyctx/issues/{issue}",
         fg=typer.colors.RED,
         err=True,
@@ -255,7 +255,7 @@ def fetch(
     if not json_out:
         # Markdown output belongs in a downstream synthesis layer, not here.
         typer.secho(
-            "--markdown is not implemented in v0.3; rerun with --json.",
+            "--markdown is not implemented; rerun with --json.",
             fg=typer.colors.RED,
             err=True,
         )
