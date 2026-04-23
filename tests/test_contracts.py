@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from companyctx.cache import CACHE_DB_FILENAME, CacheKey, FetchCache
+from companyctx.cache import CACHE_DB_FILENAME, CacheKey
 from companyctx.config import APP_NAME, Settings, default_cache_dir, default_config_dir
 from companyctx.http import DEFAULT_TIMEOUT_S, DEFAULT_USER_AGENT, build_session
 from companyctx.providers import ENTRY_POINT_GROUP, discover
@@ -44,24 +44,11 @@ def test_settings_defaults() -> None:
 
 
 def test_cache_key_is_hashable_value() -> None:
-    a = CacheKey(site="example.com", provider_slug="site_text_trafilatura")
-    b = CacheKey(site="example.com", provider_slug="site_text_trafilatura")
+    a = CacheKey(normalized_host="example.com", provider_set_hash="abc123")
+    b = CacheKey(normalized_host="example.com", provider_set_hash="abc123")
     assert a == b
     assert hash(a) == hash(b)
     assert CACHE_DB_FILENAME.endswith(".sqlite3")
-
-
-def test_fetch_cache_methods_are_stubs() -> None:
-    cache = FetchCache(db_path=Path("/tmp/should-not-exist.sqlite3"))
-    key = CacheKey(site="example.com", provider_slug="x")
-    with pytest.raises(NotImplementedError):
-        cache.get(key)
-    with pytest.raises(NotImplementedError):
-        cache.put(key, b"", ttl_seconds=60)
-    with pytest.raises(NotImplementedError):
-        cache.list_entries()
-    with pytest.raises(NotImplementedError):
-        cache.clear()
 
 
 def test_http_constants_and_session_stub() -> None:
