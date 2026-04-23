@@ -15,7 +15,7 @@ raw_evidence: research/2026-04-23-reviews-probe-raw.jsonl
 
 ## One-sentence summary
 
-Across eight candidate methods surveyed desktop-only (no live probe yet), the **three finalists that go forward into the Slice B live probe** are **Google Places API (New) Enterprise SKU** (first-party, authoritative, migration target for our legacy integration), **Yelp Fusion Plus** (first-party, $9.99/1k, free at partner volume during 30-day trial, US-only but matches the partner corpus), and **Apify `compass/crawler-google-places`** (lowest nominal cost but carries post-Feb-2026 scraper fragility + residential-proxy surcharge that this doc flags honestly); SerpAPI is eliminated pre-probe on active Google DMCA litigation (Dec 2025), Google Places Essentials is eliminated because the fields we need (`rating`, `userRatingCount`) are in the Enterprise tier of the New API, Outscraper is eliminated as it wraps the same scraped-Google data as Apify without adding control, BrightData is eliminated on setup friction for a pipx CLI user, and direct Yelp scraping is eliminated on ToS posture.
+Across thirteen candidate methods surveyed desktop-only (no live probe yet), the **five finalists that go forward into the Slice B live probe** are **Google Places API (New) Enterprise SKU** (first-party baseline), **Apify `compass/crawler-google-places`** (scraper-actor category, probe measures effective cost including residential-proxy surcharge), **WebSearch + LLM parsing** (the agentic alternative — the outcome if this wins is "remove `reviews_google_places` entirely and document the pattern in `examples/`"), **DataForSEO Google Reviews API** (aggregator-family, claimed ~$0.00075/10 reviews pending 2026-pricing verification), and **Yelp Fusion Plus** (first-party US-only backup, free during 30-day trial, first-to-drop if Slice B budget tightens); SerpAPI is eliminated pre-probe on active Google DMCA litigation (Dec 2025), Google Places Essentials/Pro are eliminated because the fields we need (`rating`, `userRatingCount`) are in the Enterprise tier, Outscraper is eliminated as it wraps the same scraped-Google data as Apify without adding control, BrightData is eliminated on setup friction, and direct Yelp scraping is eliminated on ToS posture.
 
 ## Scope
 
@@ -67,9 +67,17 @@ Distilled from the partner's pipeline logs
 
 ## Candidate matrix (desktop)
 
-Eight method categories, scored on the axes named in the issue (cost,
-coverage, data shape, ToS, maintenance). Scores are desktop-only signals;
-probe numbers replace them in Slice B.
+Thirteen method categories, scored on the axes named in the issue (cost,
+coverage, data shape, ToS, maintenance). The original eight categories
+in the issue body have been expanded twice during thread review: the
+**WebSearch + LLM parsing** agentic alternative was added per Devon's
+2026-04-23 comment ("is Claude somehow finding reviews and counts just
+with web..."), and **DataForSEO Google Reviews API** was added per the
+cross-issue prompt from the COX-63 parallel audit. Both are load-bearing
+additions — one reframes the decision ("do we need a provider at all?"),
+the other adds a materially cheaper aggregator candidate that slots
+cleanly between scraper-family and first-party. Scores are desktop-only
+signals; probe numbers replace them in Slice B.
 
 | # | Method | Type | Cost/call (estimate) | Rating+count returned? | ToS posture | Maintenance signal | Status |
 |---|---|---|---|---|---|---|---|
@@ -83,8 +91,9 @@ probe numbers replace them in Slice B.
 | 8 | **Yelp Fusion Plus** | First-party API | ~$9.99/1k = 1¢/call; 30-day free trial; 500 calls/day cap | Yes (rating, review_count, 3 excerpts) | **Clean (first-party)** | Active; Jul-2024 pricing change controversy subsided | **Finalist — probe slot #2** |
 | 9 | **BrightData Web Scraper IDE** (Yelp/Google) | Enterprise scraping | Custom + proxy usage | Yes (configurable) | Gray | Active but enterprise | **Eliminated pre-probe** — setup friction incompatible with pipx-CLI user |
 | 10 | **SerpAPI Google Maps** | SERP wrapper | ~1.5¢/call effective | Yes | **Active Google DMCA lawsuit filed Dec-2025** (motion-to-dismiss hearing 2026-05-19) | Active but legally contested | **Eliminated pre-probe** — naming SerpAPI in a public OSS ADR during live Google litigation is a ship-and-regret risk. Reconsider post-ruling. |
-| 11 | **DataForSEO Google Maps** | Aggregator API | Pay-as-you-go, ~$50/mo entry; Maps SERP variable | Yes | Cleaner than SerpAPI (no active litigation on file); still relies on scraped data | Active enterprise | Evaluated; not finalist (insufficient pricing transparency for a 10-site probe, adds a fourth provider beyond the $15 budget envelope) |
+| 11 | **DataForSEO Google Reviews API** | Aggregator API | ~$0.00075 / 10 reviews ≈ sub-0.1¢/site at typical SMB review counts (claim from cross-issue Grok audit; **requires 2026-pricing verification in Slice B**) | Yes (rating + review_count + review text) | Aggregator; no active litigation on file (distinct from SerpAPI); relies on scraped data but at one abstraction layer further than direct Apify | Active enterprise, pay-as-you-go | **Finalist — probe slot #5**. Surfaced from the COX-63 parallel audit comment; claimed 10–60× cheaper than Legacy Google Places if pricing holds. |
 | 12 | **Direct Yelp page scraping** | Homebrew | ~0¢ (proxy costs) | Yes | **Yelp ToS explicitly prohibits** | N/A | **Eliminated** — named for completeness only; would never ship |
+| 13 | **WebSearch + LLM parsing** (agentic) | Agent-tool pattern (no dedicated provider) | ~$0.01–0.02/query (Claude/Anthropic search-tool pricing) + agent parse tokens | Yes (rating + review_count reliably from SERP cards; snippets sometimes; categories inconsistently) | Clean — it's an agent using its own tool surface, not scraping Google directly | N/A (no provider module to maintain) | **Finalist — probe slot #4**. The most consequential candidate: if this wins on the partner corpus, the outcome is "remove `reviews_google_places` entirely and document the agentic pattern" (ADR Outcome E). |
 
 ### Eliminations, reasoned
 
@@ -114,20 +123,17 @@ probe numbers replace them in Slice B.
 
 ### Finalists — probe slot justification
 
+Five slots × 10 sites = 50 cells. Budget estimate: ~$1.50 total (well
+inside the $5–15 envelope), making room for all five without forcing a
+triage.
+
 **Slot #1: Google Places API (New) Enterprise.** First-party,
 authoritative rating, migration target for our legacy integration (which
 Google has flagged as non-enablable for new projects since 2025-03-01).
 Even if we decide to switch the default, the Enterprise SKU becomes the
 ToS-clean escape hatch. Must be measured.
 
-**Slot #2: Yelp Fusion Plus.** First-party, US-only (matches partner
-corpus — medical-aesthetic and home-services are US-heavy), 500 calls/day
-cap is above the partner's 100/day volume so the 30-day trial is
-effectively free, $9.99/1k thereafter is cheaper than Google New
-Enterprise. Honest coverage gap: businesses not listed on Yelp at all
-(more common in home-services than aesthetic). Must be measured.
-
-**Slot #3: Apify `compass/crawler-google-places`.** The scraper-actor
+**Slot #2: Apify `compass/crawler-google-places`.** The scraper-actor
 category the issue specifically asks about. Most-used Google Maps actor
 on Apify (`compass/` prefix is Apify's most-maintained third-party
 namespace). Headline price ~$2.10/1k looks like a 20× savings over
@@ -136,6 +142,41 @@ residential proxies** (the Feb-2026 limited-view rollout broke most
 legacy scrapers and survivors need residential-proxy rotation). If the
 effective cost lands above ~2¢/call the advantage evaporates. Must be
 measured.
+
+**Slot #3: WebSearch + LLM parsing.** The agentic alternative surfaced
+by Devon's 2026-04-23 skeptical push: *"is Claude somehow finding
+reviews and counts just with web..."* The partner's pipeline already
+drives Claude through research passes; if a single WebSearch turn on
+`"<business name> <city> reviews"` reliably surfaces Google's structured
+SERP result card (which typically contains rating + user_ratings_total
+inline) for 85%+ of the partner corpus, then `reviews_google_places` at
+5.4¢/site is paying for determinism the downstream pipeline may not
+need. This is the **most consequential slot** — it's the one where
+"win" means "remove the provider entirely, document the pattern, ship
+v0.5 with one fewer dependency to maintain." Must be measured.
+
+**Slot #4: DataForSEO Google Reviews API.** The aggregator-family
+candidate added per the COX-63 audit comment. Claimed ~$0.00075/10
+reviews — if the April-2026 pricing still holds, effective cost on a
+typical SMB (10–50 reviews per business) is sub-0.1¢/site, which would
+make it the cheapest non-agentic option by an order of magnitude. Sits
+between first-party (Google, Yelp) and scraper-direct (Apify) on both
+the cost axis and the ToS axis: aggregation at one abstraction layer
+further from Google's terms-of-service frontline than Apify, with no
+active-litigation signal on file. Slice B's first task on this slot is
+to **verify the pricing claim** against DataForSEO's current pricing
+page before burning any probe cells on it. Must be measured.
+
+**Slot #5: Yelp Fusion Plus.** First-party, US-only (matches partner
+corpus — medical-aesthetic and home-services are US-heavy), 500
+calls/day cap is above the partner's 100/day volume so the 30-day trial
+is effectively free, $9.99/1k thereafter is cheaper than Google New
+Enterprise. Honest coverage gap: businesses not listed on Yelp at all
+(more common in home-services than aesthetic). **First-to-drop if Slice
+B budget or wall-clock tightens** — the partner's own pipeline already
+runs Yelp as an out-of-band fallback, so the question "does Yelp cover
+where Google doesn't?" is partially answered by new-signal-studio's
+operational record already. Must be measured if budget allows.
 
 (Apify also has cheaper newer actors — e.g. `kaix/google-maps-places-scraper`
 at ~$0.10/1k nominal — but they have far lower monthly-user counts
@@ -173,7 +214,7 @@ per cell. Row shape:
 ```json
 {
   "slug": "med-aesth-01",
-  "provider": "google_places_new_enterprise | yelp_fusion_plus | apify_compass_crawler",
+  "provider": "google_places_new_enterprise | apify_compass_crawler | websearch_llm_parse | dataforseo_reviews | yelp_fusion_plus",
   "run_id": "2026-04-23-<uuid4>",
   "run_date": "2026-04-23",
   "status": "ok | zero_results | blocked | error",
@@ -190,9 +231,47 @@ per cell. Row shape:
 }
 ```
 
-Provider credentials live in the operator's local env (`GOOGLE_PLACES_API_KEY`,
-`YELP_FUSION_API_KEY`, `APIFY_TOKEN`) and are never committed. The harness
-is provider-agnostic: adding a fourth provider is one adapter class.
+Provider credentials live in the operator's local env (`GOOGLE_PLACES_NEW_API_KEY`,
+`YELP_FUSION_API_KEY`, `APIFY_TOKEN`, `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`)
+and are never committed. The harness is provider-agnostic: adding a new
+provider is one adapter class.
+
+### WebSearch + LLM parsing: agentic-probe protocol
+
+Slot #3 is structurally different from the other four slots — it is an
+agent-tool pattern, not a billable third-party API. The probe harness
+cannot "just call" WebSearch+parse the way it calls a REST endpoint;
+the call surface is Claude's own tool use, driven by a prompt.
+
+The operator runs the agentic probe out-of-band, producing JSONL rows
+that match the shared schema above. Protocol:
+
+1. For each slug, the operator opens a fresh Claude Code session (or
+   programmatic API call to `claude-opus-4-7` with WebSearch tool
+   enabled) and runs a pre-registered prompt template of the shape:
+   ```
+   Find the Google rating and review count for "<business name> <city>".
+   Use WebSearch. Return exactly a JSON object with keys rating (float
+   or null), review_count (int or null), source (string identifying
+   where the number came from: SERP-card | yelp-SERP | facebook-SERP |
+   other | not-found). Do not invent numbers.
+   ```
+2. The operator records the session's `input_tokens`, `output_tokens`,
+   `tool_use.web_search.queries`, and the returned JSON. Billed cost is
+   computed from the token counts × the model's price plus the
+   WebSearch tool's per-query cost.
+3. Latency is the wall-clock time from prompt-submit to final
+   assistant turn (the session, not any single tool call).
+4. The JSON is appended to the probe-raw JSONL with
+   `provider: "websearch_llm_parse"`.
+
+Determinism caveat: the agentic slot runs once per slug, not N-repeats.
+LLM outputs vary; the probe captures a single trial, not a distribution.
+If the WebSearch+parse slot is the eventual winner, the Slice B ADR
+must document this sampling caveat and an implementation ticket must
+specify how downstream agentic consumers handle variance (temperature
+pin, few-shot examples, retry-on-nonconforming-JSON — all downstream
+concerns, out of scope for the measurement).
 
 ### Site mix: why 10 and not 100
 
@@ -217,31 +296,53 @@ divergent one; that's a Slice B branch, not a Slice A commitment.
 ### Decision rule (pre-committed)
 
 The recommendation after the probe follows this rule, pre-registered
-before measurement to avoid motivated interpretation:
+before measurement to avoid motivated interpretation. Order matters —
+the first matching branch wins, which prioritizes the provider-removal
+outcome when it is supportable over keeping an expensive dedicated
+provider:
 
 ```
 effective_cost_per_successful_call(p) =
-    (nominal_cost_cents(p) + proxy_cost_cents(p) + actor_start_cents(p))
+    (nominal_cost_cents(p) + proxy_cost_cents(p) + actor_start_cents(p)
+     + agent_token_cents(p))
     / coverage_rate(p)
 
-Recommend KEEP Google Places (migrate Legacy → New Enterprise) if:
-    effective_cost(google_new_enterprise) ≤ 1.5 × effective_cost(cheapest_other)
-    AND coverage(google_new_enterprise) ≥ 0.8
+Recommend REMOVE provider entirely (agentic pattern) if:
+    coverage(websearch_llm_parse) ≥ 0.85
+    AND effective_cost(websearch_llm_parse) ≤ 1.5¢/site
+    AND data consistency vs Google baseline within ±0.3 stars on
+        co-present businesses
+    AND the JSON-format compliance rate across the 10 slugs is 10/10
+        (no hallucinated numbers, no malformed outputs)
+
+Recommend SWITCH to cheapest aggregator if:
+    coverage(dataforseo_reviews) ≥ 0.85
+    AND effective_cost(dataforseo_reviews) ≤ 0.5 × effective_cost(google_new_enterprise)
+    AND 2026-pricing verification confirms the sub-0.1¢/site claim
+    AND data consistency vs Google baseline within ±0.3 stars
+
+Recommend SWITCH to cheapest viable first-party/gold-tier alternative if:
+    effective_cost(cheapest) < 0.5 × effective_cost(google_new_enterprise)
+    AND coverage(cheapest) ≥ coverage(google_new_enterprise) - 0.05
+    AND ToS posture is first-party or Gold-tier Apify actor
 
 Recommend COMPOSITE (Google New Enterprise → Yelp Fusion fallback) if:
     coverage(google_new_enterprise) < 0.8
     AND coverage(google OR yelp) ≥ 0.9
     AND effective_cost(composite_expected) ≤ 1.2 × effective_cost(google_only)
 
-Recommend SWITCH to cheapest viable if:
-    effective_cost(cheapest) < 0.5 × effective_cost(google_new_enterprise)
-    AND coverage(cheapest) ≥ coverage(google_new_enterprise) - 0.05
-    AND ToS posture is first-party or Gold-tier Apify actor
+Recommend KEEP Google Places (migrate Legacy → New Enterprise) if:
+    effective_cost(google_new_enterprise) ≤ 1.5 × effective_cost(cheapest_other)
+    AND coverage(google_new_enterprise) ≥ 0.8
 
 Else: KEEP Legacy temporarily, reopen probe with different shortlist.
 ```
 
-All three branches land in the ADR; the probe numbers pick which.
+All five branches land in the ADR (Outcomes A–E); the probe numbers
+pick which. Ordering reflects "prefer less surface area when the
+numbers support it" — removing the reviews provider entirely is the
+single highest-leverage outcome available to this spike, so it is
+first in the rule.
 
 ## Decision matrix (pre-probe, weights only)
 

@@ -51,13 +51,17 @@ from typing import Literal, Protocol
 
 PROVIDER_IDS = (
     "google_places_new_enterprise",
-    "yelp_fusion_plus",
     "apify_compass_crawler",
+    "websearch_llm_parse",
+    "dataforseo_reviews",
+    "yelp_fusion_plus",
 )
 ProviderId = Literal[
     "google_places_new_enterprise",
-    "yelp_fusion_plus",
     "apify_compass_crawler",
+    "websearch_llm_parse",
+    "dataforseo_reviews",
+    "yelp_fusion_plus",
 ]
 
 
@@ -66,8 +70,10 @@ ProviderId = Literal[
 # ``cost_incurred_cents`` in the JSONL rows the harness emits.
 ESTIMATED_CENTS_PER_CALL: dict[str, int] = {
     "google_places_new_enterprise": 4,  # Text Search + Details (Enterprise field mask)
-    "yelp_fusion_plus": 1,  # $9.99/1k = 1c, free during trial
     "apify_compass_crawler": 5,  # ~$2.10/1k nominal + residential proxy
+    "websearch_llm_parse": 2,  # ~1.5c WebSearch + agent tokens
+    "dataforseo_reviews": 1,  # Claimed ~$0.00075/10 reviews — round up to 1c for safety
+    "yelp_fusion_plus": 1,  # $9.99/1k = 1c, free during trial
 }
 
 
@@ -215,14 +221,74 @@ class ApifyCompassCrawlerAdapter:
         )
 
 
+class WebSearchLlmParseAdapter:
+    """Slice B — the agentic alternative.
+
+    Structurally different from the other adapters: there is no billable
+    REST endpoint to call. The operator runs the agentic probe
+    out-of-band — one prompt per slug, driving Claude through its own
+    WebSearch tool surface — and appends JSONL rows matching this
+    harness's schema. See the "WebSearch + LLM parsing: agentic-probe
+    protocol" subsection in
+    ``research/2026-04-23-reviews-extraction-method-survey.md`` for the
+    exact prompt template, token-accounting rules, and the determinism
+    caveat (one trial per slug, not a distribution).
+
+    This adapter exists so the provider_id is first-class in the probe
+    config and the row schema stays uniform; ``fetch`` deliberately
+    raises to force the operator into the documented out-of-band
+    workflow instead of accidentally running the harness against a non-
+    existent HTTP endpoint.
+    """
+
+    provider_id = "websearch_llm_parse"
+
+    def fetch(self, slug: str, host: str, query_name: str) -> ProbeRow:
+        raise NotImplementedError(
+            "websearch_llm_parse is an agentic probe — see "
+            "research/2026-04-23-reviews-extraction-method-survey.md "
+            "for the out-of-band protocol. Append the operator-produced "
+            "rows directly to the probe JSONL."
+        )
+
+
+class DataForSeoReviewsAdapter:
+    """Slice B — real implementation wires the DataForSEO Google
+    Reviews API (``/v3/business_data/google/reviews/task_post`` +
+    ``/task_get``) with HTTP Basic auth on the login / password pair.
+
+    **First Slice B task on this slot is to verify the 2026 pricing
+    claim** (~$0.00075/10 reviews) against DataForSEO's current pricing
+    page. The ``cost_incurred_cents`` emitted by this adapter must be
+    the actual billed cost from the task-post response's ``cost`` field,
+    not a pre-registered estimate.
+    """
+
+    provider_id = "dataforseo_reviews"
+
+    def __init__(self, login: str, password: str) -> None:
+        self.login = login
+        self.password = password
+
+    def fetch(self, slug: str, host: str, query_name: str) -> ProbeRow:
+        raise NotImplementedError(
+            "Slice B implementation pending credential provisioning — "
+            "see decisions/2026-04-23-reviews-provider-selection.md"
+        )
+
+
 def build_adapter(provider_id: str) -> ProviderAdapter:
     """Instantiate the adapter for ``provider_id`` from its env var.
 
     Env vars required (loaded by the operator before running the harness):
 
     - ``GOOGLE_PLACES_NEW_API_KEY`` for ``google_places_new_enterprise``
-    - ``YELP_FUSION_API_KEY`` for ``yelp_fusion_plus``
     - ``APIFY_TOKEN`` for ``apify_compass_crawler``
+    - ``DATAFORSEO_LOGIN`` + ``DATAFORSEO_PASSWORD`` for ``dataforseo_reviews``
+    - ``YELP_FUSION_API_KEY`` for ``yelp_fusion_plus``
+    - (no env for ``websearch_llm_parse`` — that slot is an agentic
+      out-of-band probe; the adapter raises to redirect the operator
+      to the documented protocol)
     """
     if provider_id == "google_places_new_enterprise":
         key = os.environ.get("GOOGLE_PLACES_NEW_API_KEY")
@@ -245,6 +311,17 @@ def build_adapter(provider_id: str) -> ProviderAdapter:
         if not token:
             raise SystemExit("APIFY_TOKEN is not set — provision via Apify console and re-run")
         return ApifyCompassCrawlerAdapter(token=token)
+    if provider_id == "websearch_llm_parse":
+        return WebSearchLlmParseAdapter()
+    if provider_id == "dataforseo_reviews":
+        login = os.environ.get("DATAFORSEO_LOGIN")
+        password = os.environ.get("DATAFORSEO_PASSWORD")
+        if not login or not password:
+            raise SystemExit(
+                "DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD must both be set — "
+                "provision via dataforseo.com signup and re-run"
+            )
+        return DataForSeoReviewsAdapter(login=login, password=password)
     raise SystemExit(f"unknown provider_id: {provider_id}")
 
 

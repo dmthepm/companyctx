@@ -49,7 +49,7 @@ candidates measured on the same corpus, decision cited back to the
 numbers. Issue [#116](https://github.com/dmthepm/companyctx/issues/116)
 retrofits that pattern.
 
-### Three facts that force the decision regardless of probe outcome
+### Four facts that force the decision regardless of probe outcome
 
 1. **Google Places Legacy is no longer enablable for new projects
    (since 2025-03-01).** Existing keys continue to work, but any new
@@ -65,6 +65,15 @@ retrofits that pattern.
    2026-05-19).** Any ADR naming SerpAPI as `accepted` during active
    litigation is a ship-and-regret risk. SerpAPI is dropped from the
    shortlist pre-probe.
+4. **The agentic alternative is on the table.** Devon's 2026-04-23
+   pressure test — *"is Claude somehow finding reviews and counts just
+   with web..."* — introduced a fifth candidate (WebSearch + LLM
+   parsing) that does not fit the "structured third-party provider"
+   frame. If this wins on the partner corpus, the outcome is the
+   removal of `reviews_google_places` from the waterfall entirely, not
+   the replacement of one provider with another. Outcome E below
+   carries that branch, and it is pre-registered as the first-matching
+   branch in the decision rule.
 
 ### Partner-shaped reality check
 
@@ -81,27 +90,39 @@ single-provider or user-pluggable.
 
 ### Finalist shortlist for the Slice B probe
 
-Three providers, measured head-to-head on the same 10-site corpus:
+Five candidates, measured head-to-head on the same 10-site corpus. Two
+slots were added after the initial three were finalized: **WebSearch +
+LLM parsing** (per Devon's 2026-04-23 scope-expansion comment on #116)
+and **DataForSEO Google Reviews API** (per the COX-63 cross-issue
+audit).
 
 1. **Google Places API (New) — Enterprise SKU.** First-party;
    `rating` + `userRatingCount` in the Enterprise tier; migration target
    for our Legacy-based current implementation.
-2. **Yelp Fusion Plus** ($9.99/1k; 500 calls/day cap; US-only). First-party;
-   free during 30-day trial at partner's volume.
-3. **Apify `compass/crawler-google-places`.** Represents the
-   scraper-actor category the issue specifically asked about; highest
-   usage in the Apify Google Maps namespace; nominal ~$2.10/1k.
-   Probe measures **effective cost including residential-proxy surcharge**
-   (post-Feb-2026 limited-view lockdown).
+2. **Apify `compass/crawler-google-places`.** Scraper-actor category;
+   highest usage in the Apify Google Maps namespace; nominal ~$2.10/1k.
+   Probe measures **effective cost including residential-proxy
+   surcharge** (post-Feb-2026 limited-view lockdown).
+3. **WebSearch + LLM parsing.** The agentic alternative. No dedicated
+   provider module; the partner's own agent pipeline does a single
+   WebSearch turn and parses the SERP card for rating + count.
+   Triggers Outcome E below if it wins.
+4. **DataForSEO Google Reviews API.** Aggregator-family; claim of
+   ~$0.00075/10 reviews pending 2026-pricing verification as the first
+   step of Slice B. ToS posture one layer removed from direct scraping
+   with no active-litigation signal on file.
+5. **Yelp Fusion Plus** ($9.99/1k; 500 calls/day cap; US-only).
+   First-party; free during 30-day trial at partner's volume. First-to-
+   drop if Slice B budget or wall-clock tightens.
 
 See `research/2026-04-23-reviews-extraction-method-survey.md` for the
 eliminations (Essentials/Pro, SerpAPI, Outscraper, BrightData, direct
 scraping) and their rationale.
 
-### Four-branch outcome structure
+### Five-branch outcome structure
 
 After Slice B measurement, this ADR's `Decision` section will be
-rewritten to one of **exactly these four outcomes** (the branch is
+rewritten to one of **exactly these five outcomes** (the branch is
 picked by the pre-registered decision rule in the research doc):
 
 #### Outcome A — Migrate-in-place to Google Places API (New) Enterprise
@@ -153,17 +174,66 @@ marks this as the feature release.
 #### Outcome D — Keep Legacy Google Places, reopen probe
 
 **Trigger:** Probe results inconclusive (coverage < 0.8 across all
-three finalists, or data consistency divergence > 0.3 stars making
+five finalists, or data consistency divergence > 0.3 stars making
 rankings unstable, or Apify effective-cost-including-proxy puts it at
 parity with Google New Enterprise), OR the probe runs up against
 key-provisioning or actor-breakage issues that invalidate the
 measurement.
 
 **Action:** No code change. Ticket re-opens with a wider or different
-shortlist. Accept that the v0.3 status quo was defensible and the
-cost-saving hypothesis did not survive contact with evidence. This
-outcome is listed explicitly to prevent a "we spent the budget, we
-must switch" motivated-reasoning error.
+shortlist (Foursquare, post-ruling SerpAPI, DataLabs). Accept that the
+v0.3 status quo was defensible and the cost-saving hypothesis did not
+survive contact with evidence. This outcome is listed explicitly to
+prevent a "we spent the budget, we must switch" motivated-reasoning
+error.
+
+#### Outcome E — Remove the reviews provider entirely
+
+**Trigger:** WebSearch + LLM parsing clears coverage ≥ 0.85 on the
+partner corpus AND effective cost (including Claude tokens + WebSearch
+tool cost) ≤ 1.5¢/site AND JSON-format compliance rate is 10/10 on the
+probe slugs AND data consistency vs. Google baseline is within ±0.3
+stars on co-present businesses.
+
+**Action:** The highest-leverage outcome available to this spike.
+
+1. Delete `companyctx/providers/reviews_google_places.py` and its
+   tests / fixtures / entry-point registration in `pyproject.toml:60`.
+2. Remove the `reviews` provider-category references from
+   `docs/PROVIDERS.md`; the category stays in the schema (for any
+   downstream who wires their own) but the default waterfall emits
+   `data.reviews: null` and documents **the agentic pattern** as the
+   recommended downstream integration:
+   > For reviews, do not wire a dedicated provider. Instead, at the
+   > synthesis layer of your agent pipeline, issue a `WebSearch("<name>
+   > <city> reviews")` turn and parse the SERP card. Example: see
+   > `examples/reviews_via_websearch.py`.
+3. Add `examples/reviews_via_websearch.py` showing the prompt template,
+   the JSON-return contract, and a validator that rejects hallucinated
+   numbers.
+4. Remove `GOOGLE_PLACES_API_KEY` from the setup documentation; it
+   remains honored for any user who has not yet migrated their pipeline
+   to the agentic pattern, but the zero-key path no longer gates on it.
+5. CHANGELOG v0.5 marks this as a **BREAKING CHANGE** with a
+   migration note: users whose pipelines explicitly consume
+   `data.reviews` must either (a) add the WebSearch+parse step upstream
+   of the companyctx call, or (b) wire their own reviews provider via
+   entry point before the v0.5 upgrade. Migration path is documented
+   with both options so the partner — and any downstream user — can
+   pick.
+6. Update the zero-key README hero to reflect that reviews are
+   **outside** the companyctx schema-locked output in v0.5 and that
+   this is an intentional narrowing based on measurement.
+
+This outcome is listed first in the decision rule not because it is
+most likely but because it is most **consequential** — collapsing a
+whole provider surface into an agent-tool pattern is the largest
+scope-narrowing move the spike can produce, and narrowing scope to the
+deterministic-CLI wedge is the repo's stated preference when evidence
+supports it. See ADR
+`decisions/2026-04-20-zero-key-stealth-strategy.md` for the "every
+attempt maps to the same envelope shape; providers are replaceable; the
+envelope is not" posture that Outcome E operationalizes.
 
 ### Explicitly rejected outcomes
 
@@ -191,14 +261,21 @@ must switch" motivated-reasoning error.
    maps probe numbers to outcome branches before we see the numbers.
    If Google New Enterprise wins on the rule, we keep it even if the
    partner mood on the day of the probe is "we want to switch."
-3. **Honoring the partner's own fallback posture as the probable
-   outcome shape.** Outcome C (composite) is the one that best matches
-   `new-signal-studio`'s observed behavior of running Yelp / Angi / BBB
-   / Trustindex when Google returns nothing. Outcome A (stay, just
-   migrate) is defensible if coverage is high. Outcomes B and D are
-   listed because they are real branches the probe could land on, not
-   because we expect them.
-4. **Single-provider > pluggable.** `companyctx`'s adoption wedge is "one
+3. **Honoring the partner's own fallback posture as a probable
+   outcome shape.** Outcome C (composite) matches `new-signal-studio`'s
+   observed behavior of running Yelp / Angi / BBB / Trustindex when
+   Google returns nothing. Outcome A (stay, just migrate) is defensible
+   if coverage is high. Outcomes B and D are listed because they are
+   real branches the probe could land on, not because we expect them.
+4. **Outcome E (remove the provider) is the highest-leverage
+   branch.** If WebSearch + LLM parsing clears the decision rule's
+   thresholds, the right move is not to replace one provider with a
+   cheaper one but to collapse the provider surface to zero and
+   document the agentic pattern. Narrowing scope to the deterministic-
+   CLI wedge is the repo's stated preference when evidence supports
+   it; removing a paid-API dependency from the default path is a
+   clean realization of that preference.
+5. **Single-provider > pluggable.** `companyctx`'s adoption wedge is "one
    command, deterministic output, no config knobs." A pluggable
    `COMPANYCTX_REVIEWS_PROVIDER=...` toggle contradicts that wedge.
 
@@ -209,7 +286,8 @@ must switch" motivated-reasoning error.
 | "Stick with Legacy Google Places indefinitely" | Legacy is non-enablable for new GCP projects since 2025-03-01. Even if the probe favors Google, migration to New Enterprise is required on time-horizon grounds. |
 | "Ship pluggable provider config" | Contradicts the deterministic-CLI wedge; adds maintenance across N providers that we don't have evidence we need. Rejected per Rationale #4. |
 | "Just switch to Apify, cheaper and done" | Pre-probe evidence says "cheaper" is partial — residential-proxy cost after Feb-2026 lockdown is the open question the probe answers. Motivated-reasoning-avoidance: let the numbers pick. |
-| "Broader shortlist — include SerpAPI / DataForSEO / Outscraper" | SerpAPI eliminated on litigation. Outscraper eliminated as it wraps the same scraped Google data as Apify with zero ToS improvement. DataForSEO evaluated but pricing transparency is insufficient for a same-day 10-site probe inside $15 budget; reopen if outcomes A-D all fail. |
+| "Broader shortlist — include SerpAPI / Outscraper" | SerpAPI eliminated on litigation. Outscraper eliminated as it wraps the same scraped Google data as Apify with zero ToS improvement. **DataForSEO was added to the shortlist** after initial publication, per the COX-63 cross-issue audit note. |
+| "Skip WebSearch + LLM parsing — it's not a third-party API" | The question framing itself was skeptical ("is Claude somehow finding reviews just with web"). Excluding it because it doesn't fit the "structured third-party provider" mental model would reproduce the v0.3 error of shipping a provider without measuring the alternatives. Outcome E is the branch that takes the agentic answer seriously. |
 | "Expand probe to 100 sites for statistical significance" | The measurement question at stake is cost-and-coverage-fit at partner-scale, not 3-decimal-place statistics. n=10 is enough to separate providers that differ by >20%; if the numbers come in tighter than that, the ADR branches to Outcome D (reopen) rather than picking between near-ties. |
 
 ## Risks
