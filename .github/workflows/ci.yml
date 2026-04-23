@@ -155,15 +155,24 @@ jobs:
           .venv-smoke/bin/pip install ./dist/companyctx-*.whl
 
       - name: Smoke — companyctx --version
-        # Exit 0 and emits the current version string. Catches entry-point
-        # registration drift (``[project.scripts]`` stale).
+        # Exit 0 and emits ``companyctx <version>`` where <version> matches
+        # the installed distribution metadata. Catches entry-point
+        # registration drift (``[project.scripts]`` stale) and version
+        # skew between ``companyctx.__version__`` and the wheel metadata.
+        # The expected string is derived from ``importlib.metadata`` inside
+        # the smoke venv so a routine version bump doesn't require a CI
+        # edit — the gate checks that the CLI agrees with the wheel it
+        # was installed from, not that it hits a literal.
         run: |
+          expected="companyctx $(.venv-smoke/bin/python -c \
+            'from importlib.metadata import version; print(version("companyctx"))')"
           out=$(.venv-smoke/bin/companyctx --version)
-          echo "$out"
-          case "$out" in
-            "companyctx 0.3.0") ;;
-            *) echo "::error::unexpected --version output: $out"; exit 1 ;;
-          esac
+          echo "expected=$expected"
+          echo "actual=  $out"
+          if [ "$out" != "$expected" ]; then
+            echo "::error::--version output ($out) does not match installed dist metadata ($expected)"
+            exit 1
+          fi
 
       - name: Smoke — companyctx schema (valid JSON Schema)
         # Stamps ``$schema`` (Draft 2020-12) — catches Pydantic upgrades
