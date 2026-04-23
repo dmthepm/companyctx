@@ -32,7 +32,7 @@ from companyctx import (
 
 
 def test_top_level_reexports_are_importable() -> None:
-    assert SCHEMA_VERSION == "0.3.0"
+    assert SCHEMA_VERSION == "0.4.0"
     assert Envelope.__name__ == "Envelope"
     assert EnvelopeError.__name__ == "EnvelopeError"
     for cls in (
@@ -75,7 +75,7 @@ def test_top_level_literal_aliases_expose_expected_members() -> None:
 
 def test_package_version_is_current() -> None:
     """Pinned to current release — bump in the version-bump PR."""
-    assert __version__ == "0.3.1"
+    assert __version__ == "0.3.0"
 
 
 def test_py_typed_marker_ships_with_package() -> None:

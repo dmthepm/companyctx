@@ -3,16 +3,20 @@
 The Pydantic v2 shape `companyctx` emits. The schema is the product — providers
 are replaceable, the contract is not.
 
-The envelope below is the v0.3.0 shape. Adding a new optional field is
+The envelope below is the v0.4.0 shape. Adding a new optional field is
 backwards-compatible; removing or renaming a field — or changing the shape of
 an existing one — is a schema-version bump. Always branch on the top-level
 `schema_version` field to detect envelope evolution.
 
-v0.3.0 adds two error codes to the closed `EnvelopeError.code` Literal:
+v0.3.0 added two error codes to the closed `EnvelopeError.code` Literal:
 `empty_response` (the silent-success-on-empty gate) and `cache_corrupted`
 (emitted on `--from-cache` when the cache opens but the row can't be
 deserialized). See `docs/SPEC.md` §empty_response and §cache_corrupted
-for the semantics.
+for the semantics. v0.4.0 keeps the same Literal set but bumps
+`SCHEMA_VERSION` for two code-mapping changes on the same input:
+`empty_response` now fires at <1024 UTF-8 bytes of extracted text
+(was <64 in v0.3.0; COX-52 / #91), and DNS-resolution failures route
+to `no_provider_succeeded` instead of `ssrf_rejected` (COX-49 / #86).
 
 Consumers can pull the live JSON Schema with:
 
@@ -26,7 +30,7 @@ Every `companyctx fetch` invocation returns one wrapper around the payload:
 
 ```python
 class Envelope(BaseModel):
-    schema_version: Literal["0.3.0"]    # required — no default
+    schema_version: Literal["0.4.0"]    # required — no default
     status: Literal["ok", "partial", "degraded"]
     data: CompanyContext
     provenance: dict[str, ProviderRunMetadata]
@@ -108,7 +112,7 @@ Keys are shown in the alphabetical order the CLI emits
       "status": "ok"
     }
   },
-  "schema_version": "0.3.0",
+  "schema_version": "0.4.0",
   "status": "ok"
 }
 ```
@@ -147,7 +151,7 @@ Keys are shown in the alphabetical order the CLI emits
       "status": "not_configured"
     }
   },
-  "schema_version": "0.3.0",
+  "schema_version": "0.4.0",
   "status": "partial"
 }
 ```
