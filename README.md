@@ -37,7 +37,7 @@ companyctx fetch acme-bakery.com --json
       "status": "ok"
     }
   },
-  "schema_version": "0.3.0",
+  "schema_version": "0.4.0",
   "status": "ok"
 }
 ```
@@ -168,7 +168,7 @@ On full block with no Attempt-2/3 providers configured:
     "suggestion": "configure a smart-proxy provider key or skip this prospect"
   },
   "provenance": { "site_text_trafilatura": { "cost_incurred": 0, "error": "blocked_by_antibot (HTTP 403)", "latency_ms": 842, "provider_version": "0.1.0", "status": "failed" } },
-  "schema_version": "0.3.0",
+  "schema_version": "0.4.0",
   "status": "partial"
 }
 ```

@@ -3,12 +3,18 @@
 The Pydantic v2 shape `companyctx` emits. The schema is the product — providers
 are replaceable, the contract is not.
 
-The envelope below is the v0.3.0 shape. Adding a new optional field is
+The envelope below is the v0.4.0 shape. Adding a new optional field is
 backwards-compatible; removing or renaming a field — or changing the shape of
 an existing one — is a schema-version bump. Always branch on the top-level
 `schema_version` field to detect envelope evolution.
 
-v0.3.0 adds two error codes to the closed `EnvelopeError.code` Literal:
+v0.4.0 renames `path_traversal_rejected` →
+`fixture_path_traversal_rejected` to match the validator's actual scope
+(the code only fires for `--mock` fixture-slug escapes; URL-path
+traversal is not guarded). Renaming a code in the closed Literal is
+schema-breaking; v0.4.0 is the minor bump from v0.3.0 carrying it.
+
+v0.3.0 added two error codes to the closed `EnvelopeError.code` Literal:
 `empty_response` (the silent-success-on-empty gate) and `cache_corrupted`
 (emitted on `--from-cache` when the cache opens but the row can't be
 deserialized). See `docs/SPEC.md` §empty_response and §cache_corrupted
@@ -26,7 +32,7 @@ Every `companyctx fetch` invocation returns one wrapper around the payload:
 
 ```python
 class Envelope(BaseModel):
-    schema_version: Literal["0.3.0"]    # required — no default
+    schema_version: Literal["0.4.0"]    # required — no default
     status: Literal["ok", "partial", "degraded"]
     data: CompanyContext
     provenance: dict[str, ProviderRunMetadata]
@@ -57,7 +63,7 @@ class EnvelopeError(BaseModel):
         "ssrf_rejected",
         "network_timeout",
         "blocked_by_antibot",
-        "path_traversal_rejected",
+        "fixture_path_traversal_rejected",
         "response_too_large",
         "no_provider_succeeded",
         "misconfigured_provider",
@@ -108,7 +114,7 @@ Keys are shown in the alphabetical order the CLI emits
       "status": "ok"
     }
   },
-  "schema_version": "0.3.0",
+  "schema_version": "0.4.0",
   "status": "ok"
 }
 ```
@@ -147,7 +153,7 @@ Keys are shown in the alphabetical order the CLI emits
       "status": "not_configured"
     }
   },
-  "schema_version": "0.3.0",
+  "schema_version": "0.4.0",
   "status": "partial"
 }
 ```

@@ -8,7 +8,7 @@
 >
 > Shape edits land upstream and flow back via a new handoff cycle. Shipped-vs-
 > deferred state (which commands / flags / providers are wired today) is
-> refreshed with each release — this file is current as of `v0.3.0`.
+> refreshed with each release — this file is current as of `v0.4.0`.
 
 ---
 
@@ -80,7 +80,7 @@ around a crash.
 
 ```
 {
-  "schema_version": "0.3.0",       // top-level shape discriminator
+  "schema_version": "0.4.0",       // top-level shape discriminator
   "status": "ok" | "partial" | "degraded",
   "data":   CompanyContext,        // the schema payload (always present, may
                                    //   have nullable fields on partial)
@@ -102,9 +102,17 @@ Status semantics:
   failure; `error.suggestion` names the next action.
 
 `EnvelopeError.code` is one of `ssrf_rejected | network_timeout |
-blocked_by_antibot | path_traversal_rejected | response_too_large |
+blocked_by_antibot | fixture_path_traversal_rejected | response_too_large |
 no_provider_succeeded | misconfigured_provider | empty_response |
 cache_corrupted`. See `docs/SCHEMA.md` for the shape.
+
+`fixture_path_traversal_rejected` fires **only** on the `--mock` fixture
+path when the slug escapes `fixtures_dir` (e.g. `companyctx fetch
+"../etc/passwd" --mock`). A live fetch whose URL path contains `../`
+is not guarded by this code — URL-path traversal is out of scope in
+v0.4 (tracking via a follow-up issue if required). The v0.3 code name
+`path_traversal_rejected` implied broader coverage than the validator
+delivered; the rename in v0.4 matches the code to its actual scope.
 
 #### `empty_response` (v0.3)
 
@@ -150,7 +158,7 @@ invent content). Agents decide whether to retry upstream.
 
 ### `schema_version`
 
-Every envelope carries a top-level `schema_version: Literal["0.3.0"]`.
+Every envelope carries a top-level `schema_version: Literal["0.4.0"]`.
 Agents branch on shape by reading this field directly — no substring-
 parsing an error string.
 
@@ -160,16 +168,18 @@ empty-string `schema_version` fails validation at parse time with a
 envelopes (which lack the field entirely, or carry the older `"0.2.0"`
 literal) silently validate as current, defeating the point of a shape
 discriminator. The constructor signature in `companyctx/schema.py` is the
-source of truth — every call site must pass `schema_version="0.3.0"`
+source of truth — every call site must pass `schema_version="0.4.0"`
 explicitly. Published JSON Schema (`companyctx schema`) lists
 `schema_version` in the `required` array.
 
 Adding an optional envelope field is a PATCH (no `schema_version` bump);
 adding or renaming an `EnvelopeError.code` is a MINOR bump; changing or
-removing an existing field is a MAJOR bump. v0.3.0 adds the
-`empty_response` code to the closed set — a minor bump from v0.2.0. v0.1
-envelopes lack the `schema_version` field and fail validation under
-`extra="forbid"` plus the required-field check.
+removing an existing field is a MAJOR bump. v0.3.0 added the
+`empty_response` and `cache_corrupted` codes to the closed set. v0.4.0
+renames `path_traversal_rejected` → `fixture_path_traversal_rejected` to
+match the validator's actual scope — renaming is treated as a MINOR bump
+in the pre-1.0 series. v0.1 envelopes lack the `schema_version` field
+and fail validation under `extra="forbid"` plus the required-field check.
 
 ### `providers list` output shape
 

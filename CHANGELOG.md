@@ -5,6 +5,25 @@ All notable changes to `companyctx` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed — BREAKING (envelope schema)
+
+- **Renamed `path_traversal_rejected` → `fixture_path_traversal_rejected`
+  in the `EnvelopeError.code` Literal.** The v0.3 code name implied the
+  validator guarded URL-path traversal (`example.com/../etc/passwd`);
+  it never did — the code only fires for `--mock` fixture-slug escapes.
+  Agents pattern-matching on the old string must switch to the new one.
+  No new code was introduced; the behavior is unchanged. URL-path
+  traversal remains out of scope — open a separate issue if a guard is
+  needed. (COX-50 / #87.)
+- **`schema_version` bumped to `"0.4.0"`.** Renaming a code in the
+  closed Literal is schema-breaking; the top-level discriminator
+  advances so consumers that branch on `schema_version` see the shape
+  evolution explicitly. Pydantic `Envelope(...)` call sites must pass
+  `schema_version="0.4.0"`. `companyctx schema` output and the
+  fixtures-corpus `expected.json` files now emit `"0.4.0"`.
+
 ## [0.3.0] — 2026-04-23
 
 ### Added — Vertical Memory cache (COX-6 / #9)
